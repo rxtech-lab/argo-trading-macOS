@@ -1,0 +1,616 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		DFEACE002DB4D94A0099025F /* ArgoTrading.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = DFEACDFF2DB4D9490099025F /* ArgoTrading.xcframework */; };
+		DFEACE012DB4D94A0099025F /* ArgoTrading.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = DFEACDFF2DB4D9490099025F /* ArgoTrading.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		DFEACDE22DB4D9160099025F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DFEACDC82DB4D9150099025F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DFEACDCF2DB4D9150099025F;
+			remoteInfo = ArgoTradingSwift;
+		};
+		DFEACDEC2DB4D9160099025F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DFEACDC82DB4D9150099025F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DFEACDCF2DB4D9150099025F;
+			remoteInfo = ArgoTradingSwift;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		DFEACE022DB4D94A0099025F /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				DFEACE012DB4D94A0099025F /* ArgoTrading.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		DFEACDD02DB4D9150099025F /* ArgoTradingSwift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ArgoTradingSwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DFEACDE12DB4D9160099025F /* ArgoTradingSwiftTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArgoTradingSwiftTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DFEACDEB2DB4D9160099025F /* ArgoTradingSwiftUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArgoTradingSwiftUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DFEACDFF2DB4D9490099025F /* ArgoTrading.xcframework */ = {isa = PBXFileReference; expectedSignature = "AppleDeveloperProgram:P9KK452K8P:Qiwei Li"; lastKnownFileType = wrapper.xcframework; name = ArgoTrading.xcframework; path = "../../argo-trading/pkg/swift-argo/ArgoTrading.xcframework"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		DFEACE0B2DB4D98E0099025F /* Exceptions for "libs" folder in "Embed Frameworks" phase from "ArgoTradingSwift" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			attributesByRelativePath = {
+				libduckdb.dylib = (CodeSignOnCopy, );
+			};
+			buildPhase = DFEACE022DB4D94A0099025F /* Embed Frameworks */;
+			membershipExceptions = (
+				libduckdb.dylib,
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		DFEACDD22DB4D9150099025F /* ArgoTradingSwift */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ArgoTradingSwift;
+			sourceTree = "<group>";
+		};
+		DFEACDE42DB4D9160099025F /* ArgoTradingSwiftTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ArgoTradingSwiftTests;
+			sourceTree = "<group>";
+		};
+		DFEACDEE2DB4D9160099025F /* ArgoTradingSwiftUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ArgoTradingSwiftUITests;
+			sourceTree = "<group>";
+		};
+		DFEACE032DB4D9530099025F /* libs */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DFEACE0B2DB4D98E0099025F /* Exceptions for "libs" folder in "Embed Frameworks" phase from "ArgoTradingSwift" target */,
+			);
+			path = libs;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		DFEACDCD2DB4D9150099025F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DFEACE002DB4D94A0099025F /* ArgoTrading.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DFEACDDE2DB4D9160099025F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DFEACDE82DB4D9160099025F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		DFEACDC72DB4D9150099025F = {
+			isa = PBXGroup;
+			children = (
+				DFEACE032DB4D9530099025F /* libs */,
+				DFEACDD22DB4D9150099025F /* ArgoTradingSwift */,
+				DFEACDE42DB4D9160099025F /* ArgoTradingSwiftTests */,
+				DFEACDEE2DB4D9160099025F /* ArgoTradingSwiftUITests */,
+				DFEACDFE2DB4D9490099025F /* Frameworks */,
+				DFEACDD12DB4D9150099025F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		DFEACDD12DB4D9150099025F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DFEACDD02DB4D9150099025F /* ArgoTradingSwift.app */,
+				DFEACDE12DB4D9160099025F /* ArgoTradingSwiftTests.xctest */,
+				DFEACDEB2DB4D9160099025F /* ArgoTradingSwiftUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DFEACDFE2DB4D9490099025F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DFEACDFF2DB4D9490099025F /* ArgoTrading.xcframework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		DFEACDCF2DB4D9150099025F /* ArgoTradingSwift */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DFEACDF52DB4D9160099025F /* Build configuration list for PBXNativeTarget "ArgoTradingSwift" */;
+			buildPhases = (
+				DFEACDCC2DB4D9150099025F /* Sources */,
+				DFEACDCD2DB4D9150099025F /* Frameworks */,
+				DFEACDCE2DB4D9150099025F /* Resources */,
+				DFEACE022DB4D94A0099025F /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				DFEACDD22DB4D9150099025F /* ArgoTradingSwift */,
+				DFEACE032DB4D9530099025F /* libs */,
+			);
+			name = ArgoTradingSwift;
+			packageProductDependencies = (
+			);
+			productName = ArgoTradingSwift;
+			productReference = DFEACDD02DB4D9150099025F /* ArgoTradingSwift.app */;
+			productType = "com.apple.product-type.application";
+		};
+		DFEACDE02DB4D9160099025F /* ArgoTradingSwiftTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DFEACDF82DB4D9160099025F /* Build configuration list for PBXNativeTarget "ArgoTradingSwiftTests" */;
+			buildPhases = (
+				DFEACDDD2DB4D9160099025F /* Sources */,
+				DFEACDDE2DB4D9160099025F /* Frameworks */,
+				DFEACDDF2DB4D9160099025F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DFEACDE32DB4D9160099025F /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				DFEACDE42DB4D9160099025F /* ArgoTradingSwiftTests */,
+			);
+			name = ArgoTradingSwiftTests;
+			packageProductDependencies = (
+			);
+			productName = ArgoTradingSwiftTests;
+			productReference = DFEACDE12DB4D9160099025F /* ArgoTradingSwiftTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		DFEACDEA2DB4D9160099025F /* ArgoTradingSwiftUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DFEACDFB2DB4D9160099025F /* Build configuration list for PBXNativeTarget "ArgoTradingSwiftUITests" */;
+			buildPhases = (
+				DFEACDE72DB4D9160099025F /* Sources */,
+				DFEACDE82DB4D9160099025F /* Frameworks */,
+				DFEACDE92DB4D9160099025F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DFEACDED2DB4D9160099025F /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				DFEACDEE2DB4D9160099025F /* ArgoTradingSwiftUITests */,
+			);
+			name = ArgoTradingSwiftUITests;
+			packageProductDependencies = (
+			);
+			productName = ArgoTradingSwiftUITests;
+			productReference = DFEACDEB2DB4D9160099025F /* ArgoTradingSwiftUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DFEACDC82DB4D9150099025F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1610;
+				LastUpgradeCheck = 1610;
+				TargetAttributes = {
+					DFEACDCF2DB4D9150099025F = {
+						CreatedOnToolsVersion = 16.1;
+					};
+					DFEACDE02DB4D9160099025F = {
+						CreatedOnToolsVersion = 16.1;
+						TestTargetID = DFEACDCF2DB4D9150099025F;
+					};
+					DFEACDEA2DB4D9160099025F = {
+						CreatedOnToolsVersion = 16.1;
+						TestTargetID = DFEACDCF2DB4D9150099025F;
+					};
+				};
+			};
+			buildConfigurationList = DFEACDCB2DB4D9150099025F /* Build configuration list for PBXProject "ArgoTradingSwift" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = DFEACDC72DB4D9150099025F;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = DFEACDD12DB4D9150099025F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				DFEACDCF2DB4D9150099025F /* ArgoTradingSwift */,
+				DFEACDE02DB4D9160099025F /* ArgoTradingSwiftTests */,
+				DFEACDEA2DB4D9160099025F /* ArgoTradingSwiftUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		DFEACDCE2DB4D9150099025F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DFEACDDF2DB4D9160099025F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DFEACDE92DB4D9160099025F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		DFEACDCC2DB4D9150099025F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DFEACDDD2DB4D9160099025F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DFEACDE72DB4D9160099025F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DFEACDE32DB4D9160099025F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DFEACDCF2DB4D9150099025F /* ArgoTradingSwift */;
+			targetProxy = DFEACDE22DB4D9160099025F /* PBXContainerItemProxy */;
+		};
+		DFEACDED2DB4D9160099025F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DFEACDCF2DB4D9150099025F /* ArgoTradingSwift */;
+			targetProxy = DFEACDEC2DB4D9160099025F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		DFEACDF32DB4D9160099025F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		DFEACDF42DB4D9160099025F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		DFEACDF62DB4D9160099025F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ArgoTradingSwift/ArgoTradingSwift.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"ArgoTradingSwift/Preview Content\"";
+				DEVELOPMENT_TEAM = P9KK452K8P;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/libs",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = rxlab.ArgoTradingSwift;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		DFEACDF72DB4D9160099025F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ArgoTradingSwift/ArgoTradingSwift.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"ArgoTradingSwift/Preview Content\"";
+				DEVELOPMENT_TEAM = P9KK452K8P;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/libs",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = rxlab.ArgoTradingSwift;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		DFEACDF92DB4D9160099025F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P9KK452K8P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = rxlab.ArgoTradingSwiftTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ArgoTradingSwift.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ArgoTradingSwift";
+			};
+			name = Debug;
+		};
+		DFEACDFA2DB4D9160099025F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P9KK452K8P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = rxlab.ArgoTradingSwiftTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ArgoTradingSwift.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ArgoTradingSwift";
+			};
+			name = Release;
+		};
+		DFEACDFC2DB4D9160099025F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P9KK452K8P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = rxlab.ArgoTradingSwiftUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = ArgoTradingSwift;
+			};
+			name = Debug;
+		};
+		DFEACDFD2DB4D9160099025F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P9KK452K8P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = rxlab.ArgoTradingSwiftUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = ArgoTradingSwift;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		DFEACDCB2DB4D9150099025F /* Build configuration list for PBXProject "ArgoTradingSwift" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DFEACDF32DB4D9160099025F /* Debug */,
+				DFEACDF42DB4D9160099025F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DFEACDF52DB4D9160099025F /* Build configuration list for PBXNativeTarget "ArgoTradingSwift" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DFEACDF62DB4D9160099025F /* Debug */,
+				DFEACDF72DB4D9160099025F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DFEACDF82DB4D9160099025F /* Build configuration list for PBXNativeTarget "ArgoTradingSwiftTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DFEACDF92DB4D9160099025F /* Debug */,
+				DFEACDFA2DB4D9160099025F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DFEACDFB2DB4D9160099025F /* Build configuration list for PBXNativeTarget "ArgoTradingSwiftUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DFEACDFC2DB4D9160099025F /* Debug */,
+				DFEACDFD2DB4D9160099025F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = DFEACDC82DB4D9150099025F /* Project object */;
+}
