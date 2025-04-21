@@ -50,6 +50,16 @@
 		DFEACDFF2DB4D9490099025F /* ArgoTrading.xcframework */ = {isa = PBXFileReference; expectedSignature = "AppleDeveloperProgram:P9KK452K8P:Qiwei Li"; lastKnownFileType = wrapper.xcframework; name = ArgoTrading.xcframework; path = "../../argo-trading/pkg/swift-argo/ArgoTrading.xcframework"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		DFEAD01F2DB68F7C0099025F /* Exceptions for "ArgoTradingSwift" folder in "ArgoTradingSwift" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = DFEACDCF2DB4D9150099025F /* ArgoTradingSwift */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 		DFEACE0B2DB4D98E0099025F /* Exceptions for "libs" folder in "Embed Frameworks" phase from "ArgoTradingSwift" target */ = {
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
@@ -66,6 +76,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DFEACDD22DB4D9150099025F /* ArgoTradingSwift */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DFEAD01F2DB68F7C0099025F /* Exceptions for "ArgoTradingSwift" folder in "ArgoTradingSwift" target */,
+			);
 			path = ArgoTradingSwift;
 			sourceTree = "<group>";
 		};
@@ -461,6 +474,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ArgoTradingSwift/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -492,6 +506,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ArgoTradingSwift/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

@@ -15,8 +15,8 @@ struct ArgoTradingSwiftApp: App {
     @State private var duckDBService = DuckDBService()
 
     var body: some Scene {
-        WindowGroup {
-            HomeView()
+        DocumentGroup(newDocument: ArgoTradingDocument()) { document in
+            HomeView(document: document.$document)
                 .alertManager(alertService)
                 .sheet(isPresented: $datasetDownloadService.showDownloadView) {
                     DatasetDownloadView()
@@ -24,11 +24,18 @@ struct ArgoTradingSwiftApp: App {
                 }
         }
         .commands {
+            DocumentCommand()
             DatasetCommand()
         }
         .environment(datasetDownloadService)
         .environment(alertService)
         .environment(modePicker)
         .environment(duckDBService)
+
+        WindowGroup(id: "new-document") {
+            NewDocumentView()
+        }
+        .windowResizability(.contentSize)
+        .windowStyle(.hiddenTitleBar)
     }
 }

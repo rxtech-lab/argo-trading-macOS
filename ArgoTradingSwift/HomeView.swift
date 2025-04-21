@@ -9,6 +9,7 @@ import ArgoTrading
 import SwiftUI
 
 struct HomeView: View {
+    @Binding var document: ArgoTradingDocument
     @Environment(NavigationService.self) var navigationService
 
     var body: some View {
@@ -45,9 +46,8 @@ struct HomeView: View {
                 EmptyView()
             }
         }
+        .onAppear {
+            print("Data: \(document.dataFolder)")
+        }
     }
-}
-
-#Preview {
-    HomeView()
 }
