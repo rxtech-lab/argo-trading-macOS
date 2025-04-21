@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		DFEACE002DB4D94A0099025F /* ArgoTrading.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = DFEACDFF2DB4D9490099025F /* ArgoTrading.xcframework */; };
 		DFEACE012DB4D94A0099025F /* ArgoTrading.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = DFEACDFF2DB4D9490099025F /* ArgoTrading.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		DFEACF6E2DB6264D0099025F /* DuckDB in Frameworks */ = {isa = PBXBuildFile; productRef = DFEACF6D2DB6264D0099025F /* DuckDB */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -94,6 +95,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DFEACE002DB4D94A0099025F /* ArgoTrading.xcframework in Frameworks */,
+				DFEACF6E2DB6264D0099025F /* DuckDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -166,6 +168,7 @@
 			);
 			name = ArgoTradingSwift;
 			packageProductDependencies = (
+				DFEACF6D2DB6264D0099025F /* DuckDB */,
 			);
 			productName = ArgoTradingSwift;
 			productReference = DFEACDD02DB4D9150099025F /* ArgoTradingSwift.app */;
@@ -249,6 +252,9 @@
 			);
 			mainGroup = DFEACDC72DB4D9150099025F;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DFEACF6C2DB6264D0099025F /* XCRemoteSwiftPackageReference "duckdb-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DFEACDD12DB4D9150099025F /* Products */;
 			projectDirPath = "";
@@ -611,6 +617,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		DFEACF6C2DB6264D0099025F /* XCRemoteSwiftPackageReference "duckdb-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/duckdb/duckdb-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DFEACF6D2DB6264D0099025F /* DuckDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DFEACF6C2DB6264D0099025F /* XCRemoteSwiftPackageReference "duckdb-swift" */;
+			productName = DuckDB;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = DFEACDC82DB4D9150099025F /* Project object */;
 }

@@ -9,7 +9,7 @@ import SwiftUI
 
 @Observable
 class DatasetDownloadService: NSObject, SwiftargoMarketDownloaderHelperProtocol {
-    var showDownloadView: Bool = true
+    var showDownloadView: Bool = false
     var currentProgress: Double = 0.0
     var currentMessage: String = ""
     var totalProgress: Double = 0.0

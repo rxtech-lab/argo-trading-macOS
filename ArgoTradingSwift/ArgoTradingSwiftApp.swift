@@ -11,10 +11,13 @@ import SwiftUI
 struct ArgoTradingSwiftApp: App {
     @State private var datasetDownloadService = DatasetDownloadService()
     @State private var alertService = AlertManager()
+    @State private var modePicker = NavigationService()
+    @State private var duckDBService = DuckDBService()
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            HomeView()
+                .alertManager(alertService)
                 .sheet(isPresented: $datasetDownloadService.showDownloadView) {
                     DatasetDownloadView()
                         .environment(datasetDownloadService)
@@ -25,5 +28,7 @@ struct ArgoTradingSwiftApp: App {
         }
         .environment(datasetDownloadService)
         .environment(alertService)
+        .environment(modePicker)
+        .environment(duckDBService)
     }
 }

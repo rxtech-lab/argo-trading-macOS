@@ -64,7 +64,7 @@ struct DatasetDownloadView: View {
             .disabled(datasetDownloadService.isDownloading)
             .frame(minHeight: 400)
             .padding()
-            .navigationTitle("Download Dataset")
+            .navigationTitle(datasetDownloadService.isDownloading ? "Downloading: \(datasetDownloadService.progressPercentage)" : "Download Dataset")
             .formStyle(.grouped)
             .alertManager(alertManager)
         }
