@@ -26,6 +26,7 @@ struct ArgoTradingDocument: FileDocument {
         if let data = configuration.file.regularFileContents {
             let decoder = JSONDecoder()
             self = try decoder.decode(Self.self, from: data)
+            return
         }
 
         throw ArgoTradingDocumentError.invalidData

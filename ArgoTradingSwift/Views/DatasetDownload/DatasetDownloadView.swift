@@ -9,6 +9,8 @@ import ArgoTrading
 import SwiftUI
 
 struct DatasetDownloadView: View {
+    @Binding var document: ArgoTradingDocument
+
     @Environment(DatasetDownloadService.self) var datasetDownloadService
     @Environment(AlertManager.self) var alertManager
     @Environment(\.dismiss) var dismiss
@@ -21,7 +23,6 @@ struct DatasetDownloadView: View {
     @AppStorage("polygon-api-key") private var polygonApiKey: String = ""
 
     @AppStorage("writer") private var writer: DataWriter = .duckdb
-    @AppStorage("duckdb-data-folder") private var dataFolder: String = ""
 
     @State private var showFilePicker: Bool = false
 
@@ -92,7 +93,7 @@ extension DatasetDownloadView {
             return
         }
 
-        let marketDownloader = SwiftargoNewMarketDownloader(datasetDownloadService, dataProvider.rawValue, writer.rawValue, dataFolder, polygonApiKey)
+        let marketDownloader = SwiftargoNewMarketDownloader(datasetDownloadService, dataProvider.rawValue, writer.rawValue, document.dataFolder.path(percentEncoded: false), polygonApiKey)
 
         // Move download process to background thread
         Task.detached {
@@ -101,6 +102,7 @@ extension DatasetDownloadView {
                     self.datasetDownloadService.isDownloading = true
                 }
                 try await marketDownloader!.download(self.ticker, from: self.startDate.ISO8601Format(), to: self.endDate.ISO8601Format(), interval: self.timespan.rawValue)
+                await dismiss()
             } catch {
                 await MainActor.run {
                     self.alertManager.showAlert(message: error.localizedDescription)
@@ -108,7 +110,6 @@ extension DatasetDownloadView {
             }
             await MainActor.run {
                 self.datasetDownloadService.isDownloading = false
-                dismiss()
             }
         }
     }

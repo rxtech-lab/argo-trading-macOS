@@ -15,7 +15,7 @@ enum DataWriter: String, CaseIterable, Identifiable {
     var writerField: some View {
         switch self {
         case .duckdb:
-            DuckDBDataFolderField()
+            EmptyView()
         }
     }
 }
