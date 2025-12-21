@@ -1,8 +1,0 @@
-framework module "ArgoTrading" {
-	header "ref.h"
-    header "Swiftargo.objc.h"
-    header "Universe.objc.h"
-    header "ArgoTrading.h"
-
-    export *
-}

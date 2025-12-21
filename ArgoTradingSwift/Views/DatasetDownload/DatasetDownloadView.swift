@@ -71,17 +71,23 @@ struct DatasetDownloadView: View {
         }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button(datasetDownloadService.isDownloading ? "Downloading" : "Download") {
-                    downloadDataset()
+                if datasetDownloadService.isDownloading {
+                    Button("Stop") {
+                        datasetDownloadService.cancel()
+                    }
+                } else {
+                    Button("Download") {
+                        downloadDataset()
+                    }
                 }
-                .disabled(datasetDownloadService.isDownloading)
             }
 
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") {
-                    dismiss()
+            if !datasetDownloadService.isDownloading {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
                 }
-                .disabled(datasetDownloadService.isDownloading)
             }
         }
     }
@@ -97,13 +103,19 @@ extension DatasetDownloadView {
         let marketDownloader = SwiftargoNewMarketDownloader(datasetDownloadService, dataProvider.rawValue, writer.rawValue, document.dataFolder.path(percentEncoded: false), polygonApiKey)
 
         // Move download process to background thread
-        Task.detached {
+        datasetDownloadService.downloadTask = Task.detached {
             do {
                 await MainActor.run {
                     self.datasetDownloadService.isDownloading = true
                 }
                 try await marketDownloader!.download(self.ticker, from: self.startDate.ISO8601Format(), to: self.endDate.ISO8601Format(), interval: self.timespan.rawValue)
-                await dismiss()
+
+                // Check cancellation before dismissing
+                if !Task.isCancelled {
+                    await dismiss()
+                }
+            } catch is CancellationError {
+                // User cancelled - no alert needed
             } catch {
                 await MainActor.run {
                     self.alertManager.showAlert(message: error.localizedDescription)
@@ -111,6 +123,7 @@ extension DatasetDownloadView {
             }
             await MainActor.run {
                 self.datasetDownloadService.isDownloading = false
+                self.datasetDownloadService.downloadTask = nil
             }
         }
     }

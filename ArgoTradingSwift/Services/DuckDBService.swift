@@ -51,8 +51,18 @@ class DuckDBService {
     var connection: Connection?
     private var currentDataset: URL?
 
+    /// Cached DateFormatter for parsing UTC date strings
+    private static let utcDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        return formatter
+    }()
+
     func initDatabase() throws {
-        // Create our database and connection as described above
+        // Only initialize once - skip if already connected
+        guard database == nil else { return }
+
         let database = try Database(store: .inMemory)
         let connection = try database.connect()
 
@@ -69,7 +79,6 @@ class DuckDBService {
         currentDataset = filePath
     }
 
-    @MainActor
     func fetchPriceData(
         page: Int = 1,
         pageSize: Int = 20,
@@ -141,22 +150,17 @@ class DuckDBService {
 
         let priceData = dataFrame.rows.map { row in
             let time = row[1, String.self]
-
-            // Create a date formatter for parsing the input time
-            let inputFormatter = DateFormatter()
-            inputFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss" // Adjust this to match your input format
-            inputFormatter.timeZone = TimeZone(identifier: "UTC") // Assuming original time is in UTC
-
-            // Parse the date in the original timezone
-            let utcDate = inputFormatter.date(from: time ?? "") ?? Date()
-
-            // Convert to user's local timezone
-            let localDate = utcDate // The Date object remains the same, but will display in local time when formatted
+            let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? Date()
 
             return PriceData(
-                date: localDate, id: row[0, String.self] ?? "", ticker: row[2, String.self] ?? "", open: row[3, Double.self] ?? 0.0,
-                high: row[4, Double.self] ?? 0.0, low: row[5, Double.self] ?? 0.0,
-                close: row[6, Double.self] ?? 0.0, volume: row[7, Double.self] ?? 0.0
+                date: utcDate,
+                id: row[0, String.self] ?? "",
+                ticker: row[2, String.self] ?? "",
+                open: row[3, Double.self] ?? 0.0,
+                high: row[4, Double.self] ?? 0.0,
+                low: row[5, Double.self] ?? 0.0,
+                close: row[6, Double.self] ?? 0.0,
+                volume: row[7, Double.self] ?? 0.0
             )
         }
 
@@ -169,7 +173,6 @@ class DuckDBService {
     }
 
     /// Get total row count for a dataset
-    @MainActor
     func getTotalCount(for filePath: URL) async throws -> Int {
         guard let connection = connection else {
             throw DuckDBError.connectionError
@@ -185,7 +188,6 @@ class DuckDBService {
     }
 
     /// Fetch price data by offset and count for lazy loading
-    @MainActor
     func fetchPriceDataRange(
         filePath: URL,
         startOffset: Int,
@@ -224,13 +226,9 @@ class DuckDBService {
             TabularData.Column(volumeColumn).eraseToAnyColumn(),
         ])
 
-        let inputFormatter = DateFormatter()
-        inputFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        inputFormatter.timeZone = TimeZone(identifier: "UTC")
-
         return dataFrame.rows.map { row in
             let time = row[1, String.self]
-            let utcDate = inputFormatter.date(from: time ?? "") ?? Date()
+            let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? Date()
 
             return PriceData(
                 date: utcDate,

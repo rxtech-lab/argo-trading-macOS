@@ -24,6 +24,8 @@ struct PriceChartView: View {
 
     @State private var chartType: ChartType = .candlestick
     @State private var loadedData: [PriceData] = []
+    @State private var sortedData: [PriceData] = []
+    @State private var yAxisDomain: ClosedRange<Double> = 0...100
     @State private var totalCount: Int = 0
     @State private var currentOffset: Int = 0
     @State private var isLoading = false
@@ -71,6 +73,26 @@ struct PriceChartView: View {
         .task {
             await loadInitialData()
         }
+        .onChange(of: loadedData) { _, newData in
+            updateCachedProperties(from: newData)
+        }
+    }
+
+    // MARK: - Cache Update
+
+    private func updateCachedProperties(from data: [PriceData]) {
+        sortedData = data.sorted { $0.date < $1.date }
+
+        guard !data.isEmpty else {
+            yAxisDomain = 0...100
+            return
+        }
+
+        let minY = data.map(\.low).min() ?? 0
+        let maxY = data.map(\.high).max() ?? 100
+        let range = maxY - minY
+        let padding = max(range * 0.05, 0.01)
+        yAxisDomain = (minY - padding)...(maxY + padding)
     }
 
     // MARK: - Header
@@ -256,7 +278,7 @@ struct PriceChartView: View {
         HStack {
             if isLoading {
                 ProgressView()
-                    .scaleEffect(0.7)
+                    .scaleEffect(0.4)
                 Text("Loading more data...")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -272,24 +294,10 @@ struct PriceChartView: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
+        .frame(height: 44)
     }
 
     // MARK: - Computed Properties
-
-    private var sortedData: [PriceData] {
-        loadedData.sorted { $0.date < $1.date }
-    }
-
-    private var yAxisDomain: ClosedRange<Double> {
-        guard !loadedData.isEmpty else { return 0...100 }
-
-        let minY = loadedData.map(\.low).min() ?? 0
-        let maxY = loadedData.map(\.high).max() ?? 100
-        let range = maxY - minY
-        let padding = max(range * 0.05, 0.01) // At least some padding
-
-        return (minY - padding)...(maxY + padding)
-    }
 
     private var visibleCount: Int {
         // Adjust visible count based on zoom scale
@@ -342,6 +350,10 @@ struct PriceChartView: View {
                 startOffset: startOffset,
                 count: bufferSize
             )
+
+            // Update cached properties first
+            updateCachedProperties(from: loadedDataInMemory)
+
             withAnimation {
                 loadedData = loadedDataInMemory
             }
@@ -394,13 +406,15 @@ struct PriceChartView: View {
             )
 
             // Prepend new data and trim from end if buffer too large
-            loadedData = newData + loadedData
+            var combinedData = newData + loadedData
             currentOffset = newOffset
 
             // Trim excess from end
-            if loadedData.count > bufferSize * 2 {
-                loadedData = Array(loadedData.prefix(bufferSize * 2))
+            if combinedData.count > bufferSize * 2 {
+                combinedData = Array(combinedData.prefix(bufferSize * 2))
             }
+
+            loadedData = combinedData
         } catch {
             print("Error loading more data: \(error)")
         }
@@ -423,14 +437,16 @@ struct PriceChartView: View {
             )
 
             // Append new data and trim from beginning if buffer too large
-            loadedData = loadedData + newData
+            var combinedData = loadedData + newData
 
             // Trim excess from beginning
-            if loadedData.count > bufferSize * 2 {
-                let trimCount = loadedData.count - bufferSize * 2
-                loadedData = Array(loadedData.dropFirst(trimCount))
+            if combinedData.count > bufferSize * 2 {
+                let trimCount = combinedData.count - bufferSize * 2
+                combinedData = Array(combinedData.dropFirst(trimCount))
                 currentOffset += trimCount
             }
+
+            loadedData = combinedData
         } catch {
             print("Error loading more data: \(error)")
         }

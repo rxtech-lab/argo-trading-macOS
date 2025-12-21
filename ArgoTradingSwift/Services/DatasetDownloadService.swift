@@ -14,6 +14,7 @@ class DatasetDownloadService: NSObject, SwiftargoMarketDownloaderHelperProtocol 
     var currentMessage: String = ""
     var totalProgress: Double = 0.0
     var isDownloading: Bool = false
+    var downloadTask: Task<Void, Never>?
 
     var progressPercentage: String {
         if totalProgress > 0 {
@@ -29,5 +30,11 @@ class DatasetDownloadService: NSObject, SwiftargoMarketDownloaderHelperProtocol 
         if let message = message {
             currentMessage = message
         }
+    }
+
+    func cancel() {
+        downloadTask?.cancel()
+        downloadTask = nil
+        isDownloading = false
     }
 }

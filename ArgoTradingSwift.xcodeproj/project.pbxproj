@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		DF19B4122EF82ACF00277B7A /* ArgoTrading.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = DF19B4112EF82ACF00277B7A /* ArgoTrading.xcframework */; };
+		DF526B712EF861CC00530807 /* ArgoTrading.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = DF526B702EF861CC00530807 /* ArgoTrading.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DFD3A5482EF822EC0020D062 /* DuckDB in Frameworks */ = {isa = PBXBuildFile; productRef = DFD3A5472EF822EC0020D062 /* DuckDB */; };
 /* End PBXBuildFile section */
 
@@ -35,6 +35,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				DF526B712EF861CC00530807 /* ArgoTrading.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -42,7 +43,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		DF19B4112EF82ACF00277B7A /* ArgoTrading.xcframework */ = {isa = PBXFileReference; expectedSignature = "AppleDeveloperProgram:P9KK452K8P:Qiwei Li"; lastKnownFileType = wrapper.xcframework; path = ArgoTrading.xcframework; sourceTree = "<group>"; };
+		DF526B702EF861CC00530807 /* ArgoTrading.xcframework */ = {isa = PBXFileReference; expectedSignature = "AppleDeveloperProgram:P9KK452K8P:Qiwei Li"; lastKnownFileType = wrapper.xcframework; name = ArgoTrading.xcframework; path = "../../argo-trading/pkg/swift-argo/ArgoTrading.xcframework"; sourceTree = "<group>"; };
 		DFEACDD02DB4D9150099025F /* ArgoTradingSwift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ArgoTradingSwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DFEACDE12DB4D9160099025F /* ArgoTradingSwiftTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArgoTradingSwiftTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DFEACDEB2DB4D9160099025F /* ArgoTradingSwiftUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArgoTradingSwiftUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -105,7 +106,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DF19B4122EF82ACF00277B7A /* ArgoTrading.xcframework in Frameworks */,
 				DFD3A5482EF822EC0020D062 /* DuckDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -130,13 +130,12 @@
 		DFEACDC72DB4D9150099025F = {
 			isa = PBXGroup;
 			children = (
+				DF526B702EF861CC00530807 /* ArgoTrading.xcframework */,
 				DFEACE032DB4D9530099025F /* libs */,
 				DFEACDD22DB4D9150099025F /* ArgoTradingSwift */,
 				DFEACDE42DB4D9160099025F /* ArgoTradingSwiftTests */,
 				DFEACDEE2DB4D9160099025F /* ArgoTradingSwiftUITests */,
-				DFEACDFE2DB4D9490099025F /* Frameworks */,
 				DFEACDD12DB4D9150099025F /* Products */,
-				DF19B4112EF82ACF00277B7A /* ArgoTrading.xcframework */,
 			);
 			sourceTree = "<group>";
 		};
@@ -148,13 +147,6 @@
 				DFEACDEB2DB4D9160099025F /* ArgoTradingSwiftUITests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		DFEACDFE2DB4D9490099025F /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
