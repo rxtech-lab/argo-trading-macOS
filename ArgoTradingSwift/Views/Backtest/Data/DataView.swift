@@ -18,32 +18,38 @@ struct DataView: View {
     @State private var showChart: Bool = false
     @State private var showInfo = false
     @State private var sortOrder: [KeyPathComparator<PriceData>] = [KeyPathComparator(\.date, order: .reverse)]
+    @State private var isLoading: Bool = false
 
     var body: some View {
-        VStack {
-            Table(data.items, selection: $selectedRows, sortOrder: $sortOrder) {
-                TableColumn("Date", value: \.date) { price in
-                    Text(price.date, format: .dateTime.year().month().day().hour().minute().second())
-                }
-                .width(200)
-                TableColumn("Ticker", value: \.ticker) { price in
-                    Text(price.ticker)
-                }
-                TableColumn("Open", value: \.open) { price in
-                    Text("\(price.open, format: .number.precision(.fractionLength(2)))")
-                }
-                TableColumn("High", value: \.high) { price in
-                    Text("\(price.high, format: .number.precision(.fractionLength(2)))")
-                }
-                TableColumn("Low", value: \.low) { price in
-                    Text("\(price.low, format: .number.precision(.fractionLength(2)))")
-                }
-                TableColumn("Close", value: \.close) { price in
-                    Text("\(price.close, format: .number.precision(.fractionLength(2)))")
-                }
-                TableColumn("Volume", value: \.volume) { price in
-                    Text("\(price.volume, format: .number.precision(.fractionLength(0)))")
-                }
+        Table(data.items, selection: $selectedRows, sortOrder: $sortOrder) {
+            TableColumn("Date", value: \.date) { price in
+                Text(price.date, format: .dateTime.year().month().day().hour().minute().second())
+            }
+            .width(200)
+            TableColumn("Ticker", value: \.ticker) { price in
+                Text(price.ticker)
+            }
+            TableColumn("Open", value: \.open) { price in
+                Text("\(price.open, format: .number.precision(.fractionLength(2)))")
+            }
+            TableColumn("High", value: \.high) { price in
+                Text("\(price.high, format: .number.precision(.fractionLength(2)))")
+            }
+            TableColumn("Low", value: \.low) { price in
+                Text("\(price.low, format: .number.precision(.fractionLength(2)))")
+            }
+            TableColumn("Close", value: \.close) { price in
+                Text("\(price.close, format: .number.precision(.fractionLength(2)))")
+            }
+            TableColumn("Volume", value: \.volume) { price in
+                Text("\(price.volume, format: .number.precision(.fractionLength(0)))")
+            }
+        }
+        .overlay {
+            if isLoading {
+                ProgressView()
+                    .padding()
+                    .glassEffect()
             }
         }
         .toolbar {
@@ -125,6 +131,11 @@ extension DataView {
     }
 
     func loadDataset(with page: Int) async {
+        isLoading = true
+        defer {
+            isLoading = false
+        }
+
         let sortParams = getSortParams()
         do {
             try dbService.initDatabase()
