@@ -71,7 +71,7 @@ struct DatasetDownloadView: View {
         }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button(datasetDownloadService.isDownloading ? "Downloading: \(datasetDownloadService.progressPercentage)" : "Download") {
+                Button(datasetDownloadService.isDownloading ? "Downloading" : "Download") {
                     downloadDataset()
                 }
                 .disabled(datasetDownloadService.isDownloading)
@@ -81,6 +81,7 @@ struct DatasetDownloadView: View {
                 Button("Cancel") {
                     dismiss()
                 }
+                .disabled(datasetDownloadService.isDownloading)
             }
         }
     }

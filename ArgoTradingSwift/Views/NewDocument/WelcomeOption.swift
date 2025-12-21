@@ -7,57 +7,39 @@
 
 import SwiftUI
 
-// Custom folder selection view
+// Xcode-style menu option row
 struct WelcomeOption: View {
     let title: String
-    let description: String
     let icon: String
-    let action: () -> Void // Add an action closure
+    let action: () -> Void
 
-    @State private var isPressed: Bool = false
+    @State private var isHovered: Bool = false
 
     var body: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(Color.blue.opacity(0.1))
-                    .frame(width: 40, height: 40)
-
+        Button(action: action) {
+            HStack(spacing: 12) {
                 Image(systemName: icon)
-                    .font(.system(size: 18))
-                    .foregroundColor(.blue)
-            }
-            VStack(alignment: .leading) {
+                    .font(.system(size: 16))
+                    .foregroundColor(.secondary)
+                    .frame(width: 24)
+
                 Text(title)
-                    .font(.headline)
+                    .font(.system(size: 13))
                     .foregroundColor(.primary)
 
-                Text(description)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                Spacer()
             }
-            Spacer()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isHovered ? Color.primary.opacity(0.1) : Color.clear)
+            )
         }
-        .frame(maxWidth: .infinity)
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.controlBackgroundColor))
-        )
-        .scaleEffect(isPressed ? 0.98 : 1.0) // Subtle scale down when pressed
-        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
-        .onPress {
-            // Visual animation
-            withAnimation {
-                isPressed = true
-            }
-        } onRelease: {
-            action() // Execute the provided action
-
-            // Reset the pressed state
-            withAnimation {
-                isPressed = false
-            }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
 }

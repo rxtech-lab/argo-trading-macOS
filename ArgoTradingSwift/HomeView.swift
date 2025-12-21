@@ -13,41 +13,31 @@ struct HomeView: View {
     @Environment(NavigationService.self) var navigationService
 
     var body: some View {
-        NavigationSplitView {
-            VStack {
-                ModePicker(navigationService: navigationService)
+        Group {
+            switch navigationService.selectedMode {
+            case .Backtest:
+                BacktestView(document: $document)
+            case .Trading:
+                TradingView(document: $document)
             }
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Spacer()
-                }
-
-                ToolbarItem(placement: .primaryAction) {
-                    Button {} label: {
-                        Label("Stop", systemImage: "square.fill")
-                    }
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button {} label: {
-                        Label("Start", systemImage: "play.fill")
-                    }
-                }
-            }
-        } detail: {
-            switch navigationService.path {
-            case .backtest(let backtest):
-                switch backtest {
-                case .data(let url):
-                    DataView(url: url)
-                default:
-                    EmptyView()
-                }
-            default:
-                EmptyView()
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                modePicker
             }
         }
         .onAppear {
             print("Data: \(document.dataFolder)")
         }
+    }
+
+    private var modePicker: some View {
+        @Bindable var service = navigationService
+        return Picker("Mode", selection: $service.selectedMode) {
+            ForEach(EditorMode.allCases) { mode in
+                Text(mode.rawValue).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
     }
 }

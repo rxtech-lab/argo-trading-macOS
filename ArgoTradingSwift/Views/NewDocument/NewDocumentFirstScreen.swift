@@ -10,74 +10,65 @@ import SwiftUI
 struct NewDocumentFirstScreen: View {
     let onCreateNewProject: () -> Void
     let onOpenExistingProject: () -> Void
-    
+    let onSelectRecentProject: (URL) -> Void
+
     var body: some View {
         HStack(spacing: 0) {
-            // Left panel - Hero section
-            VStack(alignment: .leading, spacing: 20) {
+            // Left panel - Xcode style with centered content
+            VStack(spacing: 0) {
                 Spacer()
-                
+
+                // App icon
                 Image(systemName: "chart.line.uptrend.xyaxis.circle.fill")
                     .resizable()
-                    .frame(width: 80, height: 80)
-                    .foregroundStyle(.blue, .white.opacity(0.8))
-                
-                Text("Welcome to\nArgo Trading")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .lineSpacing(4)
-                
-                Text(
-                    "Set up your project to start analyzing the markets with powerful tools and strategies."
-                )
-                .font(.headline)
-                .foregroundColor(.white.opacity(0.8))
-                .lineSpacing(4)
-                .frame(maxWidth: 320)
-                
-                Spacer()
-                
-                Text("Version \(appVersion!)")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
-            }
-            .padding(40)
-            .frame(width: 360)
-            .background(
-                LinearGradient(
-                    gradient: Gradient(colors: [Color.blue, Color.purple.opacity(0.8)]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            
-            // Right panel - Setup form
-            VStack(alignment: .leading) {
-                Text("Pick an option to get started")
-                    .font(.title)
+                    .frame(width: 128, height: 128)
+                    .foregroundStyle(.blue, Color(.controlBackgroundColor))
+
+                // App name
+                Text("Argo Trading")
+                    .font(.system(size: 32, weight: .bold))
                     .foregroundColor(.primary)
-                    .padding()
-                
-                WelcomeOption(
-                    title: "Create a new Project",
-                    description:
-                    "Start a new project. Choose the folder you want your project to be located",
-                    icon: "folder.badge.plus"
-                ) {
-                    onCreateNewProject()
+                    .padding(.top, 16)
+
+                // Version
+                Text("Version \(appVersion ?? "1.0")")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .padding(.top, 4)
+
+                Spacer()
+
+                // Menu options
+                VStack(spacing: 4) {
+                    WelcomeOption(
+                        title: "Create New Project...",
+                        icon: "plus.rectangle.on.folder"
+                    ) {
+                        onCreateNewProject()
+                    }
+
+                    WelcomeOption(
+                        title: "Open Existing Project...",
+                        icon: "folder"
+                    ) {
+                        onOpenExistingProject()
+                    }
                 }
-                
-                WelcomeOption(
-                    title: "Open an existing Project",
-                    description:
-                    "Open an existing project. Choose the folder where your project is located",
-                    icon: "folder.fill"
-                ) {
-                    onOpenExistingProject()
-                }
+                .padding(.horizontal, 48)
+                .padding(.bottom, 48)
             }
-            .padding(40)
+            .frame(width: 460)
+            .background(Color(.windowBackgroundColor))
+
+            // Divider
+            Rectangle()
+                .fill(Color(.separatorColor))
+                .frame(width: 1)
+
+            // Right panel - Recent Projects
+            RecentProjectsPanel(onSelectProject: onSelectRecentProject)
+                .frame(width: 340)
         }
-        .frame(width: 820, height: 520)
+        .frame(width: 800, height: 500)
     }
 }

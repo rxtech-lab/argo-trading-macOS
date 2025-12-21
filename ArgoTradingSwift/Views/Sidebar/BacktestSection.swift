@@ -8,12 +8,13 @@
 import SwiftUI
 
 struct BacktestSection: View {
-    @Environment(DatasetDownloadService.self) var downloadService
+    let dataFolder: URL
 
     @State private var expandedData = true
-    @AppStorage("duckdb-data-folder") private var duckdbDataFolder: String = ""
     @State private var error: String?
     @State private var resultFolderWatcher: FolderMonitor? = nil
+    @State private var showDeleteAlert = false
+    @State private var fileToDelete: URL?
 
     @State var files: [URL] = []
 
@@ -22,11 +23,13 @@ struct BacktestSection: View {
             DisclosureGroup("Data", isExpanded: $expandedData) {
                 ForEach(files, id: \.self) { file in
                     NavigationLink(value: NavigationPath.backtest(backtest: .data(url: file))) {
-                        Text(file.lastPathComponent.replacingOccurrences(of: ".parquet", with: ""))
-                            .truncationMode(.middle)
+                        ParquetFileRow(fileName: file.lastPathComponent)
                             .contextMenu {
-                                Button {} label: {
-                                    Text("Delete")
+                                Button(role: .destructive) {
+                                    fileToDelete = file
+                                    showDeleteAlert = true
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
                                 }
                             }
                     }
@@ -34,35 +37,53 @@ struct BacktestSection: View {
             }
         }
         .onAppear {
-            if !duckdbDataFolder.isEmpty {
-                listParquetFile()
-                Task {
-                    await watchFolder(folder: URL(fileURLWithPath: duckdbDataFolder))
-                }
+            listParquetFile()
+            Task {
+                await watchFolder(folder: dataFolder)
             }
         }
-        .onChange(of: duckdbDataFolder) { newValue, _ in
-            if !newValue.isEmpty {
-                Task {
-                    await watchFolder(folder: URL(fileURLWithPath: newValue))
+        .onChange(of: dataFolder) { _, newValue in
+            listParquetFile()
+            Task {
+                await watchFolder(folder: newValue)
+            }
+        }
+        .alert("Delete File", isPresented: $showDeleteAlert) {
+            Button("Cancel", role: .cancel) {
+                fileToDelete = nil
+            }
+            Button("Delete", role: .destructive) {
+                if let file = fileToDelete {
+                    deleteFile(file)
                 }
+                fileToDelete = nil
+            }
+        } message: {
+            if let file = fileToDelete {
+                Text("Are you sure you want to delete \"\(file.lastPathComponent)\"? This action cannot be undone.")
             }
         }
     }
 }
 
 extension BacktestSection {
+    func deleteFile(_ file: URL) {
+        do {
+            try FileManager.default.removeItem(at: file)
+        } catch {
+            self.error = error.localizedDescription
+            print("Error deleting file: \(error.localizedDescription)")
+        }
+    }
+
     func listParquetFile() {
         files.removeAll()
         let fileManager = FileManager.default
-        let duckDBDataFolderURL = URL(fileURLWithPath: duckdbDataFolder)
         do {
-            let fileURLs = try fileManager.contentsOfDirectory(at: duckDBDataFolderURL, includingPropertiesForKeys: nil)
+            let fileURLs = try fileManager.contentsOfDirectory(at: dataFolder, includingPropertiesForKeys: nil)
             for fileURL in fileURLs {
                 if fileURL.pathExtension == "parquet" {
-                    if let url = URL(string: fileURL.absoluteString) {
-                        files.append(url)
-                    }
+                    files.append(fileURL)
                 }
             }
         } catch {

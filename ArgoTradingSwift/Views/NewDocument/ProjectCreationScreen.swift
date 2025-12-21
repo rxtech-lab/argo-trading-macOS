@@ -67,15 +67,16 @@ extension ProjectCreationScreen {
         // show save panel
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = [.argoTradingDocument]
-        savePanel.nameFieldStringValue = "\(projectName).argoTrading"
+        savePanel.nameFieldStringValue = "\(projectName)"
         savePanel.begin { result in
             switch result {
             case .OK:
                 if let url = savePanel.url {
                     do {
-                        let dataFolder = url.appending(path: "data")
-                        let strategyFolder = url.appending(path: "strategy")
-                        let resultFolder = url.appending(path: "result")
+                        let parentDirectory = url.deletingLastPathComponent()
+                        let dataFolder = parentDirectory.appending(path: "data")
+                        let strategyFolder = parentDirectory.appending(path: "strategy")
+                        let resultFolder = parentDirectory.appending(path: "result")
 
                         let document = ArgoTradingDocument(
                             dataFolder: dataFolder, strategyFolder: strategyFolder, resultFolder: resultFolder

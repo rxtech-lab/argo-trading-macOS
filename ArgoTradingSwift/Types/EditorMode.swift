@@ -7,7 +7,7 @@
 
 enum EditorMode: String, CaseIterable, Identifiable {
     case Backtest
-    case Live
+    case Trading
 
     var id: String { self.rawValue }
 
@@ -15,7 +15,7 @@ enum EditorMode: String, CaseIterable, Identifiable {
         switch self {
         case .Backtest:
             return "chart.bar.xaxis"
-        case .Live:
+        case .Trading:
             return "chart.line.uptrend.xyaxis"
         }
     }

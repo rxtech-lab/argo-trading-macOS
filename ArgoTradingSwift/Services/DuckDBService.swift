@@ -167,4 +167,81 @@ class DuckDBService {
             pageSize: pageSize
         )
     }
+
+    /// Get total row count for a dataset
+    @MainActor
+    func getTotalCount(for filePath: URL) async throws -> Int {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+
+        let countQuery = """
+        SELECT COUNT(*) as total
+        FROM read_parquet('\(filePath.path)')
+        """
+
+        let countResult = try connection.query(countQuery)
+        return countResult[0].cast(to: Int.self)[0] ?? 0
+    }
+
+    /// Fetch price data by offset and count for lazy loading
+    @MainActor
+    func fetchPriceDataRange(
+        filePath: URL,
+        startOffset: Int,
+        count: Int
+    ) async throws -> [PriceData] {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+
+        let query = """
+        SELECT id, CAST(time AS VARCHAR), symbol, open, high, low, close, volume
+        FROM read_parquet('\(filePath.path)')
+        ORDER BY time ASC
+        LIMIT \(count) OFFSET \(startOffset)
+        """
+
+        let result = try connection.query(query)
+
+        let idColumn = result[0].cast(to: String.self)
+        let timeColumn = result[1].cast(to: String.self)
+        let symbolColumn = result[2].cast(to: String.self)
+        let openColumn = result[3].cast(to: Double.self)
+        let highColumn = result[4].cast(to: Double.self)
+        let lowColumn = result[5].cast(to: Double.self)
+        let closeColumn = result[6].cast(to: Double.self)
+        let volumeColumn = result[7].cast(to: Double.self)
+
+        let dataFrame = DataFrame(columns: [
+            TabularData.Column(idColumn).eraseToAnyColumn(),
+            TabularData.Column(timeColumn).eraseToAnyColumn(),
+            TabularData.Column(symbolColumn).eraseToAnyColumn(),
+            TabularData.Column(openColumn).eraseToAnyColumn(),
+            TabularData.Column(highColumn).eraseToAnyColumn(),
+            TabularData.Column(lowColumn).eraseToAnyColumn(),
+            TabularData.Column(closeColumn).eraseToAnyColumn(),
+            TabularData.Column(volumeColumn).eraseToAnyColumn(),
+        ])
+
+        let inputFormatter = DateFormatter()
+        inputFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        inputFormatter.timeZone = TimeZone(identifier: "UTC")
+
+        return dataFrame.rows.map { row in
+            let time = row[1, String.self]
+            let utcDate = inputFormatter.date(from: time ?? "") ?? Date()
+
+            return PriceData(
+                date: utcDate,
+                id: row[0, String.self] ?? "",
+                ticker: row[2, String.self] ?? "",
+                open: row[3, Double.self] ?? 0.0,
+                high: row[4, Double.self] ?? 0.0,
+                low: row[5, Double.self] ?? 0.0,
+                close: row[6, Double.self] ?? 0.0,
+                volume: row[7, Double.self] ?? 0.0
+            )
+        }
+    }
 }

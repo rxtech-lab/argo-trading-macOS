@@ -13,7 +13,7 @@ struct DocumentCommand: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New project") {
-                openWindow(id: "new-document")
+                openWindow(id: "welcome")
             }
 
             Button("Open project") {

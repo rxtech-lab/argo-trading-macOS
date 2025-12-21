@@ -14,35 +14,53 @@ struct DataView: View {
     @Environment(DuckDBService.self) private var dbService
     @Environment(AlertManager.self) private var alertManager
     @State private var data: PaginationResult<PriceData> = PaginationResult(items: [], total: 0, page: 0, pageSize: 0)
+    @State private var selectedRows: Set<String> = []
+    @State private var showChart: Bool = false
+    @State private var showInfo = false
+    @State private var sortOrder: [KeyPathComparator<PriceData>] = [KeyPathComparator(\.date, order: .reverse)]
 
     var body: some View {
         VStack {
-            Table(data.items) {
-                TableColumn("Date") { price in
+            Table(data.items, selection: $selectedRows, sortOrder: $sortOrder) {
+                TableColumn("Date", value: \.date) { price in
                     Text(price.date, format: .dateTime.year().month().day().hour().minute().second())
                 }
                 .width(200)
-                TableColumn("Ticker") { price in
+                TableColumn("Ticker", value: \.ticker) { price in
                     Text(price.ticker)
                 }
-                TableColumn("Open") { price in
+                TableColumn("Open", value: \.open) { price in
                     Text("\(price.open, format: .number.precision(.fractionLength(2)))")
                 }
-                TableColumn("High") { price in
+                TableColumn("High", value: \.high) { price in
                     Text("\(price.high, format: .number.precision(.fractionLength(2)))")
                 }
-                TableColumn("Low") { price in
+                TableColumn("Low", value: \.low) { price in
                     Text("\(price.low, format: .number.precision(.fractionLength(2)))")
                 }
-                TableColumn("Close") { price in
+                TableColumn("Close", value: \.close) { price in
                     Text("\(price.close, format: .number.precision(.fractionLength(2)))")
                 }
-                TableColumn("Volume") { price in
+                TableColumn("Volume", value: \.volume) { price in
                     Text("\(price.volume, format: .number.precision(.fractionLength(0)))")
                 }
             }
         }
         .toolbar {
+            ToolbarItemGroup(placement: .navigation) {
+                Button {
+                    showInfo.toggle()
+                } label: {
+                    Label("Info", systemImage: "info.circle")
+                }
+                .help("Show dataset info")
+                Button {
+                    showChart = true
+                } label: {
+                    Label("Chart", systemImage: "chart.xyaxis.line")
+                }
+                .help("Show price chart")
+            }
             ToolbarItemGroup(placement: .confirmationAction) {
                 Button {
                     Task {
@@ -63,6 +81,12 @@ struct DataView: View {
                 .disabled(!data.hasMore)
             }
         }
+        .popover(isPresented: $showInfo, content: {
+            DataInfoView(fileUrl: url, items: data.items)
+        })
+        .sheet(isPresented: $showChart) {
+            PriceChartView(url: url)
+        }
         .onChange(of: url) { _, _ in
             Task {
                 await loadDataset(with: 1)
@@ -73,15 +97,44 @@ struct DataView: View {
                 await loadDataset(with: 1)
             }
         }
+        .onChange(of: sortOrder) { _, _ in
+            Task {
+                await loadDataset(with: 1)
+            }
+        }
     }
 }
 
 extension DataView {
+    private func getSortParams() -> (column: String, direction: String) {
+        guard let first = sortOrder.first else {
+            return ("time", "DESC")
+        }
+        let direction = first.order == .forward ? "ASC" : "DESC"
+        let column: String
+        switch first.keyPath {
+        case \PriceData.date: column = "time"
+        case \PriceData.open: column = "open"
+        case \PriceData.high: column = "high"
+        case \PriceData.low: column = "low"
+        case \PriceData.close: column = "close"
+        case \PriceData.volume: column = "volume"
+        default: column = "time"
+        }
+        return (column, direction)
+    }
+
     func loadDataset(with page: Int) async {
+        let sortParams = getSortParams()
         do {
             try dbService.initDatabase()
             try await dbService.loadDataset(filePath: url)
-            data = try await dbService.fetchPriceData(page: page, pageSize: 500)
+            data = try await dbService.fetchPriceData(
+                page: page,
+                pageSize: 500,
+                sortColumn: sortParams.column,
+                sortDirection: sortParams.direction
+            )
         } catch {
             print("Error: \(error)")
             alertManager.showAlert(message: error.localizedDescription)

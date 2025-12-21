@@ -19,6 +19,8 @@ struct NewDocumentView: View {
                 navigationPath.append(.secondScreen)
             } onOpenExistingProject: {
                 pickAndOpenDocument()
+            } onSelectRecentProject: { url in
+                openRecentDocument(at: url)
             }
             .navigationDestination(for: WelcomeScreenPath.self) { path in
                 switch path {
@@ -48,18 +50,22 @@ extension NewDocumentView {
             switch result {
             case .OK:
                 if let url = openPanel.url {
-                    Task {
-                        do {
-                            try await openDocument(at: url)
-                        } catch {
-                            alertManager.showAlert(message: error.localizedDescription)
-                        }
-                    }
+                    openRecentDocument(at: url)
                 }
             case .cancel:
                 break
             default:
                 break
+            }
+        }
+    }
+
+    func openRecentDocument(at url: URL) {
+        Task {
+            do {
+                try await openDocument(at: url)
+            } catch {
+                alertManager.showAlert(message: error.localizedDescription)
             }
         }
     }
