@@ -12,32 +12,140 @@ struct HomeView: View {
     @Binding var document: ArgoTradingDocument
     @Environment(NavigationService.self) var navigationService
 
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+
     var body: some View {
-        Group {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            // SIDEBAR (Left column) - shared across all modes
+            VStack {
+                BacktestSideBar(navigationService: navigationService, document: $document)
+            }
+            .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {} label: {
+                        Label("Stop", systemImage: "square.fill")
+                    }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {} label: {
+                        Label("Start", systemImage: "play.fill")
+                    }
+                }
+            }
+        } content: {
+            // CONTENT (Center column)
             switch navigationService.selectedMode {
             case .Backtest:
-                BacktestView(document: $document)
+                BacktestContentView(navigationService: navigationService)
             case .Trading:
-                TradingView(document: $document)
+                TradingContentView()
+            }
+        } detail: {
+            // DETAIL (Right column)
+            switch navigationService.selectedMode {
+            case .Backtest:
+                BacktestDetailView(navigationService: navigationService)
+            case .Trading:
+                TradingDetailView()
             }
         }
+        .navigationSplitViewStyle(.balanced)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                modePicker
+                ToolbarRunningSectionView(status: .idle)
+                    .padding(.horizontal, 8)
             }
         }
         .onAppear {
             print("Data: \(document.dataFolder)")
         }
     }
+}
 
-    private var modePicker: some View {
-        @Bindable var service = navigationService
-        return Picker("Mode", selection: $service.selectedMode) {
-            ForEach(EditorMode.allCases) { mode in
-                Text(mode.rawValue).tag(mode)
+// MARK: - Backtest Content Views
+
+private struct BacktestContentView: View {
+    var navigationService: NavigationService
+
+    var body: some View {
+        switch navigationService.path {
+        case .backtest(let backtest):
+            switch backtest {
+            case .data(let url):
+                ChartContentView(url: url)
+                    .frame(minWidth: 400)
+            case .strategy(let url):
+                StrategyDetailView(url: url)
+                    .frame(minWidth: 400)
+            default:
+                ContentUnavailableView(
+                    "No Dataset Selected",
+                    systemImage: "chart.xyaxis.line",
+                    description: Text("Select a dataset from the sidebar to view the price chart")
+                )
             }
         }
-        .pickerStyle(.segmented)
+    }
+}
+
+private struct BacktestDetailView: View {
+    var navigationService: NavigationService
+
+    var body: some View {
+        switch navigationService.path {
+        case .backtest(let backtest):
+            switch backtest {
+            case .data(let url):
+                DataTableView(url: url)
+                    .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+            case .strategy:
+                ContentUnavailableView(
+                    "Strategy Configuration",
+                    systemImage: "slider.horizontal.3",
+                    description: Text("Strategy parameters and settings will appear here")
+                )
+                .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+            default:
+                ContentUnavailableView(
+                    "No Dataset Selected",
+                    systemImage: "tablecells",
+                    description: Text("Select a dataset from the sidebar to view the data table")
+                )
+                .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+            }
+        }
+    }
+}
+
+// MARK: - Trading Content Views
+
+private struct TradingContentView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "chart.line.uptrend.xyaxis")
+                .font(.system(size: 64))
+                .foregroundColor(.secondary.opacity(0.5))
+
+            Text("Trading Mode")
+                .font(.largeTitle)
+                .fontWeight(.semibold)
+
+            Text("Coming Soon")
+                .font(.title3)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct TradingDetailView: View {
+    var body: some View {
+        ContentUnavailableView(
+            "Trading Details",
+            systemImage: "info.circle",
+            description: Text("Trading details will appear here")
+        )
+        .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
     }
 }

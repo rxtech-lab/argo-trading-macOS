@@ -19,20 +19,18 @@ struct BacktestSection: View {
     @State var files: [URL] = []
 
     var body: some View {
-        Section("Backtest options") {
-            DisclosureGroup("Data", isExpanded: $expandedData) {
-                ForEach(files, id: \.self) { file in
-                    NavigationLink(value: NavigationPath.backtest(backtest: .data(url: file))) {
-                        ParquetFileRow(fileName: file.lastPathComponent)
-                            .contextMenu {
-                                Button(role: .destructive) {
-                                    fileToDelete = file
-                                    showDeleteAlert = true
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
+        DisclosureGroup("Data", isExpanded: $expandedData) {
+            ForEach(files, id: \.self) { file in
+                NavigationLink(value: NavigationPath.backtest(backtest: .data(url: file))) {
+                    ParquetFileRow(fileName: file.lastPathComponent)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                fileToDelete = file
+                                showDeleteAlert = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
                             }
-                    }
+                        }
                 }
             }
         }

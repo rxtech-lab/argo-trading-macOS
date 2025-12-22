@@ -18,7 +18,11 @@ struct BacktestSideBar: View {
     var body: some View {
         @Bindable var strategyVM = strategyImportViewModel
 
-        Group {
+        VStack(spacing: 0) {
+            SidebarModePicker(navigationService: navigationService)
+
+            Divider()
+
             List(selection: $navigationService.path) {
                 switch navigationService.selectedMode {
                 case .Backtest:
