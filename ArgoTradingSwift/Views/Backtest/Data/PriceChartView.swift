@@ -22,41 +22,40 @@ struct PriceChartView: View {
     @Environment(AlertManager.self) private var alertManager
     @Environment(\.dismiss) private var dismiss
 
+    @State private var viewModel: PriceChartViewModel?
     @State private var chartType: ChartType = .candlestick
-    @State private var loadedData: [PriceData] = []
-    @State private var sortedData: [PriceData] = []
-    @State private var yAxisDomain: ClosedRange<Double> = 0...100
-    @State private var totalCount: Int = 0
-    @State private var currentOffset: Int = 0
-    @State private var isLoading = false
-    @State private var selectedDate: Date?
-    @State private var scrollPosition: Date = .init()
+    @State private var selectedIndex: Int?
+    @State private var scrollPositionIndex: Int = 0
     @State private var zoomScale: CGFloat = 1.0
     @GestureState private var magnifyBy: CGFloat = 1.0
 
-    // Buffer configuration
+    // Zoom configuration
     private let baseVisibleCount = 100
-    private let bufferSize = 300 // Load 3x visible for buffer
-    private let minZoom: CGFloat = 0.1 // Show more data (zoom out)
-    private let maxZoom: CGFloat = 5.0 // Show less data (zoom in)
+    private let minZoom: CGFloat = 0.1
+    private let maxZoom: CGFloat = 5.0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             headerView
             legendView
 
-            if loadedData.isEmpty && !isLoading {
-                ContentUnavailableView(
-                    "No Data",
-                    systemImage: "chart.xyaxis.line",
-                    description: Text("Load a dataset to view the chart")
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if isLoading && loadedData.isEmpty {
-                ProgressView("Loading chart data...")
+            if let vm = viewModel {
+                if vm.loadedData.isEmpty && !vm.isLoading {
+                    ContentUnavailableView(
+                        "No Data",
+                        systemImage: "chart.xyaxis.line",
+                        description: Text("Load a dataset to view the chart")
+                    )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if vm.isLoading && vm.loadedData.isEmpty {
+                    ProgressView("Loading chart data...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    chartContent
+                }
             } else {
-                chartContent
+                ProgressView("Initializing...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
             scrollInfoView
@@ -71,28 +70,14 @@ struct PriceChartView: View {
         .padding()
         .frame(minWidth: 700, minHeight: 500)
         .task {
-            await loadInitialData()
+            let vm = PriceChartViewModel(url: url, dbService: dbService)
+            vm.onError = { message in
+                alertManager.showAlert(message: message)
+            }
+            viewModel = vm
+            await vm.loadInitialData()
+            scrollPositionIndex = max(0, vm.sortedData.count - visibleCount)
         }
-        .onChange(of: loadedData) { _, newData in
-            updateCachedProperties(from: newData)
-        }
-    }
-
-    // MARK: - Cache Update
-
-    private func updateCachedProperties(from data: [PriceData]) {
-        sortedData = data.sorted { $0.date < $1.date }
-
-        guard !data.isEmpty else {
-            yAxisDomain = 0...100
-            return
-        }
-
-        let minY = data.map(\.low).min() ?? 0
-        let maxY = data.map(\.high).max() ?? 100
-        let range = maxY - minY
-        let padding = max(range * 0.05, 0.01)
-        yAxisDomain = (minY - padding)...(maxY + padding)
     }
 
     // MARK: - Header
@@ -157,7 +142,9 @@ struct PriceChartView: View {
 
     private var legendView: some View {
         Group {
-            if let date = selectedDate, let item = findPriceData(for: date) {
+            if let idx = selectedIndex,
+               let item = viewModel?.priceData(at: idx)
+            {
                 HStack(spacing: 16) {
                     Text(item.date, format: .dateTime.month().day().hour().minute())
                         .foregroundStyle(.secondary)
@@ -183,43 +170,42 @@ struct PriceChartView: View {
 
     @ViewBuilder
     private var chartContent: some View {
+        guard let vm = viewModel else { return AnyView(EmptyView()) }
+
         let chart = Chart {
-            ForEach(sortedData) { item in
+            ForEach(vm.indexedData) { item in
                 switch chartType {
                 case .line:
                     LineMark(
-                        x: .value("Date", item.date),
-                        y: .value("Close", item.close)
+                        x: .value("Index", item.index),
+                        y: .value("Close", item.data.close)
                     )
                     .foregroundStyle(.blue)
                 case .candlestick:
-                    // Candlestick body
                     RectangleMark(
-                        x: .value("Date", item.date),
-                        yStart: .value("Open", item.open),
-                        yEnd: .value("Close", item.close),
+                        x: .value("Index", item.index),
+                        yStart: .value("Open", item.data.open),
+                        yEnd: .value("Close", item.data.close),
                         width: .fixed(candlestickWidth)
                     )
-                    .foregroundStyle(item.close >= item.open ? .green : .red)
+                    .foregroundStyle(item.data.close >= item.data.open ? .green : .red)
 
-                    // Candlestick wick
                     RuleMark(
-                        x: .value("Date", item.date),
-                        yStart: .value("Low", item.low),
-                        yEnd: .value("High", item.high)
+                        x: .value("Index", item.index),
+                        yStart: .value("Low", item.data.low),
+                        yEnd: .value("High", item.data.high)
                     )
-                    .foregroundStyle(item.close >= item.open ? .green : .red)
+                    .foregroundStyle(item.data.close >= item.data.open ? .green : .red)
                     .lineStyle(StrokeStyle(lineWidth: max(1, candlestickWidth / 6)))
                 }
             }
 
-            // Crosshair vertical line at selected position
-            if let selectedDate = selectedDate {
-                RuleMark(x: .value("Selected", selectedDate))
+            if let idx = selectedIndex {
+                RuleMark(x: .value("Selected", idx))
                     .foregroundStyle(.gray.opacity(0.5))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
                     .annotation(position: .top, alignment: .center) {
-                        if let item = findPriceData(for: selectedDate) {
+                        if let item = vm.priceData(at: idx) {
                             Text(item.close, format: .number.precision(.fractionLength(2)))
                                 .font(.caption2)
                                 .padding(4)
@@ -228,11 +214,17 @@ struct PriceChartView: View {
                     }
             }
         }
-        .chartYScale(domain: yAxisDomain)
+        .chartYScale(domain: vm.yAxisDomain)
         .chartXAxis {
-            AxisMarks(values: .automatic) { _ in
+            AxisMarks(values: .automatic) { value in
                 AxisGridLine()
-                AxisValueLabel(format: .dateTime.month().day().hour().minute())
+                AxisValueLabel {
+                    if let idx = value.as(Int.self),
+                       let item = vm.priceData(at: idx)
+                    {
+                        Text(item.date, format: .dateTime.month().day().hour().minute())
+                    }
+                }
             }
         }
         .chartYAxis {
@@ -246,17 +238,17 @@ struct PriceChartView: View {
             }
         }
         .chartScrollableAxes(.horizontal)
-        .chartXVisibleDomain(length: visibleTimeInterval)
-        .chartScrollPosition(x: $scrollPosition)
-        .chartXSelection(value: $selectedDate)
-        .onChange(of: scrollPosition) { _, newPosition in
+        .chartXVisibleDomain(length: visibleCount)
+        .chartScrollPosition(x: $scrollPositionIndex)
+        .chartXSelection(value: $selectedIndex)
+        .onChange(of: scrollPositionIndex) { _, newIndex in
             Task {
-                await checkAndLoadMoreData(around: newPosition)
+                try? await Task.sleep(for: .milliseconds(100))
+                await vm.checkAndLoadMoreData(at: newIndex, visibleCount: visibleCount)
             }
         }
 
-        chart
-            .gesture(magnificationGesture)
+        return AnyView(chart.gesture(magnificationGesture))
     }
 
     // MARK: - Gestures
@@ -276,7 +268,7 @@ struct PriceChartView: View {
 
     private var scrollInfoView: some View {
         HStack {
-            if isLoading {
+            if let vm = viewModel, vm.isLoading {
                 ProgressView()
                     .scaleEffect(0.4)
                 Text("Loading more data...")
@@ -286,9 +278,11 @@ struct PriceChartView: View {
 
             Spacer()
 
-            Text("Showing \(loadedData.count) of \(totalCount) records")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if let vm = viewModel {
+                Text("Showing \(vm.loadedData.count) of \(vm.totalCount) records")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
             Text("• Scroll to navigate, pinch to zoom")
                 .font(.caption)
@@ -300,165 +294,16 @@ struct PriceChartView: View {
     // MARK: - Computed Properties
 
     private var visibleCount: Int {
-        // Adjust visible count based on zoom scale
-        // Higher zoom = fewer candles (zoom in), lower zoom = more candles (zoom out)
-        let scale = max(0.01, zoomScale * magnifyBy) // Prevent division by zero/tiny numbers
+        let scale = max(0.01, zoomScale * magnifyBy)
         let adjustedCount = Double(baseVisibleCount) / scale
-
-        // Guard against NaN/infinity and clamp to reasonable range
-        // Max 200 candles to prevent overcrowding when zoomed out
         guard adjustedCount.isFinite else { return baseVisibleCount }
         return min(max(10, Int(adjustedCount)), 200)
     }
 
     private var candlestickWidth: CGFloat {
-        // Adjust candlestick width based on zoom
-        // Wider candles when zoomed in, thinner when zoomed out
         let scale = max(0.1, zoomScale * magnifyBy)
         let baseWidth: CGFloat = 6
-        return max(2, min(baseWidth * scale, 20)) // Clamp between 2 and 20
-    }
-
-    private var visibleTimeInterval: TimeInterval {
-        // Show approximately visibleCount candles
-        // Assuming 1-minute data, adjust multiplier based on your data frequency
-        guard sortedData.count >= 2 else { return 3600 * 6 } // Default 6 hours
-
-        let first = sortedData[0].date
-        let second = sortedData[1].date
-        let candleInterval = second.timeIntervalSince(first)
-
-        return candleInterval * Double(visibleCount)
-    }
-
-    // MARK: - Data Loading
-
-    private func loadInitialData() async {
-        guard !isLoading else { return }
-        isLoading = true
-
-        do {
-            try dbService.initDatabase()
-            totalCount = try await dbService.getTotalCount(for: url)
-
-            // Start from the end (most recent data) and load buffer
-            let startOffset = max(0, totalCount - bufferSize)
-            currentOffset = startOffset
-
-            let loadedDataInMemory = try await dbService.fetchPriceDataRange(
-                filePath: url,
-                startOffset: startOffset,
-                count: bufferSize
-            )
-
-            // Update cached properties first
-            updateCachedProperties(from: loadedDataInMemory)
-
-            withAnimation {
-                loadedData = loadedDataInMemory
-            }
-
-            // Set initial scroll position to show recent data
-            if let lastDate = sortedData.last?.date {
-                scrollPosition = lastDate
-            }
-        } catch {
-            alertManager.showAlert(message: error.localizedDescription)
-        }
-
-        isLoading = false
-    }
-
-    private func checkAndLoadMoreData(around date: Date) async {
-        guard !isLoading, !loadedData.isEmpty else { return }
-
-        let sorted = sortedData
-        guard let firstDate = sorted.first?.date,
-              let lastDate = sorted.last?.date else { return }
-
-        let totalRange = lastDate.timeIntervalSince(firstDate)
-        let positionFromStart = date.timeIntervalSince(firstDate)
-        let positionRatio = totalRange > 0 ? positionFromStart / totalRange : 0.5
-
-        // Load more at the beginning if scrolled to first 20%
-        if positionRatio < 0.2 && currentOffset > 0 {
-            await loadMoreAtBeginning()
-        }
-
-        // Load more at the end if scrolled to last 20%
-        if positionRatio > 0.8 && currentOffset + loadedData.count < totalCount {
-            await loadMoreAtEnd()
-        }
-    }
-
-    private func loadMoreAtBeginning() async {
-        guard !isLoading else { return }
-        isLoading = true
-
-        do {
-            let loadCount = min(bufferSize / 2, currentOffset)
-            let newOffset = currentOffset - loadCount
-
-            let newData = try await dbService.fetchPriceDataRange(
-                filePath: url,
-                startOffset: newOffset,
-                count: loadCount
-            )
-
-            // Prepend new data and trim from end if buffer too large
-            var combinedData = newData + loadedData
-            currentOffset = newOffset
-
-            // Trim excess from end
-            if combinedData.count > bufferSize * 2 {
-                combinedData = Array(combinedData.prefix(bufferSize * 2))
-            }
-
-            loadedData = combinedData
-        } catch {
-            print("Error loading more data: \(error)")
-        }
-
-        isLoading = false
-    }
-
-    private func loadMoreAtEnd() async {
-        guard !isLoading else { return }
-        isLoading = true
-
-        do {
-            let currentEnd = currentOffset + loadedData.count
-            let loadCount = min(bufferSize / 2, totalCount - currentEnd)
-
-            let newData = try await dbService.fetchPriceDataRange(
-                filePath: url,
-                startOffset: currentEnd,
-                count: loadCount
-            )
-
-            // Append new data and trim from beginning if buffer too large
-            var combinedData = loadedData + newData
-
-            // Trim excess from beginning
-            if combinedData.count > bufferSize * 2 {
-                let trimCount = combinedData.count - bufferSize * 2
-                combinedData = Array(combinedData.dropFirst(trimCount))
-                currentOffset += trimCount
-            }
-
-            loadedData = combinedData
-        } catch {
-            print("Error loading more data: \(error)")
-        }
-
-        isLoading = false
-    }
-
-    // MARK: - Helpers
-
-    private func findPriceData(for date: Date) -> PriceData? {
-        // Find closest price data to the selected date
-        sortedData.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
+        return max(2, min(baseWidth * scale, 20))
     }
 }
 

@@ -46,7 +46,7 @@ enum DuckDBError: LocalizedError {
 }
 
 @Observable
-class DuckDBService {
+class DuckDBService: DuckDBServiceProtocol {
     var database: Database?
     var connection: Connection?
     private var currentDataset: URL?
