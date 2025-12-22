@@ -25,7 +25,6 @@ struct PriceChartView: View {
     @State private var viewModel: PriceChartViewModel?
     @State private var chartType: ChartType = .candlestick
     @State private var selectedIndex: Int?
-    @State private var scrollPositionIndex: Int = 0
     @State private var zoomScale: CGFloat = 1.0
     @GestureState private var magnifyBy: CGFloat = 1.0
 
@@ -34,10 +33,18 @@ struct PriceChartView: View {
     private let minZoom: CGFloat = 0.1
     private let maxZoom: CGFloat = 5.0
 
+    private var scrollPositionBinding: Binding<Int> {
+        Binding(
+            get: { viewModel?.scrollPositionIndex ?? 0 },
+            set: { viewModel?.scrollPositionIndex = $0 }
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             headerView
             legendView
+            timeIntervalPickerView
 
             if let vm = viewModel {
                 if vm.loadedData.isEmpty && !vm.isLoading {
@@ -75,8 +82,7 @@ struct PriceChartView: View {
                 alertManager.showAlert(message: message)
             }
             viewModel = vm
-            await vm.loadInitialData()
-            scrollPositionIndex = max(0, vm.sortedData.count - visibleCount)
+            await vm.loadInitialData(visibleCount: visibleCount)
         }
     }
 
@@ -166,6 +172,47 @@ struct PriceChartView: View {
         .frame(height: 24)
     }
 
+    // MARK: - Time Interval Picker
+
+    private var timeIntervalPickerView: some View {
+        HStack(spacing: 4) {
+            ForEach(ChartTimeInterval.allCases) { interval in
+                Button {
+                    guard let vm = viewModel else { return }
+                    Task {
+                        await vm.setTimeInterval(interval, visibleCount: visibleCount)
+                    }
+                } label: {
+                    Text(interval.displayName)
+                        .font(.system(.caption, design: .monospaced, weight: .medium))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            viewModel?.timeInterval == interval
+                                ? Color.accentColor
+                                : Color.secondary.opacity(0.15)
+                        )
+                        .foregroundColor(
+                            viewModel?.timeInterval == interval
+                                ? .white
+                                : .primary
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel?.isLoading ?? false)
+            }
+
+            Spacer()
+
+            // Show loading indicator when changing intervals
+            if let vm = viewModel, vm.isLoading {
+                ProgressView()
+                    .scaleEffect(0.6)
+            }
+        }
+    }
+
     // MARK: - Chart Content
 
     @ViewBuilder
@@ -239,9 +286,9 @@ struct PriceChartView: View {
         }
         .chartScrollableAxes(.horizontal)
         .chartXVisibleDomain(length: visibleCount)
-        .chartScrollPosition(x: $scrollPositionIndex)
+        .chartScrollPosition(x: scrollPositionBinding)
         .chartXSelection(value: $selectedIndex)
-        .onChange(of: scrollPositionIndex) { _, newIndex in
+        .onChange(of: vm.scrollPositionIndex) { _, newIndex in
             Task {
                 try? await Task.sleep(for: .milliseconds(100))
                 await vm.checkAndLoadMoreData(at: newIndex, visibleCount: visibleCount)

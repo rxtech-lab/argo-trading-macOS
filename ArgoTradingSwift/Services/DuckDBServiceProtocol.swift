@@ -22,4 +22,15 @@ protocol DuckDBServiceProtocol {
         startOffset: Int,
         count: Int
     ) async throws -> [PriceData]
+
+    /// Get total count of aggregated rows for a given time interval
+    func getAggregatedCount(for filePath: URL, interval: ChartTimeInterval) async throws -> Int
+
+    /// Fetch aggregated price data for a given time interval
+    func fetchAggregatedPriceDataRange(
+        filePath: URL,
+        interval: ChartTimeInterval,
+        startOffset: Int,
+        count: Int
+    ) async throws -> [PriceData]
 }

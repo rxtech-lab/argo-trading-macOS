@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "xcodebuild -project ArgoTradingSwift.xcodeproj -scheme ArgoTradingSwift test"
+          },
+          {
+            "type": "command",
+            "command": "xcodebuild -project ArgoTradingSwift.xcodeproj -scheme ArgoTradingSwift build"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -242,4 +242,107 @@ class DuckDBService: DuckDBServiceProtocol {
             )
         }
     }
+
+    /// Get total count of aggregated rows for a given time interval
+    func getAggregatedCount(for filePath: URL, interval: ChartTimeInterval) async throws -> Int {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+
+        // For 1s interval, use existing count (no aggregation)
+        if interval == .oneSecond {
+            return try await getTotalCount(for: filePath)
+        }
+
+        let countQuery = """
+        SELECT COUNT(*) as total
+        FROM (
+            SELECT date_trunc('\(interval.duckDBInterval)', time) as interval_time
+            FROM read_parquet('\(filePath.path)')
+            GROUP BY interval_time
+        ) subquery
+        """
+
+        let countResult = try connection.query(countQuery)
+        return countResult[0].cast(to: Int.self)[0] ?? 0
+    }
+
+    /// Fetch aggregated price data for a given time interval
+    func fetchAggregatedPriceDataRange(
+        filePath: URL,
+        interval: ChartTimeInterval,
+        startOffset: Int,
+        count: Int
+    ) async throws -> [PriceData] {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+
+        // For 1s interval, use existing method (no aggregation)
+        if interval == .oneSecond {
+            return try await fetchPriceDataRange(filePath: filePath, startOffset: startOffset, count: count)
+        }
+
+        // Aggregation query using DuckDB's FIRST/LAST functions
+        // Note: If FIRST/LAST are not available, we use a subquery approach
+        let query = """
+        WITH ordered_data AS (
+            SELECT
+                date_trunc('\(interval.duckDBInterval)', time) as interval_time,
+                symbol,
+                open, high, low, close, volume,
+                ROW_NUMBER() OVER (PARTITION BY date_trunc('\(interval.duckDBInterval)', time) ORDER BY time ASC) as rn_first,
+                ROW_NUMBER() OVER (PARTITION BY date_trunc('\(interval.duckDBInterval)', time) ORDER BY time DESC) as rn_last
+            FROM read_parquet('\(filePath.path)')
+        )
+        SELECT
+            CAST(interval_time AS VARCHAR) as interval_time,
+            symbol,
+            MAX(CASE WHEN rn_first = 1 THEN open END) as open,
+            MAX(high) as high,
+            MIN(low) as low,
+            MAX(CASE WHEN rn_last = 1 THEN close END) as close,
+            SUM(volume) as volume
+        FROM ordered_data
+        GROUP BY interval_time, symbol
+        ORDER BY interval_time ASC
+        LIMIT \(count) OFFSET \(startOffset)
+        """
+
+        let result = try connection.query(query)
+
+        let timeColumn = result[0].cast(to: String.self)
+        let symbolColumn = result[1].cast(to: String.self)
+        let openColumn = result[2].cast(to: Double.self)
+        let highColumn = result[3].cast(to: Double.self)
+        let lowColumn = result[4].cast(to: Double.self)
+        let closeColumn = result[5].cast(to: Double.self)
+        let volumeColumn = result[6].cast(to: Double.self)
+
+        let dataFrame = DataFrame(columns: [
+            TabularData.Column(timeColumn).eraseToAnyColumn(),
+            TabularData.Column(symbolColumn).eraseToAnyColumn(),
+            TabularData.Column(openColumn).eraseToAnyColumn(),
+            TabularData.Column(highColumn).eraseToAnyColumn(),
+            TabularData.Column(lowColumn).eraseToAnyColumn(),
+            TabularData.Column(closeColumn).eraseToAnyColumn(),
+            TabularData.Column(volumeColumn).eraseToAnyColumn(),
+        ])
+
+        return dataFrame.rows.enumerated().map { (index, row) in
+            let time = row[0, String.self]
+            let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? Date()
+
+            return PriceData(
+                date: utcDate,
+                id: "agg-\(startOffset + index)",  // Generate unique ID for aggregated rows
+                ticker: row[1, String.self] ?? "",
+                open: row[2, Double.self] ?? 0.0,
+                high: row[3, Double.self] ?? 0.0,
+                low: row[4, Double.self] ?? 0.0,
+                close: row[5, Double.self] ?? 0.0,
+                volume: row[6, Double.self] ?? 0.0
+            )
+        }
+    }
 }
