@@ -865,4 +865,72 @@ struct PriceChartViewModelTests {
         #expect(allCases.contains(.oneHour))
         #expect(allCases.contains(.oneDay))
     }
+
+    // MARK: - priceData(at:) Index Clamping Tests
+
+    @Test func testPriceDataAtEmptyData_returnsNil() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 0
+        mockService.mockPriceData = []
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService)
+
+        await viewModel.loadInitialData(visibleCount: 100)
+
+        #expect(viewModel.priceData(at: 0) == nil)
+        #expect(viewModel.priceData(at: -1) == nil)
+        #expect(viewModel.priceData(at: 100) == nil)
+    }
+
+    @Test func testPriceDataAtValidIndex_returnsCorrectData() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 10
+        mockService.mockPriceData = createMockPriceData(count: 10)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService)
+
+        await viewModel.loadInitialData(visibleCount: 100)
+
+        let data = viewModel.priceData(at: 5)
+        #expect(data != nil)
+        #expect(data?.id == "id-5")
+    }
+
+    @Test func testPriceDataAtNegativeIndex_clampsToFirst() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 10
+        mockService.mockPriceData = createMockPriceData(count: 10)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService)
+
+        await viewModel.loadInitialData(visibleCount: 100)
+
+        let firstData = viewModel.priceData(at: 0)
+        let negativeData = viewModel.priceData(at: -1)
+        let veryNegativeData = viewModel.priceData(at: -100)
+
+        #expect(negativeData?.id == firstData?.id)
+        #expect(veryNegativeData?.id == firstData?.id)
+    }
+
+    @Test func testPriceDataAtIndexExceedsBounds_clampsToLast() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 10
+        mockService.mockPriceData = createMockPriceData(count: 10)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService)
+
+        await viewModel.loadInitialData(visibleCount: 100)
+
+        let lastData = viewModel.priceData(at: 9)
+        let outOfBoundsData = viewModel.priceData(at: 10)
+        let wayOutOfBoundsData = viewModel.priceData(at: 1000)
+
+        #expect(outOfBoundsData?.id == lastData?.id)
+        #expect(wayOutOfBoundsData?.id == lastData?.id)
+    }
 }

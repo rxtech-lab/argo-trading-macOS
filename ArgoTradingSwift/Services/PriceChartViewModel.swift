@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 struct IndexedPrice: Identifiable {
     let index: Int
@@ -25,7 +26,13 @@ class PriceChartViewModel {
     private(set) var loadedData: [PriceData] = []
     private(set) var sortedData: [PriceData] = []
     private(set) var indexedData: [IndexedPrice] = []
-    private(set) var yAxisDomain: ClosedRange<Double> = 0...100
+    private var currentDataYAxisDomain: ClosedRange<Double> = 0...100
+    private var stableYAxisDomain: ClosedRange<Double>?
+
+    /// Public Y-axis domain that remains stable during scrolling
+    var yAxisDomain: ClosedRange<Double> {
+        stableYAxisDomain ?? currentDataYAxisDomain
+    }
     private(set) var totalCount: Int = 0
     private(set) var currentOffset: Int = 0
     private(set) var isLoading = false
@@ -65,8 +72,9 @@ class PriceChartViewModel {
     // MARK: - Public Methods
 
     func priceData(at index: Int) -> PriceData? {
-        guard index >= 0, index < sortedData.count else { return nil }
-        return sortedData[index]
+        guard !sortedData.isEmpty else { return nil }
+        let clampedIndex = max(0, min(index, sortedData.count - 1))
+        return sortedData[clampedIndex]
     }
 
     /// Set the time interval and reload data
@@ -85,6 +93,7 @@ class PriceChartViewModel {
         loadedData = []
         sortedData = []
         indexedData = []
+        stableYAxisDomain = nil
         currentOffset = 0
         scrollPositionIndex = 0
 
@@ -150,11 +159,13 @@ class PriceChartViewModel {
 
         let dataCount = sortedData.count
 
-        if index <= 0 && currentOffset > 0 {
+        if index <= 0, currentOffset > 0 {
+            print("Loading more at beginning...")
             await loadMoreAtBeginning()
         }
 
-        if index + visibleCount >= dataCount && currentOffset + loadedData.count < totalCount {
+        if index + visibleCount >= dataCount, currentOffset + loadedData.count < totalCount {
+            print("Loading more at end...")
             await loadMoreAtEnd()
         }
     }
@@ -166,7 +177,7 @@ class PriceChartViewModel {
         rebuildIndexedData()
 
         guard !data.isEmpty else {
-            yAxisDomain = 0...100
+            currentDataYAxisDomain = 0...100
             return
         }
 
@@ -174,7 +185,17 @@ class PriceChartViewModel {
         let maxY = data.map(\.high).max() ?? 100
         let range = maxY - minY
         let padding = max(range * 0.05, 0.01)
-        yAxisDomain = (minY - padding)...(maxY + padding)
+        currentDataYAxisDomain = (minY - padding)...(maxY + padding)
+
+        // On first load, set the stable domain
+        // On subsequent loads, expand it if new data falls outside current bounds
+        if let existingDomain = stableYAxisDomain {
+            let newLower = min(existingDomain.lowerBound, currentDataYAxisDomain.lowerBound)
+            let newUpper = max(existingDomain.upperBound, currentDataYAxisDomain.upperBound)
+            stableYAxisDomain = newLower...newUpper
+        } else {
+            stableYAxisDomain = currentDataYAxisDomain
+        }
     }
 
     private func rebuildIndexedData() {

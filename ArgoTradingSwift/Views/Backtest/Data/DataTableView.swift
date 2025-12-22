@@ -1,73 +1,105 @@
 //
-//  DataView.swift
+//  DataTableView.swift
 //  ArgoTradingSwift
 //
-//  Created by Qiwei Li on 4/21/25.
+//  Created by Claude on 12/22/25.
 //
 
 import SwiftUI
-import TabularData
 
-struct DataView: View {
+struct DataTableView: View {
     let url: URL
 
     @Environment(DuckDBService.self) private var dbService
     @Environment(AlertManager.self) private var alertManager
+
     @State private var data: PaginationResult<PriceData> = PaginationResult(items: [], total: 0, page: 0, pageSize: 0)
     @State private var selectedRows: Set<String> = []
-    @State private var showChart: Bool = false
     @State private var showInfo = false
     @State private var sortOrder: [KeyPathComparator<PriceData>] = [KeyPathComparator(\.date, order: .reverse)]
     @State private var isLoading: Bool = false
 
     var body: some View {
-        Table(data.items, selection: $selectedRows, sortOrder: $sortOrder) {
-            TableColumn("Date", value: \.date) { price in
-                Text(price.date, format: .dateTime.year().month().day().hour().minute().second())
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Price Data")
+                    .font(.headline)
+                Spacer()
             }
-            .width(200)
-            TableColumn("Ticker", value: \.ticker) { price in
-                Text(price.ticker)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            Divider()
+
+            // Table
+            Table(data.items, selection: $selectedRows, sortOrder: $sortOrder) {
+                TableColumn("Date", value: \.date) { price in
+                    Text(price.date, format: .dateTime.month().day().hour().minute().second())
+                }
+                .width(min: 100, ideal: 120)
+
+                TableColumn("O", value: \.open) { price in
+                    Text("\(price.open, format: .number.precision(.fractionLength(2)))")
+                }
+                .width(min: 50, ideal: 60)
+
+                TableColumn("H", value: \.high) { price in
+                    Text("\(price.high, format: .number.precision(.fractionLength(2)))")
+                }
+                .width(min: 50, ideal: 60)
+
+                TableColumn("L", value: \.low) { price in
+                    Text("\(price.low, format: .number.precision(.fractionLength(2)))")
+                }
+                .width(min: 50, ideal: 60)
+
+                TableColumn("C", value: \.close) { price in
+                    Text("\(price.close, format: .number.precision(.fractionLength(2)))")
+                }
+                .width(min: 50, ideal: 60)
+
+                TableColumn("Vol", value: \.volume) { price in
+                    Text("\(price.volume, format: .number.notation(.compactName))")
+                }
+                .width(min: 50, ideal: 60)
             }
-            TableColumn("Open", value: \.open) { price in
-                Text("\(price.open, format: .number.precision(.fractionLength(2)))")
+            .overlay {
+                if isLoading {
+                    ProgressView()
+                        .padding()
+                        .glassEffect()
+                }
             }
-            TableColumn("High", value: \.high) { price in
-                Text("\(price.high, format: .number.precision(.fractionLength(2)))")
-            }
-            TableColumn("Low", value: \.low) { price in
-                Text("\(price.low, format: .number.precision(.fractionLength(2)))")
-            }
-            TableColumn("Close", value: \.close) { price in
-                Text("\(price.close, format: .number.precision(.fractionLength(2)))")
-            }
-            TableColumn("Volume", value: \.volume) { price in
-                Text("\(price.volume, format: .number.precision(.fractionLength(0)))")
-            }
-        }
-        .overlay {
-            if isLoading {
-                ProgressView()
-                    .padding()
-                    .glassEffect()
-            }
-        }
-        .toolbar {
-            ToolbarItemGroup(placement: .navigation) {
+
+            Divider()
+
+            // Bottom bar with pagination
+            HStack {
                 Button {
                     showInfo.toggle()
                 } label: {
-                    Label("Info", systemImage: "info.circle")
+                    Image(systemName: "info.circle")
                 }
+                .buttonStyle(.borderless)
                 .help("Show dataset info")
-                Button {
-                    showChart = true
-                } label: {
-                    Label("Chart", systemImage: "chart.xyaxis.line")
+                .popover(isPresented: $showInfo) {
+                    DataInfoView(fileUrl: url, items: data.items)
                 }
-                .help("Show price chart")
-            }
-            ToolbarItemGroup(placement: .confirmationAction) {
+
+                Spacer()
+
+                Text("\(data.total) records")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Divider()
+                    .frame(height: 16)
+
+                Text("Page \(data.page)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
                 Button {
                     Task {
                         await loadDataset(with: data.page - 1)
@@ -75,6 +107,7 @@ struct DataView: View {
                 } label: {
                     Image(systemName: "chevron.left")
                 }
+                .buttonStyle(.borderless)
                 .disabled(data.page == 1)
 
                 Button {
@@ -84,21 +117,19 @@ struct DataView: View {
                 } label: {
                     Image(systemName: "chevron.right")
                 }
+                .buttonStyle(.borderless)
                 .disabled(!data.hasMore)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
         }
-        .popover(isPresented: $showInfo, content: {
-            DataInfoView(fileUrl: url, items: data.items)
-        })
         .onChange(of: url) { _, _ in
             Task {
                 await loadDataset(with: 1)
             }
         }
         .task {
-            Task {
-                await loadDataset(with: 1)
-            }
+            await loadDataset(with: 1)
         }
         .onChange(of: sortOrder) { _, _ in
             Task {
@@ -108,7 +139,7 @@ struct DataView: View {
     }
 }
 
-extension DataView {
+extension DataTableView {
     private func getSortParams() -> (column: String, direction: String) {
         guard let first = sortOrder.first else {
             return ("time", "DESC")
@@ -148,4 +179,10 @@ extension DataView {
             alertManager.showAlert(message: error.localizedDescription)
         }
     }
+}
+
+#Preview {
+    DataTableView(url: URL(fileURLWithPath: "/tmp/test.parquet"))
+        .environment(DuckDBService())
+        .environment(AlertManager())
 }
