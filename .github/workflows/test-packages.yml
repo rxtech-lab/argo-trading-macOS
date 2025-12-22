@@ -1,0 +1,189 @@
+name: Tests
+
+on:
+  push:
+
+jobs:
+  test-xcode:
+    name: Test Xcode App
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Cache Xcode build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-xcode-${{ hashFiles('**/*.swift') }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-
+
+      - name: Run Xcode tests
+        run: ./scripts/run_xcode_tests.sh
+
+      - name: Upload test results (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ github.run_number }}
+          path: test-results/
+          retention-days: 1
+
+      - name: Extract screenshots from test bundle (on failure)
+        if: failure()
+        continue-on-error: true
+        run: |
+          if [ -d "test-results/TestResults.xcresult" ]; then
+            mkdir -p test-results/screenshots
+            mkdir -p test-results/attachments
+
+            # Extract all attachments (screenshots, videos, logs) from the result bundle
+            xcrun xcresulttool export --type directory \
+              --path test-results/TestResults.xcresult \
+              --output-path test-results/attachments || true
+
+            echo "Extracted test attachments to test-results/attachments/"
+
+            # List what was extracted
+            find test-results/attachments -type f || true
+          fi
+
+      - name: Generate HTML test report (on failure)
+        if: failure()
+        continue-on-error: true
+        run: |
+          if [ -d "test-results/TestResults.xcresult" ]; then
+            # Create a simple HTML report
+            cat > test-results/test-report.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Test Results</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; }
+              h1 { color: #d73a4a; }
+              .info { background: #f6f8fa; padding: 15px; border-radius: 6px; margin: 15px 0; }
+              pre { background: #f6f8fa; padding: 10px; border-radius: 6px; overflow-x: auto; }
+            </style>
+          </head>
+          <body>
+            <h1>UI Test Failure Report</h1>
+            <div class="info">
+              <p><strong>Run:</strong> ${{ github.run_number }}</p>
+              <p><strong>Commit:</strong> ${{ github.sha }}</p>
+              <p><strong>Branch:</strong> ${{ github.ref_name }}</p>
+            </div>
+            <h2>Test Artifacts</h2>
+            <p>The complete .xcresult bundle and extracted attachments (screenshots, videos, logs) are available in the artifacts.</p>
+            <h3>How to Debug:</h3>
+            <ol>
+              <li>Download the test-results artifact from this workflow run</li>
+              <li>Open TestResults.xcresult in Xcode to view detailed test results, screenshots, and videos</li>
+              <li>Check the attachments/ folder for extracted screenshots and videos</li>
+              <li>Review xcodebuild.log for detailed test output</li>
+            </ol>
+          </body>
+          </html>
+          EOF
+
+            echo "Generated HTML report at test-results/test-report.html"
+          fi
+
+      - name: Comment PR with test failure (on failure)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runNumber = context.runNumber;
+            const artifactUrl = `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+
+            const comment = `## UI Test Failure ❌
+
+            The UI tests failed in this PR. Test artifacts including screenshots, videos, and logs have been captured.
+
+            ### Debug Information
+            - **Workflow Run:** [#${runNumber}](${artifactUrl})
+            - **Commit:** \`${{ github.sha }}\`
+
+            ### How to Debug
+            1. Download the \`test-results-${runNumber}\` artifact from the [workflow run](${artifactUrl})
+            2. Open \`TestResults.xcresult\` in Xcode to view:
+               - Detailed test results
+               - Screenshots of failures
+               - Screen recordings
+               - Test logs
+            3. Check the \`attachments/\` folder for extracted media
+            4. Review \`xcodebuild.log\` for detailed output
+
+            ### Viewing the .xcresult Bundle
+            \`\`\`bash
+            # After downloading and extracting the artifact
+            open test-results/TestResults.xcresult
+            \`\`\`
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  test-packages:
+    name: Test All Packages (with E2E)
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            packages/*/.build
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Setup Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Start Anvil
+        run: |
+          anvil &
+          echo "ANVIL_PID=$!" >> $GITHUB_ENV
+          # Wait for Anvil to start
+          sleep 5
+
+      - name: Run all tests (including E2E)
+        run: ./scripts/run_all_package_tests.sh
+
+      - name: Stop Anvil
+        if: always()
+        run: |
+          if [ ! -z "$ANVIL_PID" ]; then
+            kill $ANVIL_PID || true
+          fi
