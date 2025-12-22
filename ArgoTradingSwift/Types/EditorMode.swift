@@ -11,6 +11,15 @@ enum EditorMode: String, CaseIterable, Identifiable {
 
     var id: String { self.rawValue }
 
+    var title: String {
+        switch self {
+        case .Backtest:
+            return "Backtest"
+        case .Trading:
+            return "Trading"
+        }
+    }
+
     var icon: String {
         switch self {
         case .Backtest:

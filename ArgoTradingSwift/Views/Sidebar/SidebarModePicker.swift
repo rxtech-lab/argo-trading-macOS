@@ -13,13 +13,10 @@ struct SidebarModePicker: View {
     var body: some View {
         Picker("Mode", selection: $navigationService.selectedMode) {
             ForEach(EditorMode.allCases) { mode in
-                Image(systemName: mode.icon)
+                Label(mode.title, systemImage: mode.icon)
                     .tag(mode)
             }
         }
         .pickerStyle(.segmented)
-        .labelsHidden()
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
     }
 }

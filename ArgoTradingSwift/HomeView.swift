@@ -11,6 +11,7 @@ import SwiftUI
 struct HomeView: View {
     @Binding var document: ArgoTradingDocument
     @Environment(NavigationService.self) var navigationService
+    @Environment(DatasetService.self) var datasetService
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -52,13 +53,19 @@ struct HomeView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                SidebarModePicker(navigationService: navigationService)
+            }
             ToolbarItem(placement: .principal) {
                 ToolbarRunningSectionView(status: .idle)
                     .padding(.horizontal, 8)
             }
         }
         .onAppear {
-            print("Data: \(document.dataFolder)")
+            datasetService.setDataFolder(document.dataFolder)
+        }
+        .onChange(of: document.dataFolder) { _, newFolder in
+            datasetService.setDataFolder(newFolder)
         }
     }
 }

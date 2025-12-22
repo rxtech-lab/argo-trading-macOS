@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 struct BacktestSideBar: View {
     @Environment(DatasetDownloadService.self) var downloadService
     @Environment(StrategyImportViewModel.self) var strategyImportViewModel
+    @Environment(BacktestService.self) private var backtestService
 
     @Bindable var navigationService: NavigationService
     @Binding var document: ArgoTradingDocument
@@ -19,15 +20,17 @@ struct BacktestSideBar: View {
         @Bindable var strategyVM = strategyImportViewModel
 
         VStack(spacing: 0) {
-            SidebarModePicker(navigationService: navigationService)
-
-            Divider()
-
+            BacktestTabsView(backtestService: backtestService)
             List(selection: $navigationService.path) {
                 switch navigationService.selectedMode {
                 case .Backtest:
-                    BacktestSection(dataFolder: document.dataFolder)
-                    StrategySection(strategyFolder: document.strategyFolder)
+                    switch backtestService.currentBacktestTab {
+                    case .general:
+                        BacktestSection()
+                        StrategySection(strategyFolder: document.strategyFolder)
+                    case .results:
+                        EmptyView()
+                    }
                 default:
                     EmptyView()
                 }
