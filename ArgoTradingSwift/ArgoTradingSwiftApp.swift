@@ -36,6 +36,7 @@ struct ArgoTradingSwiftApp: App {
     @State private var alertService = AlertManager()
     @State private var modePicker = NavigationService()
     @State private var duckDBService = DuckDBService()
+    @State private var strategyImportViewModel = StrategyImportViewModel()
 
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -71,5 +72,6 @@ struct ArgoTradingSwiftApp: App {
         .environment(alertService)
         .environment(modePicker)
         .environment(duckDBService)
+        .environment(strategyImportViewModel)
     }
 }
