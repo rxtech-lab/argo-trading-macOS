@@ -36,6 +36,9 @@ struct ArgoTradingSwiftApp: App {
     @State private var alertService = AlertManager()
     @State private var modePicker = NavigationService()
     @State private var duckDBService = DuckDBService()
+    @State private var strategyImportViewModel = StrategyImportViewModel()
+    @State private var backtestService = BacktestService()
+    @State private var datasetService = DatasetService()
 
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -62,6 +65,7 @@ struct ArgoTradingSwiftApp: App {
                     // Dismiss welcome window when document opens
                     dismissWindow(id: "welcome")
                 }
+                .toolbar(removing: .title)
         }
         .commands {
             DocumentCommand()
@@ -71,5 +75,8 @@ struct ArgoTradingSwiftApp: App {
         .environment(alertService)
         .environment(modePicker)
         .environment(duckDBService)
+        .environment(strategyImportViewModel)
+        .environment(datasetService)
+        .environment(backtestService)
     }
 }

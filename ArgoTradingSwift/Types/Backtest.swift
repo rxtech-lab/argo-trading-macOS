@@ -7,16 +7,16 @@
 import Foundation
 
 enum BacktestSelection: Identifiable, Hashable {
-    case strategy
+    case strategy(url: URL)
     case data(url: URL)
     case results
 
     var key: String {
         switch self {
-        case .strategy:
-            return "strategy"
+        case .strategy(let url):
+            return "strategy-\(url.lastPathComponent)"
         case .data(let url):
-            return "data"
+            return "data-\(url.lastPathComponent)"
         case .results:
             return "results"
         }
