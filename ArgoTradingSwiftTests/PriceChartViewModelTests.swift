@@ -838,32 +838,50 @@ struct PriceChartViewModelTests {
     }
 
     @Test func testTimeIntervalEnumProperties() {
-        // Test displayName
+        // Test displayName for core intervals
         #expect(ChartTimeInterval.oneSecond.displayName == "1s")
         #expect(ChartTimeInterval.oneMinute.displayName == "1m")
+        #expect(ChartTimeInterval.thirtyMinutes.displayName == "30m")
         #expect(ChartTimeInterval.oneHour.displayName == "1h")
         #expect(ChartTimeInterval.oneDay.displayName == "1d")
 
-        // Test duckDBInterval
+        // Test duckDBInterval for standard intervals
         #expect(ChartTimeInterval.oneSecond.duckDBInterval == "second")
         #expect(ChartTimeInterval.oneMinute.duckDBInterval == "minute")
         #expect(ChartTimeInterval.oneHour.duckDBInterval == "hour")
         #expect(ChartTimeInterval.oneDay.duckDBInterval == "day")
 
-        // Test seconds
+        // Test duckDBInterval for non-standard intervals (maps to base unit)
+        #expect(ChartTimeInterval.thirtyMinutes.duckDBInterval == "minute")
+        #expect(ChartTimeInterval.fourHours.duckDBInterval == "hour")
+
+        // Test seconds for core intervals
         #expect(ChartTimeInterval.oneSecond.seconds == 1)
         #expect(ChartTimeInterval.oneMinute.seconds == 60)
+        #expect(ChartTimeInterval.thirtyMinutes.seconds == 1800)
         #expect(ChartTimeInterval.oneHour.seconds == 3600)
         #expect(ChartTimeInterval.oneDay.seconds == 86400)
     }
 
     @Test func testAllTimeIntervalsAvailable() {
         let allCases = ChartTimeInterval.allCases
-        #expect(allCases.count == 4)
+        #expect(allCases.count == 16)  // Updated from 4 to 16 intervals
         #expect(allCases.contains(.oneSecond))
         #expect(allCases.contains(.oneMinute))
+        #expect(allCases.contains(.threeMinutes))
+        #expect(allCases.contains(.fiveMinutes))
+        #expect(allCases.contains(.fifteenMinutes))
+        #expect(allCases.contains(.thirtyMinutes))
         #expect(allCases.contains(.oneHour))
+        #expect(allCases.contains(.twoHours))
+        #expect(allCases.contains(.fourHours))
+        #expect(allCases.contains(.sixHours))
+        #expect(allCases.contains(.eightHours))
+        #expect(allCases.contains(.twelveHours))
         #expect(allCases.contains(.oneDay))
+        #expect(allCases.contains(.threeDays))
+        #expect(allCases.contains(.oneWeek))
+        #expect(allCases.contains(.oneMonth))
     }
 
     // MARK: - priceData(at:) Index Clamping Tests

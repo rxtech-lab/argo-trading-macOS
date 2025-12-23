@@ -29,6 +29,11 @@ struct ChartContentView: View {
 
     // MARK: - Computed Properties
 
+    /// Available time intervals filtered based on the original data timespan
+    private var availableIntervals: [ChartTimeInterval] {
+        ChartTimeInterval.filtered(for: url)
+    }
+
     private var visibleCount: Int {
         let scale = max(0.01, zoomScale * magnifyBy)
         let adjustedCount = Double(baseVisibleCount) / scale
@@ -110,6 +115,22 @@ struct ChartContentView: View {
             alertManager.showAlert(message: message)
         }
         viewModel = vm
+
+        // Initialize database before any operations
+        do {
+            try dbService.initDatabase()
+        } catch {
+            alertManager.showAlert(message: error.localizedDescription)
+            return
+        }
+
+        // Set the default interval to the minimum valid interval based on data timespan
+        let fileName = targetUrl.lastPathComponent
+        if let parsed = ParquetFileNameParser.parse(fileName),
+           let minInterval = parsed.minimumInterval {
+            await vm.setTimeInterval(minInterval, visibleCount: visibleCount)
+        }
+
         await vm.loadInitialData(visibleCount: visibleCount)
         // Sync initial scroll position from view model
         scrollPosition = vm.scrollPositionIndex
@@ -316,32 +337,28 @@ struct ChartContentView: View {
     // MARK: - Chart Controls (interval selector + chart type picker)
 
     private var chartControlsView: some View {
-        HStack(spacing: 4) {
-            // Interval selector buttons
-            ForEach(ChartTimeInterval.allCases) { interval in
-                Button {
-                    guard let vm = viewModel else { return }
-                    Task {
-                        await vm.setTimeInterval(interval, visibleCount: visibleCount)
+        HStack(spacing: 12) {
+            // Interval selector picker menu (filtered based on original data timespan)
+            HStack(spacing: 4) {
+                Text("Interval:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Picker("Interval", selection: Binding(
+                    get: { viewModel?.timeInterval ?? .oneSecond },
+                    set: { newInterval in
+                        guard let vm = viewModel else { return }
+                        Task {
+                            await vm.setTimeInterval(newInterval, visibleCount: visibleCount)
+                        }
                     }
-                } label: {
-                    Text(interval.displayName)
-                        .font(.system(.caption, design: .monospaced, weight: .medium))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            viewModel?.timeInterval == interval
-                                ? Color.accentColor
-                                : Color.secondary.opacity(0.15)
-                        )
-                        .foregroundColor(
-                            viewModel?.timeInterval == interval
-                                ? .white
-                                : .primary
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                )) {
+                    ForEach(availableIntervals) { interval in
+                        Text(interval.displayName).tag(interval)
+                    }
                 }
-                .buttonStyle(.plain)
+                .pickerStyle(.menu)
+                .labelsHidden()
                 .disabled(viewModel?.isLoading ?? false)
             }
 
