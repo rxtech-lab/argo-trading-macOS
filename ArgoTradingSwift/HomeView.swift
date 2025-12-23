@@ -108,9 +108,9 @@ private struct BacktestDetailView: View {
                     .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
             case .strategy:
                 ContentUnavailableView(
-                    "Strategy Configuration",
+                    "Strategy Results",
                     systemImage: "slider.horizontal.3",
-                    description: Text("Strategy parameters and settings will appear here")
+                    description: Text("Strategy historical results will appear here")
                 )
                 .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
             default:
