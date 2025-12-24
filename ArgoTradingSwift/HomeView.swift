@@ -57,7 +57,7 @@ struct HomeView: View {
                 SidebarModePicker(navigationService: navigationService)
             }
             ToolbarItem(placement: .principal) {
-                ToolbarRunningSectionView(status: .idle)
+                ToolbarRunningSectionView(document: $document, status: .idle)
                     .padding(.horizontal, 8)
             }
         }

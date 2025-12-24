@@ -26,8 +26,14 @@ struct DatasetPickerPopover: View {
                     .textFieldStyle(.plain)
             }
             .padding(8)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.primary.opacity(0.05))
+            )
+            .padding(.bottom, 8)
 
             Divider()
+                .padding(.bottom, 8)
 
             if filteredDatasets.isEmpty {
                 Text(datasetFiles.isEmpty ? "No datasets available" : "No matches")
@@ -53,6 +59,7 @@ struct DatasetPickerPopover: View {
                 .frame(maxHeight: 300)
             }
         }
+        .padding()
         .frame(width: 280)
     }
 }
