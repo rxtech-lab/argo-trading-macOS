@@ -10,14 +10,14 @@ import UniformTypeIdentifiers
 
 struct BacktestSideBar: View {
     @Environment(DatasetDownloadService.self) var downloadService
-    @Environment(StrategyImportViewModel.self) var strategyImportViewModel
+    @Environment(StrategyService.self) var strategyService
     @Environment(BacktestService.self) private var backtestService
 
     @Bindable var navigationService: NavigationService
     @Binding var document: ArgoTradingDocument
 
     var body: some View {
-        @Bindable var strategyVM = strategyImportViewModel
+        @Bindable var strategyVM = strategyService
 
         VStack(spacing: 0) {
             BacktestTabsView(backtestService: backtestService)
@@ -43,7 +43,7 @@ struct BacktestSideBar: View {
                 Label("Download Dataset", systemImage: "arrow.down.circle")
             }
             Button {
-                strategyImportViewModel.showFileImporter = true
+                strategyService.showFileImporter = true
             } label: {
                 Label("Import Strategy", systemImage: "square.and.arrow.down")
             }
@@ -56,21 +56,21 @@ struct BacktestSideBar: View {
             switch result {
             case .success(let urls):
                 if let sourceURL = urls.first {
-                    strategyImportViewModel.importStrategy(from: sourceURL, to: document.strategyFolder)
+                    strategyService.importStrategy(from: sourceURL, to: document.strategyFolder)
                 }
             case .failure(let error):
-                strategyImportViewModel.error = error.localizedDescription
+                strategyService.error = error.localizedDescription
             }
         }
         .alert("Error", isPresented: .init(
-            get: { strategyImportViewModel.error != nil },
-            set: { if !$0 { strategyImportViewModel.clearError() } }
+            get: { strategyService.error != nil },
+            set: { if !$0 { strategyService.clearError() } }
         )) {
             Button("OK", role: .cancel) {
-                strategyImportViewModel.clearError()
+                strategyService.clearError()
             }
         } message: {
-            if let error = strategyImportViewModel.error {
+            if let error = strategyService.error {
                 Text(error)
             }
         }

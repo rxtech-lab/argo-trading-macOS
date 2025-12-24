@@ -1,23 +1,46 @@
 import SwiftUI
 
 struct ToolbarRunningSectionView: View {
+    @Binding var document: ArgoTradingDocument
     let status: ToolbarRunningStatus
     @Environment(DatasetService.self) var datasetService
+    @Environment(SchemaService.self) var schemaService
 
-    @State private var selectedDataset: URL?
     @State private var showDatasetPicker = false
+    @State private var showSchemaPicker = false
     @State private var isHoveringDatasetButton = false
+    @State private var isHoveringSchemaButton = false
 
     var body: some View {
         HStack {
-            Menu {} label: {
+            Button {
+                showSchemaPicker.toggle()
+            } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "doc.text")
-                    Text("No schema selected")
+                    Text(document.selectedSchema?.name ?? "Select schema")
                         .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(.caption2)
                 }
+                .frame(maxWidth: 150, alignment: .leading)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(isHoveringSchemaButton ? Color.accentColor.opacity(0.1) : Color.clear)
+                .cornerRadius(12)
             }
+            .fixedSize(horizontal: true, vertical: false)
+            .buttonStyle(.plain)
             .controlSize(.small)
+            .onHover { hovering in
+                isHoveringSchemaButton = hovering
+            }
+            .popover(isPresented: $showSchemaPicker, arrowEdge: .bottom) {
+                SchemaPickerPopover(
+                    document: $document,
+                    isPresented: $showSchemaPicker
+                )
+            }
 
             Image(systemName: "chevron.compact.forward")
 
@@ -26,7 +49,7 @@ struct ToolbarRunningSectionView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "cylinder")
-                    Text(selectedDataset?.deletingPathExtension().lastPathComponent ?? "Select dataset")
+                    Text(document.selectedDatasetURL?.deletingPathExtension().lastPathComponent ?? "Select dataset")
                         .lineLimit(1)
                     Image(systemName: "chevron.down")
                         .font(.caption2)
@@ -44,7 +67,7 @@ struct ToolbarRunningSectionView: View {
             }
             .popover(isPresented: $showDatasetPicker, arrowEdge: .bottom) {
                 DatasetPickerPopover(
-                    selectedDataset: $selectedDataset,
+                    document: $document,
                     isPresented: $showDatasetPicker,
                     datasetFiles: datasetService.datasetFiles
                 )
@@ -59,7 +82,7 @@ struct ToolbarRunningSectionView: View {
                 ))
                 .animation(.easeInOut(duration: 0.25), value: status.animationId)
         }
-        .frame(width: 500)
+        .frame(minWidth: 500)
         .clipped()
     }
 
@@ -144,31 +167,36 @@ struct ToolbarRunningSectionView: View {
 }
 
 #Preview("Idle") {
-    ToolbarRunningSectionView(status: .idle)
+    ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .idle)
         .environment(DatasetService())
+        .environment(SchemaService())
         .padding()
 }
 
 #Preview("Running") {
-    ToolbarRunningSectionView(status: .running(label: "Building..."))
+    ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .running(label: "Building..."))
         .environment(DatasetService())
+        .environment(SchemaService())
         .padding()
 }
 
 #Preview("Backtesting") {
-    ToolbarRunningSectionView(status: .backtesting(label: "Backtesting", progress: Progress(current: 45, total: 100)))
+    ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .backtesting(label: "Backtesting", progress: Progress(current: 45, total: 100)))
         .environment(DatasetService())
+        .environment(SchemaService())
         .padding()
 }
 
 #Preview("Error") {
-    ToolbarRunningSectionView(status: .error(errors: ["Something went wrong"], at: Date()))
+    ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .error(errors: ["Something went wrong"], at: Date()))
         .environment(DatasetService())
+        .environment(SchemaService())
         .padding()
 }
 
 #Preview("Finished") {
-    ToolbarRunningSectionView(status: .finished(message: "Build Succeeded", at: Date()))
+    ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .finished(message: "Build Succeeded", at: Date()))
         .environment(DatasetService())
+        .environment(SchemaService())
         .padding()
 }
