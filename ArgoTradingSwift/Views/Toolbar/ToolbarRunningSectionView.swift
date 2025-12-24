@@ -6,17 +6,7 @@ struct ToolbarRunningSectionView: View {
 
     @State private var selectedDataset: URL?
     @State private var showDatasetPicker = false
-    @State private var datasetFilter = ""
-
-    private var filteredDatasets: [URL] {
-        if datasetFilter.isEmpty {
-            return datasetService.datasetFiles
-        }
-        return datasetService.datasetFiles.filter {
-            $0.deletingPathExtension().lastPathComponent
-                .localizedCaseInsensitiveContains(datasetFilter)
-        }
-    }
+    @State private var isHoveringDatasetButton = false
 
     var body: some View {
         HStack {
@@ -41,62 +31,23 @@ struct ToolbarRunningSectionView: View {
                     Image(systemName: "chevron.down")
                         .font(.caption2)
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(isHoveringDatasetButton ? Color.accentColor.opacity(0.1) : Color.clear)
+                .cornerRadius(12)
             }
             .frame(maxWidth: 150, alignment: .leading)
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
             .controlSize(.small)
+            .onHover { hovering in
+                isHoveringDatasetButton = hovering
+            }
             .popover(isPresented: $showDatasetPicker, arrowEdge: .bottom) {
-                VStack(spacing: 0) {
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(.secondary)
-                        TextField("Filter", text: $datasetFilter)
-                            .textFieldStyle(.plain)
-                    }
-                    .padding(8)
-
-                    Divider()
-
-                    if filteredDatasets.isEmpty {
-                        Text(datasetService.datasetFiles.isEmpty ? "No datasets available" : "No matches")
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding()
-                    } else {
-                        ScrollView {
-                            LazyVStack(spacing: 0) {
-                                ForEach(filteredDatasets, id: \.self) { file in
-                                    Button {
-                                        selectedDataset = file
-                                        showDatasetPicker = false
-                                        datasetFilter = ""
-                                    } label: {
-                                        HStack {
-                                            if selectedDataset == file {
-                                                Image(systemName: "checkmark")
-                                                    .foregroundStyle(.blue)
-                                            } else {
-                                                Image(systemName: "checkmark")
-                                                    .opacity(0)
-                                            }
-                                            Image(systemName: "cylinder")
-                                                .foregroundStyle(.secondary)
-                                            Text(file.deletingPathExtension().lastPathComponent)
-                                            Spacer()
-                                        }
-                                        .contentShape(Rectangle())
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 6)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .background(selectedDataset == file ? Color.accentColor.opacity(0.1) : Color.clear)
-                                }
-                            }
-                        }
-                        .frame(maxHeight: 300)
-                    }
-                }
-                .frame(width: 250)
+                DatasetPickerPopover(
+                    selectedDataset: $selectedDataset,
+                    isPresented: $showDatasetPicker,
+                    datasetFiles: datasetService.datasetFiles
+                )
             }
 
             Spacer()

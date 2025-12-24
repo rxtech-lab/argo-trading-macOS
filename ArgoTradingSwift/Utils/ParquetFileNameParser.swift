@@ -30,6 +30,33 @@ struct ParsedParquetFileName {
         let endStr = Self.displayDateFormatter.string(from: endDate)
         return "\(startStr) - \(endStr)"
     }
+
+    /// Convert the timespan string to seconds for comparison
+    /// Parses formats like "30 minute", "1 hour", "1 day"
+    var timespanSeconds: Int? {
+        let components = timespan.split(separator: " ")
+        guard components.count == 2,
+              let value = Int(components[0]) else {
+            return nil
+        }
+
+        let unit = String(components[1]).lowercased()
+        switch unit {
+        case "second", "seconds": return value
+        case "minute", "minutes": return value * 60
+        case "hour", "hours": return value * 3600
+        case "day", "days": return value * 86400
+        case "week", "weeks": return value * 604800
+        case "month", "months": return value * 2592000
+        default: return nil
+        }
+    }
+
+    /// Get the minimum ChartTimeInterval that matches this data's timespan
+    var minimumInterval: ChartTimeInterval? {
+        guard let seconds = timespanSeconds else { return nil }
+        return ChartTimeInterval.allCases.first { $0.seconds == seconds }
+    }
 }
 
 enum ParquetFileNameParser {

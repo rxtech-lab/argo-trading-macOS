@@ -254,10 +254,13 @@ class DuckDBService: DuckDBServiceProtocol {
             return try await getTotalCount(for: filePath)
         }
 
+        // Build time bucket expression based on whether this is a standard or non-standard interval
+        let timeBucketExpr = Self.timeBucketExpression(for: interval)
+
         let countQuery = """
         SELECT COUNT(*) as total
         FROM (
-            SELECT date_trunc('\(interval.duckDBInterval)', time) as interval_time
+            SELECT \(timeBucketExpr) as interval_time
             FROM read_parquet('\(filePath.path)')
             GROUP BY interval_time
         ) subquery
@@ -265,6 +268,21 @@ class DuckDBService: DuckDBServiceProtocol {
 
         let countResult = try connection.query(countQuery)
         return countResult[0].cast(to: Int.self)[0] ?? 0
+    }
+
+    /// Build a time bucket expression for the given interval
+    /// For standard intervals (1m, 1h, 1d), uses date_trunc
+    /// For non-standard intervals (3m, 5m, 15m, 30m, etc.), uses epoch-based bucketing
+    private static func timeBucketExpression(for interval: ChartTimeInterval) -> String {
+        if interval.aggregationMultiplier == nil {
+            // Standard interval - use date_trunc
+            return "date_trunc('\(interval.duckDBInterval)', time)"
+        } else {
+            // Non-standard interval - use epoch-based bucketing
+            return """
+            TIMESTAMP '1970-01-01' + INTERVAL (FLOOR(EXTRACT(EPOCH FROM time) / \(interval.seconds)) * \(interval.seconds)) SECOND
+            """
+        }
     }
 
     /// Fetch aggregated price data for a given time interval
@@ -283,16 +301,19 @@ class DuckDBService: DuckDBServiceProtocol {
             return try await fetchPriceDataRange(filePath: filePath, startOffset: startOffset, count: count)
         }
 
+        // Build time bucket expression based on whether this is a standard or non-standard interval
+        let timeBucketExpr = Self.timeBucketExpression(for: interval)
+
         // Aggregation query using DuckDB's FIRST/LAST functions
         // Note: If FIRST/LAST are not available, we use a subquery approach
         let query = """
         WITH ordered_data AS (
             SELECT
-                date_trunc('\(interval.duckDBInterval)', time) as interval_time,
+                \(timeBucketExpr) as interval_time,
                 symbol,
                 open, high, low, close, volume,
-                ROW_NUMBER() OVER (PARTITION BY date_trunc('\(interval.duckDBInterval)', time) ORDER BY time ASC) as rn_first,
-                ROW_NUMBER() OVER (PARTITION BY date_trunc('\(interval.duckDBInterval)', time) ORDER BY time DESC) as rn_last
+                ROW_NUMBER() OVER (PARTITION BY \(timeBucketExpr) ORDER BY time ASC) as rn_first,
+                ROW_NUMBER() OVER (PARTITION BY \(timeBucketExpr) ORDER BY time DESC) as rn_last
             FROM read_parquet('\(filePath.path)')
         )
         SELECT

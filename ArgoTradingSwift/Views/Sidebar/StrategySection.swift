@@ -5,6 +5,7 @@
 //  Created by Claude on 12/22/25.
 //
 
+import AppKit
 import SwiftUI
 
 struct StrategySection: View {
@@ -15,6 +16,9 @@ struct StrategySection: View {
     @State private var folderWatcher: FolderMonitor? = nil
     @State private var showDeleteAlert = false
     @State private var fileToDelete: URL?
+    @State private var showRenameAlert = false
+    @State private var fileToRename: URL?
+    @State private var newFileName: String = ""
 
     @State var files: [URL] = []
 
@@ -24,6 +28,22 @@ struct StrategySection: View {
                 NavigationLink(value: NavigationPath.backtest(backtest: .strategy(url: file))) {
                     StrategyFileRow(fileName: file.lastPathComponent)
                         .contextMenu {
+                            Button {
+                                NSWorkspace.shared.activateFileViewerSelecting([file])
+                            } label: {
+                                Label("Show in Finder", systemImage: "folder")
+                            }
+
+                            Button {
+                                fileToRename = file
+                                newFileName = file.deletingPathExtension().lastPathComponent
+                                showRenameAlert = true
+                            } label: {
+                                Label("Rename", systemImage: "pencil")
+                            }
+
+                            Divider()
+
                             Button(role: .destructive) {
                                 fileToDelete = file
                                 showDeleteAlert = true
@@ -73,6 +93,22 @@ struct StrategySection: View {
                 Text("Are you sure you want to delete \"\(file.lastPathComponent)\"? This action cannot be undone.")
             }
         }
+        .alert("Rename Strategy", isPresented: $showRenameAlert) {
+            TextField("Strategy name", text: $newFileName)
+            Button("Cancel", role: .cancel) {
+                fileToRename = nil
+                newFileName = ""
+            }
+            Button("Rename") {
+                if let file = fileToRename {
+                    renameFile(file, to: newFileName)
+                }
+                fileToRename = nil
+                newFileName = ""
+            }
+        } message: {
+            Text("Enter a new name for this strategy.")
+        }
     }
 }
 
@@ -83,6 +119,17 @@ extension StrategySection {
         } catch {
             self.error = error.localizedDescription
             print("Error deleting file: \(error.localizedDescription)")
+        }
+    }
+
+    func renameFile(_ file: URL, to newName: String) {
+        let newURL = file.deletingLastPathComponent()
+            .appendingPathComponent(newName)
+            .appendingPathExtension("wasm")
+        do {
+            try FileManager.default.moveItem(at: file, to: newURL)
+        } catch {
+            self.error = error.localizedDescription
         }
     }
 

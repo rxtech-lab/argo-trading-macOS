@@ -5,6 +5,7 @@
 //  Created by Qiwei Li on 4/21/25.
 //
 
+import AppKit
 import SwiftUI
 
 struct BacktestSection: View {
@@ -21,6 +22,14 @@ struct BacktestSection: View {
                 NavigationLink(value: NavigationPath.backtest(backtest: .data(url: file))) {
                     ParquetFileRow(fileName: file.lastPathComponent)
                         .contextMenu {
+                            Button {
+                                NSWorkspace.shared.activateFileViewerSelecting([file])
+                            } label: {
+                                Label("Show in Finder", systemImage: "folder")
+                            }
+
+                            Divider()
+
                             Button(role: .destructive) {
                                 fileToDelete = file
                                 showDeleteAlert = true

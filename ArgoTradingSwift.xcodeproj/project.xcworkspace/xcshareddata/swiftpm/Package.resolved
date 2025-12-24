@@ -1,5 +1,5 @@
 {
-  "originHash" : "98846d288380139b3a2dc39c00d23d839fbe520998cdd0fd574c0d268e54f093",
+  "originHash" : "8866a9b0e3e1b7db3363aa691bbb643e5f5b255f14d5abe99cda4294a6df4439",
   "pins" : [
     {
       "identity" : "duckdb-swift",
@@ -8,6 +8,42 @@
       "state" : {
         "branch" : "v1.5.0-dev4120",
         "revision" : "02e1e2c5d29b739b0c957fe86287a02ff90f88fc"
+      }
+    },
+    {
+      "identity" : "swift-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-collections",
+      "state" : {
+        "revision" : "7b847a3b7008b2dc2f47ca3110d8c782fb2e5c7e",
+        "version" : "1.3.0"
+      }
+    },
+    {
+      "identity" : "swift-json-schema",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/sirily11/swift-json-schema",
+      "state" : {
+        "revision" : "663afab8c131151950fd7fb114871c02a529a4b4",
+        "version" : "1.0.2"
+      }
+    },
+    {
+      "identity" : "swift-jsonschema-form",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/sirily11/swift-jsonschema-form",
+      "state" : {
+        "branch" : "main",
+        "revision" : "df11f3df453067c1dbb9be9da94f06361d8789a5"
+      }
+    },
+    {
+      "identity" : "viewinspector",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nalexn/ViewInspector",
+      "state" : {
+        "revision" : "e9a06346499a3a889165647e3f23f8a7b2609a1c",
+        "version" : "0.10.3"
       }
     }
   ],
