@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct DatasetPickerPopover: View {
-    @Binding var selectedDataset: URL?
+    @Binding var document: ArgoTradingDocument
     @Binding var isPresented: Bool
     let datasetFiles: [URL]
 
@@ -46,9 +46,9 @@ struct DatasetPickerPopover: View {
                         ForEach(filteredDatasets, id: \.self) { file in
                             DatasetPickerItemView(
                                 file: file,
-                                isSelected: selectedDataset == file,
+                                isSelected: document.selectedDatasetURL == file,
                                 onSelect: {
-                                    selectedDataset = file
+                                    document.selectedDatasetURL = file
                                     isPresented = false
                                     datasetFilter = ""
                                 }
@@ -66,7 +66,7 @@ struct DatasetPickerPopover: View {
 
 #Preview {
     DatasetPickerPopover(
-        selectedDataset: .constant(nil),
+        document: .constant(ArgoTradingDocument()),
         isPresented: .constant(true),
         datasetFiles: [
             URL(fileURLWithPath: "/data/BTCUSDT_1hour_2024-01-01_2024-12-31.parquet"),

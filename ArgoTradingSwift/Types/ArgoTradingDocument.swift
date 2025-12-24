@@ -23,6 +23,7 @@ struct ArgoTradingDocument: FileDocument {
     var resultFolder: URL
     var schemas: [Schema]
     var selectedSchemaId: UUID?
+    var selectedDatasetURL: URL?
 
     init(configuration: ReadConfiguration) throws {
         if let data = configuration.file.regularFileContents {
@@ -39,13 +40,15 @@ struct ArgoTradingDocument: FileDocument {
         strategyFolder: URL? = nil,
         resultFolder: URL? = nil,
         schemas: [Schema] = [],
-        selectedSchemaId: UUID? = nil
+        selectedSchemaId: UUID? = nil,
+        selectedDatasetURL: URL? = nil
     ) {
         self.dataFolder = dataFolder ?? URL(fileURLWithPath: "/data")
         self.strategyFolder = strategyFolder ?? URL(fileURLWithPath: "/strategy")
         self.resultFolder = resultFolder ?? URL(fileURLWithPath: "/result")
         self.schemas = schemas
         self.selectedSchemaId = selectedSchemaId
+        self.selectedDatasetURL = selectedDatasetURL
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {

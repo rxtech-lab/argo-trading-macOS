@@ -6,7 +6,6 @@ struct ToolbarRunningSectionView: View {
     @Environment(DatasetService.self) var datasetService
     @Environment(SchemaService.self) var schemaService
 
-    @State private var selectedDataset: URL?
     @State private var showDatasetPicker = false
     @State private var showSchemaPicker = false
     @State private var isHoveringDatasetButton = false
@@ -50,7 +49,7 @@ struct ToolbarRunningSectionView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "cylinder")
-                    Text(selectedDataset?.deletingPathExtension().lastPathComponent ?? "Select dataset")
+                    Text(document.selectedDatasetURL?.deletingPathExtension().lastPathComponent ?? "Select dataset")
                         .lineLimit(1)
                     Image(systemName: "chevron.down")
                         .font(.caption2)
@@ -60,7 +59,6 @@ struct ToolbarRunningSectionView: View {
                 .background(isHoveringDatasetButton ? Color.accentColor.opacity(0.1) : Color.clear)
                 .cornerRadius(12)
             }
-            .fixedSize(horizontal: true, vertical: false)
             .frame(maxWidth: 150, alignment: .leading)
             .buttonStyle(.plain)
             .controlSize(.small)
@@ -69,7 +67,7 @@ struct ToolbarRunningSectionView: View {
             }
             .popover(isPresented: $showDatasetPicker, arrowEdge: .bottom) {
                 DatasetPickerPopover(
-                    selectedDataset: $selectedDataset,
+                    document: $document,
                     isPresented: $showDatasetPicker,
                     datasetFiles: datasetService.datasetFiles
                 )
@@ -84,7 +82,7 @@ struct ToolbarRunningSectionView: View {
                 ))
                 .animation(.easeInOut(duration: 0.25), value: status.animationId)
         }
-        .frame(width: 500)
+        .frame(minWidth: 500)
         .clipped()
     }
 
