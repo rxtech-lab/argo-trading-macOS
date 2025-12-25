@@ -60,11 +60,6 @@ struct NewDocumentFirstScreen: View {
             .frame(width: 460)
             .background(Color(.windowBackgroundColor))
 
-            // Divider
-            Rectangle()
-                .fill(Color(.separatorColor))
-                .frame(width: 1)
-
             // Right panel - Recent Projects
             RecentProjectsPanel(onSelectProject: onSelectRecentProject)
                 .frame(width: 340)

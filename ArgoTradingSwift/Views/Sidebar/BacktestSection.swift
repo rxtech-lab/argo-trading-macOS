@@ -9,6 +9,7 @@ import AppKit
 import SwiftUI
 
 struct BacktestSection: View {
+    @Binding var document: ArgoTradingDocument
     @Environment(DatasetService.self) var datasetService
 
     @State private var expandedData = true
@@ -61,6 +62,10 @@ struct BacktestSection: View {
 extension BacktestSection {
     func deleteFile(_ file: URL) {
         do {
+            // Clear selected dataset if it matches the deleted file
+            if document.selectedDatasetURL == file {
+                document.selectedDatasetURL = nil
+            }
             try datasetService.deleteFile(file)
         } catch {
             self.error = error.localizedDescription

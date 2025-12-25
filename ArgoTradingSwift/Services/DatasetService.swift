@@ -13,6 +13,9 @@ class DatasetService {
     private var folderMonitor: FolderMonitor?
     private var monitoringTask: Task<Void, Never>?
 
+    // Callback for when a dataset file is deleted
+    var onDatasetDeleted: ((_ deletedURL: URL) -> Void)?
+
     func setDataFolder(_ folder: URL?) {
         monitoringTask?.cancel()
         folderMonitor?.stopMonitoring()
@@ -52,6 +55,8 @@ class DatasetService {
     }
 
     func deleteFile(_ file: URL) throws {
+        // Notify listeners before deletion
+        onDatasetDeleted?(file)
         try FileManager.default.removeItem(at: file)
         // FolderMonitor will trigger reload automatically
     }

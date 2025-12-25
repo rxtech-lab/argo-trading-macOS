@@ -5,11 +5,19 @@ struct ToolbarRunningSectionView: View {
     let status: ToolbarRunningStatus
     @Environment(DatasetService.self) var datasetService
     @Environment(SchemaService.self) var schemaService
+    @Environment(StrategyService.self) var strategyService
 
     @State private var showDatasetPicker = false
     @State private var showSchemaPicker = false
     @State private var isHoveringDatasetButton = false
     @State private var isHoveringSchemaButton = false
+
+    /// Returns true if the selected schema has no strategy or the strategy file is missing
+    private var isSchemaStrategyMissing: Bool {
+        guard let schema = document.selectedSchema else { return false }
+        if schema.strategyPath.isEmpty { return true }
+        return !strategyService.strategyFiles.contains { $0.lastPathComponent == schema.strategyPath }
+    }
 
     var body: some View {
         HStack {
@@ -23,6 +31,7 @@ struct ToolbarRunningSectionView: View {
                     Image(systemName: "chevron.down")
                         .font(.caption2)
                 }
+                .foregroundStyle(isSchemaStrategyMissing ? .red : .primary)
                 .frame(maxWidth: 150, alignment: .leading)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
@@ -82,7 +91,7 @@ struct ToolbarRunningSectionView: View {
                 ))
                 .animation(.easeInOut(duration: 0.25), value: status.animationId)
         }
-        .frame(minWidth: 500)
+        .frame(minWidth: 600)
         .clipped()
     }
 
@@ -102,6 +111,19 @@ struct ToolbarRunningSectionView: View {
                     .foregroundStyle(.secondary)
             }
 
+        case .downloading(let label, let progress):
+            HStack(spacing: 8) {
+                Text("Downloading \(label)")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                Divider()
+
+                ProgressView(value: Double(progress.current), total: Double(progress.total))
+                    .controlSize(.small)
+                    .progressViewStyle(.circular)
+            }
+
         case .backtesting(let label, let progress):
             HStack(spacing: 8) {
                 Text(label)
@@ -117,20 +139,29 @@ struct ToolbarRunningSectionView: View {
                 Divider()
 
                 ProgressView(value: Double(progress.current), total: Double(progress.total))
-                    .frame(width: 100)
+                    .controlSize(.small)
+                    .progressViewStyle(.circular)
             }
 
-        case .error(_, let date):
+        case .error(let label, _, let date):
             HStack(spacing: 6) {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.red)
-                Text("Build **Failed**")
+                Text("\(label) **Failed**")
                     .font(.callout)
                 Text("|")
                     .foregroundStyle(.tertiary)
                 Text(formatDate(date))
                     .font(.callout)
                     .foregroundStyle(.secondary)
+            }
+
+        case .downloadCancelled(let label):
+            HStack(spacing: 6) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.red)
+                Text("\(label) **Cancelled**")
+                    .font(.callout)
             }
 
         case .finished(let message, let date):
@@ -170,6 +201,7 @@ struct ToolbarRunningSectionView: View {
     ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .idle)
         .environment(DatasetService())
         .environment(SchemaService())
+        .environment(StrategyService())
         .padding()
 }
 
@@ -177,6 +209,7 @@ struct ToolbarRunningSectionView: View {
     ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .running(label: "Building..."))
         .environment(DatasetService())
         .environment(SchemaService())
+        .environment(StrategyService())
         .padding()
 }
 
@@ -184,13 +217,15 @@ struct ToolbarRunningSectionView: View {
     ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .backtesting(label: "Backtesting", progress: Progress(current: 45, total: 100)))
         .environment(DatasetService())
         .environment(SchemaService())
+        .environment(StrategyService())
         .padding()
 }
 
 #Preview("Error") {
-    ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .error(errors: ["Something went wrong"], at: Date()))
+    ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .error(label: "", errors: ["Something went wrong"], at: Date()))
         .environment(DatasetService())
         .environment(SchemaService())
+        .environment(StrategyService())
         .padding()
 }
 
@@ -198,5 +233,21 @@ struct ToolbarRunningSectionView: View {
     ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .finished(message: "Build Succeeded", at: Date()))
         .environment(DatasetService())
         .environment(SchemaService())
+        .environment(StrategyService())
         .padding()
+}
+
+#Preview("Missing Strategy") {
+    let schema = Schema(name: "Test Schema", strategyPath: "")
+    return ToolbarRunningSectionView(
+        document: .constant(ArgoTradingDocument(
+            schemas: [schema],
+            selectedSchemaId: schema.id
+        )),
+        status: .idle
+    )
+    .environment(DatasetService())
+    .environment(SchemaService())
+    .environment(StrategyService())
+    .padding()
 }

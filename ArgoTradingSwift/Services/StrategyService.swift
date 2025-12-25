@@ -20,6 +20,9 @@ class StrategyService {
     // Callback for when a strategy file is renamed
     var onStrategyRenamed: ((_ oldPath: String, _ newPath: String) -> Void)?
 
+    // Callback for when a strategy file is deleted
+    var onStrategyDeleted: ((_ strategyPath: String) -> Void)?
+
     private let fileManager: FileManager
 
     init(fileManager: FileManager = .default) {
@@ -65,6 +68,9 @@ class StrategyService {
     }
 
     func deleteFile(_ file: URL) throws {
+        let strategyPath = file.lastPathComponent
+        // Notify listeners before deletion
+        onStrategyDeleted?(strategyPath)
         try fileManager.removeItem(at: file)
         // FolderMonitor will trigger reload automatically
     }

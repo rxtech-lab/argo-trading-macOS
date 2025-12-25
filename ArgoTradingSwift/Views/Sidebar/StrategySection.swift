@@ -9,6 +9,7 @@ import AppKit
 import SwiftUI
 
 struct StrategySection: View {
+    @Binding var document: ArgoTradingDocument
     let strategyFolder: URL
 
     @Environment(StrategyService.self) var strategyService
@@ -78,6 +79,8 @@ struct StrategySection: View {
             Button("Delete", role: .destructive) {
                 if let file = fileToDelete {
                     do {
+                        // Clear strategy path in schemas before deletion
+                        document.clearStrategyPath(for: file.lastPathComponent)
                         try strategyService.deleteFile(file)
                     } catch {
                         self.error = error.localizedDescription

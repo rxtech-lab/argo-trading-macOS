@@ -49,4 +49,9 @@ struct Schema: Codable, Identifiable, Hashable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
+
+    /// Returns true if the schema has a non-empty strategy path
+    var hasValidStrategyPath: Bool {
+        !strategyPath.isEmpty
+    }
 }

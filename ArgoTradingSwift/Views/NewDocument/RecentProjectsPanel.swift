@@ -19,9 +19,7 @@ struct RecentProjectsPanel: View {
                 emptyState
             } else {
                 List(recentDocuments, id: \.self, selection: $selectedURL) { url in
-                    RecentProjectRow(url: url, isSelected: selectedURL == url)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                        .listRowBackground(Color.clear)
+                    RecentProjectRow(url: url)
                         .onTapGesture(count: 2) {
                             onSelectProject(url)
                         }
@@ -29,7 +27,7 @@ struct RecentProjectsPanel: View {
                             selectedURL = url
                         }
                 }
-                .listStyle(.plain)
+                .listStyle(.automatic)
                 .scrollContentBackground(.hidden)
             }
         }
@@ -64,7 +62,6 @@ struct RecentProjectsPanel: View {
 
 struct RecentProjectRow: View {
     let url: URL
-    let isSelected: Bool
 
     @State private var isHovered = false
 
@@ -82,18 +79,15 @@ struct RecentProjectRow: View {
             // Project icon
             Image(systemName: projectIcon)
                 .font(.system(size: 28))
-                .foregroundColor(isSelected ? .white : .blue)
                 .frame(width: 36, height: 36)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(url.deletingPathExtension().lastPathComponent)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(isSelected ? .white : .primary)
                     .lineLimit(1)
 
                 Text(shortenedPath(url.deletingLastPathComponent().path))
                     .font(.system(size: 11))
-                    .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
                     .lineLimit(1)
             }
 
@@ -103,7 +97,7 @@ struct RecentProjectRow: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(isSelected ? Color.accentColor : (isHovered ? Color.primary.opacity(0.05) : Color.clear))
+                .fill(isHovered ? Color.primary.opacity(0.05) : Color.clear)
         )
         .contentShape(Rectangle())
         .onHover { hovering in
