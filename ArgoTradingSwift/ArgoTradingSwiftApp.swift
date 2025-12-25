@@ -40,6 +40,7 @@ struct ArgoTradingSwiftApp: App {
     @State private var backtestService = BacktestService()
     @State private var datasetService = DatasetService()
     @State private var schemaService = SchemaService()
+    @State private var toolbarStatusService = ToolbarStatusService()
 
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -60,7 +61,6 @@ struct ArgoTradingSwiftApp: App {
                 .alertManager(alertService)
                 .sheet(isPresented: $datasetDownloadService.showDownloadView) {
                     DatasetDownloadView(document: document.$document)
-                        .environment(datasetDownloadService)
                 }
                 .sheet(isPresented: $schemaService.showSchemaEditor) {
                     SchemaEditorView(
@@ -68,12 +68,9 @@ struct ArgoTradingSwiftApp: App {
                         isEditing: schemaService.isEditing,
                         existingSchema: schemaService.editingSchema
                     )
-                    .environment(schemaService)
-                    .environment(strategyService)
                 }
                 .sheet(isPresented: $schemaService.showManageSchemas) {
                     ManageSchemasView(document: document.$document)
-                        .environment(schemaService)
                 }
                 .onAppear {
                     // Dismiss welcome window when document opens
@@ -85,6 +82,7 @@ struct ArgoTradingSwiftApp: App {
             DocumentCommand()
             DatasetCommand()
         }
+        .environment(toolbarStatusService)
         .environment(datasetDownloadService)
         .environment(alertService)
         .environment(modePicker)

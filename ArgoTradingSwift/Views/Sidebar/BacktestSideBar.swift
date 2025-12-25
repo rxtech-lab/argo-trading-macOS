@@ -26,8 +26,8 @@ struct BacktestSideBar: View {
                 case .Backtest:
                     switch backtestService.currentBacktestTab {
                     case .general:
-                        BacktestSection()
-                        StrategySection(strategyFolder: document.strategyFolder)
+                        BacktestSection(document: $document)
+                        StrategySection(document: $document, strategyFolder: document.strategyFolder)
                     case .results:
                         EmptyView()
                     }

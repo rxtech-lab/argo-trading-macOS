@@ -89,6 +89,15 @@ struct ArgoTradingDocument: FileDocument {
             }
         }
     }
+
+    mutating func clearStrategyPath(for strategyPath: String) {
+        for index in schemas.indices {
+            if schemas[index].strategyPath == strategyPath {
+                schemas[index].strategyPath = ""
+                schemas[index].updatedAt = Date()
+            }
+        }
+    }
 }
 
 extension ArgoTradingDocument: Codable {}

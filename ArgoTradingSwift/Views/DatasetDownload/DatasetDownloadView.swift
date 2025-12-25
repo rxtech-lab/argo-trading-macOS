@@ -13,6 +13,7 @@ struct DatasetDownloadView: View {
 
     @Environment(DatasetDownloadService.self) var datasetDownloadService
     @Environment(AlertManager.self) var alertManager
+    @Environment(ToolbarStatusService.self) var toolbarStatusService
     @Environment(\.dismiss) var dismiss
 
     @AppStorage("ticker") private var ticker: String = ""
@@ -28,47 +29,60 @@ struct DatasetDownloadView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section(header: Text("Data Provider")) {
-                    Picker("Data Provider", selection: $dataProvider) {
-                        ForEach(DataProvider.allCases) { provider in
-                            Text(provider.rawValue.capitalized).tag(provider)
+            if datasetDownloadService.isDownloading {
+                ProgressView(value: datasetDownloadService.currentProgress,
+                             total: datasetDownloadService.totalProgress)
+                {
+                    Text("Downloading \(dataProvider.rawValue)-\(ticker)-\(formattedStartDate)-\(formattedEndDate)")
+                    Text("Progress: \(datasetDownloadService.progressPercentage)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
+                .navigationTitle("Downloading Dataset")
+            } else {
+                Form {
+                    Section(header: Text("Data Provider")) {
+                        Picker("Data Provider", selection: $dataProvider) {
+                            ForEach(DataProvider.allCases) { provider in
+                                Text(provider.rawValue.capitalized).tag(provider)
+                            }
+                        }
+                        dataProvider.providerField
+                    }
+
+                    Section(header: Text("Writer config")) {
+                        Picker("Writer", selection: $writer) {
+                            ForEach(DataWriter.allCases) { writer in
+                                Text(writer.rawValue).tag(writer)
+                            }
+                        }
+                        writer.writerField
+                    }
+
+                    Section(header: Text("Dataset Config")) {
+                        TextField("Ticker", text: $ticker)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+
+                        DatePicker("Start Date", selection: $startDate, displayedComponents: [.date])
+
+                        DatePicker("End Date", selection: $endDate, displayedComponents: [.date])
+
+                        Picker("Timespan", selection: $timespan) {
+                            ForEach(Timespan.allCases, id: \.self) { timespan in
+                                Text(timespan.rawValue).tag(timespan)
+                            }
                         }
                     }
-                    dataProvider.providerField
                 }
-
-                Section(header: Text("Writer config")) {
-                    Picker("Writer", selection: $writer) {
-                        ForEach(DataWriter.allCases) { writer in
-                            Text(writer.rawValue).tag(writer)
-                        }
-                    }
-                    writer.writerField
-                }
-
-                Section(header: Text("Dataset Config")) {
-                    TextField("Ticker", text: $ticker)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-
-                    DatePicker("Start Date", selection: $startDate, displayedComponents: [.date])
-
-                    DatePicker("End Date", selection: $endDate, displayedComponents: [.date])
-
-                    Picker("Timespan", selection: $timespan) {
-                        ForEach(Timespan.allCases, id: \.self) { timespan in
-                            Text(timespan.rawValue).tag(timespan)
-                        }
-                    }
-                }
+                .frame(minHeight: 400)
+                .padding()
+                .navigationTitle("Download Dataset")
+                .formStyle(.grouped)
             }
-            .disabled(datasetDownloadService.isDownloading)
-            .frame(minHeight: 400)
-            .padding()
-            .navigationTitle(datasetDownloadService.isDownloading ? "Downloading: \(datasetDownloadService.progressPercentage)" : "Download Dataset")
-            .formStyle(.grouped)
-            .alertManager(alertManager)
         }
+        .alertManager(alertManager)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 if datasetDownloadService.isDownloading {
@@ -94,6 +108,14 @@ struct DatasetDownloadView: View {
 }
 
 extension DatasetDownloadView {
+    private var formattedStartDate: String {
+        startDate.formatted(.iso8601.year().month().day().dateSeparator(.dash))
+    }
+
+    private var formattedEndDate: String {
+        endDate.formatted(.iso8601.year().month().day().dateSeparator(.dash))
+    }
+
     func downloadDataset() {
         guard !ticker.isEmpty else {
             alertManager.showAlert(message: "Ticker cannot be empty")
@@ -101,6 +123,10 @@ extension DatasetDownloadView {
         }
 
         let marketDownloader = SwiftargoNewMarketDownloader(datasetDownloadService, dataProvider.rawValue, writer.rawValue, document.dataFolder.path(percentEncoded: false), polygonApiKey)
+        datasetDownloadService.marketDownloader = marketDownloader
+
+        datasetDownloadService.toolbarStatusService = toolbarStatusService
+        datasetDownloadService.currentTicker = ticker
 
         // Move download process to background thread
         datasetDownloadService.downloadTask = Task.detached {
@@ -112,13 +138,31 @@ extension DatasetDownloadView {
 
                 // Check cancellation before dismissing
                 if !Task.isCancelled {
+                    await MainActor.run {
+                        self.toolbarStatusService.toolbarRunningStatus = .finished(
+                            message: "Downloaded \(self.ticker)",
+                            at: Date()
+                        )
+                    }
                     await dismiss()
                 }
             } catch is CancellationError {
-                // User cancelled - no alert needed
+                // User cancelled - no alert needed (cancel() already sets idle status)
+                print("Download cancelled")
             } catch {
+                let errorDescription = error.localizedDescription
+                // skip alert for context canceled errors
+                if errorDescription.contains("context canceled") {
+                    self.toolbarStatusService.toolbarRunningStatus = .downloadCancelled(label: "Dataset Download")
+                    return
+                }
                 await MainActor.run {
                     self.alertManager.showAlert(message: error.localizedDescription)
+                    self.toolbarStatusService.toolbarRunningStatus = .error(
+                        label: "Dataset Download",
+                        errors: [error.localizedDescription],
+                        at: Date()
+                    )
                 }
             }
             await MainActor.run {
