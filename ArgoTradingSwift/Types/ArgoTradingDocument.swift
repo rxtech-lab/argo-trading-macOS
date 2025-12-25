@@ -98,6 +98,13 @@ struct ArgoTradingDocument: FileDocument {
             }
         }
     }
+
+    /// Returns true if the selected schema has no strategy or the strategy file is missing from the provided list
+    func isSchemaStrategyMissing(strategyFiles: [URL]) -> Bool {
+        guard let schema = selectedSchema else { return false }
+        if schema.strategyPath.isEmpty { return true }
+        return !strategyFiles.contains { $0.lastPathComponent == schema.strategyPath }
+    }
 }
 
 extension ArgoTradingDocument: Codable {}

@@ -12,6 +12,7 @@ struct HomeView: View {
     @Binding var document: ArgoTradingDocument
     @Environment(NavigationService.self) var navigationService
     @Environment(DatasetService.self) var datasetService
+    @Environment(StrategyService.self) var strategyService
     @Environment(ToolbarStatusService.self) var toolbarStatusService
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -58,8 +59,13 @@ struct HomeView: View {
                 SidebarModePicker(navigationService: navigationService)
             }
             ToolbarItem(placement: .principal) {
-                ToolbarRunningSectionView(document: $document, status: toolbarStatusService.toolbarRunningStatus)
-                    .padding(.horizontal, 8)
+                ToolbarRunningSectionView(
+                    document: $document,
+                    status: toolbarStatusService.toolbarRunningStatus,
+                    datasetFiles: datasetService.datasetFiles,
+                    strategyFiles: strategyService.strategyFiles
+                )
+                .padding(.horizontal, 8)
             }
         }
         .onAppear {
