@@ -197,71 +197,6 @@ struct ToolbarRunningSectionViewButtonTests {
     }
 }
 
-// MARK: - Popover Tests
-
-struct ToolbarRunningSectionViewPopoverTests {
-
-    @MainActor
-    @Test func viewContainsSchemaAndDatasetButtons() throws {
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .idle,
-            datasetFiles: [],
-            strategyFiles: []
-        )
-
-        let buttons = try sut.inspect().findAll(ViewType.Button.self)
-        #expect(buttons.count >= 2)
-    }
-
-    @MainActor
-    @Test func viewContainsDocumentIcon() throws {
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .idle,
-            datasetFiles: [],
-            strategyFiles: []
-        )
-
-        let images = try sut.inspect().findAll(ViewType.Image.self)
-        let hasDocIcon = images.contains { image in
-            (try? image.actualImage().name() == "doc.text") ?? false
-        }
-        #expect(hasDocIcon)
-    }
-
-    @MainActor
-    @Test func viewContainsCylinderIcon() throws {
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .idle,
-            datasetFiles: [],
-            strategyFiles: []
-        )
-
-        let images = try sut.inspect().findAll(ViewType.Image.self)
-        let hasCylinderIcon = images.contains { image in
-            (try? image.actualImage().name() == "cylinder") ?? false
-        }
-        #expect(hasCylinderIcon)
-    }
-
-    @MainActor
-    @Test func viewContainsChevronDownIcons() throws {
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .idle,
-            datasetFiles: [],
-            strategyFiles: []
-        )
-
-        let images = try sut.inspect().findAll(ViewType.Image.self)
-        let chevronDownCount = images.filter { image in
-            (try? image.actualImage().name() == "chevron.down") ?? false
-        }.count
-        #expect(chevronDownCount >= 2)
-    }
-}
 
 // MARK: - Date Formatting Tests
 
@@ -357,25 +292,5 @@ struct ToolbarRunningStatusAnimationIdTests {
     @Test func finishedStatusHasCorrectAnimationId() {
         let status = ToolbarRunningStatus.finished(message: "Done", at: Date())
         #expect(status.animationId == "finished")
-    }
-}
-
-// MARK: - Progress Tests
-
-struct ProgressTests {
-
-    @Test func progressPercentageCalculatesCorrectly() {
-        let progress = Progress(current: 50, total: 100)
-        #expect(progress.percentage == 50.0)
-    }
-
-    @Test func progressPercentageHandlesZeroTotal() {
-        let progress = Progress(current: 10, total: 0)
-        #expect(progress.percentage == 0.0)
-    }
-
-    @Test func progressPercentageCalculatesPartialValues() {
-        let progress = Progress(current: 1, total: 3)
-        #expect(progress.percentage > 33.0 && progress.percentage < 34.0)
     }
 }

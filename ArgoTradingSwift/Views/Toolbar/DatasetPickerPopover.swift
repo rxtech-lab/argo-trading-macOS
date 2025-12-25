@@ -8,12 +8,16 @@ struct DatasetPickerPopover: View {
     @State private var datasetFilter = ""
 
     private var filteredDatasets: [URL] {
-        if datasetFilter.isEmpty {
-            return datasetFiles
+        Self.filterDatasets(datasetFiles, with: datasetFilter)
+    }
+
+    static func filterDatasets(_ datasets: [URL], with filter: String) -> [URL] {
+        if filter.isEmpty {
+            return datasets
         }
-        return datasetFiles.filter {
+        return datasets.filter {
             $0.deletingPathExtension().lastPathComponent
-                .localizedCaseInsensitiveContains(datasetFilter)
+                .localizedCaseInsensitiveContains(filter)
         }
     }
 
