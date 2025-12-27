@@ -252,5 +252,187 @@
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "58E4FC79-B24D-400A-B03B-B3A8B0C9A486"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "ArgoTradingSwift/Services/BacktestResultService.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "66"
+            endingLineNumber = "66"
+            landmarkName = "loadResults(from:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "BE316565-F027-4F7F-ADBE-0CCDAE4732FD"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "ArgoTradingSwift/Services/BacktestResultService.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "88"
+            endingLineNumber = "88"
+            landmarkName = "loadResults(from:)"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "BE316565-F027-4F7F-ADBE-0CCDAE4732FD - a9ed6098a8a40249"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(1) suspend resume partial function for ArgoTradingSwift.BacktestResultService.loadResults(from: Foundation.URL) async -&gt; ()"
+                  moduleName = "ArgoTradingSwift.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/ArgoTradingSwift/ArgoTradingSwift/Services/BacktestResultService.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "88"
+                  endingLineNumber = "88">
+               </Location>
+               <Location
+                  uuid = "BE316565-F027-4F7F-ADBE-0CCDAE4732FD - a9ed6098a8a40249"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(1) suspend resume partial function for ArgoTradingSwift.BacktestResultService.loadResults(from: Foundation.URL) async -&gt; ()"
+                  moduleName = "ArgoTradingSwift.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/ArgoTradingSwift/ArgoTradingSwift/Services/BacktestResultService.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "88"
+                  endingLineNumber = "88">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "E07ED3E2-0A92-4B54-9926-AF6AA1DD384A"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "ArgoTradingSwift/Services/BacktestResultService.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "92"
+            endingLineNumber = "92"
+            landmarkName = "loadResults(from:)"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "E07ED3E2-0A92-4B54-9926-AF6AA1DD384A - a9ed6098a8a403cd"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(1) suspend resume partial function for ArgoTradingSwift.BacktestResultService.loadResults(from: Foundation.URL) async -&gt; ()"
+                  moduleName = "ArgoTradingSwift.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/ArgoTradingSwift/ArgoTradingSwift/Services/BacktestResultService.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "92"
+                  endingLineNumber = "92">
+               </Location>
+               <Location
+                  uuid = "E07ED3E2-0A92-4B54-9926-AF6AA1DD384A - 75bde2c0a86ae935"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(2) await resume partial function for ArgoTradingSwift.BacktestResultService.loadResults(from: Foundation.URL) async -&gt; ()"
+                  moduleName = "ArgoTradingSwift.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/ArgoTradingSwift/ArgoTradingSwift/Services/BacktestResultService.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "92"
+                  endingLineNumber = "92">
+               </Location>
+               <Location
+                  uuid = "E07ED3E2-0A92-4B54-9926-AF6AA1DD384A - 1d0e7ce7e37e25ce"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(4) suspend resume partial function for ArgoTradingSwift.BacktestResultService.loadResults(from: Foundation.URL) async -&gt; ()"
+                  moduleName = "ArgoTradingSwift.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/ArgoTradingSwift/ArgoTradingSwift/Services/BacktestResultService.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "92"
+                  endingLineNumber = "92">
+               </Location>
+               <Location
+                  uuid = "E07ED3E2-0A92-4B54-9926-AF6AA1DD384A - bee910fb91edafe3"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #2 @Swift.MainActor @Sendable () -&gt; () in ArgoTradingSwift.BacktestResultService.loadResults(from: Foundation.URL) async -&gt; ()"
+                  moduleName = "ArgoTradingSwift.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/ArgoTradingSwift/ArgoTradingSwift/Services/BacktestResultService.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "92"
+                  endingLineNumber = "92">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "D0D0B943-7485-4D50-9AFD-925BF15B4AA3"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "ArgoTradingSwift/Services/BacktestResultService.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "163"
+            endingLineNumber = "163"
+            landmarkName = "startMonitoring(folder:)"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "D0D0B943-7485-4D50-9AFD-925BF15B4AA3 - e299bca619405181"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(1) suspend resume partial function for closure #1 () async -&gt; () in ArgoTradingSwift.BacktestResultService.startMonitoring(folder: Foundation.URL) -&gt; ()"
+                  moduleName = "ArgoTradingSwift.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/ArgoTradingSwift/ArgoTradingSwift/Services/BacktestResultService.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "163"
+                  endingLineNumber = "163">
+               </Location>
+               <Location
+                  uuid = "D0D0B943-7485-4D50-9AFD-925BF15B4AA3 - 759f06cabb2f0d83"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "(3) suspend resume partial function for closure #1 () async -&gt; () in ArgoTradingSwift.BacktestResultService.startMonitoring(folder: Foundation.URL) -&gt; ()"
+                  moduleName = "ArgoTradingSwift.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/qiweili/Desktop/rxlab/ArgoTradingSwift/ArgoTradingSwift/Services/BacktestResultService.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "163"
+                  endingLineNumber = "163">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
    </Breakpoints>
 </Bucket>

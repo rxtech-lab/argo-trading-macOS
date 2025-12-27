@@ -15,6 +15,7 @@ struct HomeView: View {
     @Environment(StrategyService.self) var strategyService
     @Environment(ToolbarStatusService.self) var toolbarStatusService
     @Environment(BacktestService.self) var backtestService
+    @Environment(BacktestResultService.self) var backtestResultService
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -98,9 +99,13 @@ struct HomeView: View {
         }
         .onAppear {
             datasetService.setDataFolder(document.dataFolder)
+            backtestResultService.setResultFolder(document.resultFolder)
         }
         .onChange(of: document.dataFolder) { _, newFolder in
             datasetService.setDataFolder(newFolder)
+        }
+        .onChange(of: document.resultFolder) { _, newFolder in
+            backtestResultService.setResultFolder(newFolder)
         }
     }
 }
@@ -109,6 +114,7 @@ struct HomeView: View {
 
 private struct BacktestContentView: View {
     var navigationService: NavigationService
+    @Environment(BacktestResultService.self) var backtestResultService
 
     var body: some View {
         switch navigationService.path {
@@ -120,6 +126,17 @@ private struct BacktestContentView: View {
             case .strategy(let url):
                 StrategyDetailView(url: url)
                     .frame(minWidth: 400)
+            case .result(let url):
+                if let resultItem = backtestResultService.getResultItem(for: url) {
+                    BacktestResultDetailView(resultItem: resultItem)
+                        .frame(minWidth: 400)
+                } else {
+                    ContentUnavailableView(
+                        "Result Not Found",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text("The selected result could not be loaded")
+                    )
+                }
             default:
                 ContentUnavailableView(
                     "No Dataset Selected",
@@ -146,6 +163,13 @@ private struct BacktestDetailView: View {
                     "Strategy Results",
                     systemImage: "slider.horizontal.3",
                     description: Text("Strategy historical results will appear here")
+                )
+                .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+            case .result:
+                ContentUnavailableView(
+                    "Result Details",
+                    systemImage: "chart.bar.doc.horizontal",
+                    description: Text("Additional result details will appear here")
                 )
                 .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
             default:

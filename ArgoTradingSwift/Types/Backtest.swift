@@ -10,6 +10,7 @@ enum BacktestSelection: Identifiable, Hashable {
     case strategy(url: URL)
     case data(url: URL)
     case results
+    case result(url: URL)  // Individual result (url points to stats.yaml file)
 
     var key: String {
         switch self {
@@ -19,6 +20,8 @@ enum BacktestSelection: Identifiable, Hashable {
             return "data-\(url.lastPathComponent)"
         case .results:
             return "results"
+        case .result(let url):
+            return "result-\(url.path)"
         }
     }
 

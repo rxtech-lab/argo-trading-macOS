@@ -41,6 +41,7 @@ struct ArgoTradingSwiftApp: App {
     @State private var datasetService = DatasetService()
     @State private var schemaService = SchemaService()
     @State private var toolbarStatusService = ToolbarStatusService()
+    @State private var backtestResultService = BacktestResultService()
 
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -91,5 +92,6 @@ struct ArgoTradingSwiftApp: App {
         .environment(datasetService)
         .environment(backtestService)
         .environment(schemaService)
+        .environment(backtestResultService)
     }
 }
