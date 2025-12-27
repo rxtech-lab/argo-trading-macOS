@@ -18,151 +18,193 @@ enum FileChangeEvent {
 
 class FolderMonitor {
     private let url: URL
-    private var task: Task<Void, Never>?
+    private var streamRef: FSEventStreamRef?
     private var parentMonitor: DispatchSourceFileSystemObject?
     private var parentDescriptor: Int32 = -1
-    
+    private var continuation: AsyncStream<FileChangeEvent>.Continuation?
+    private var folderExists: Bool = false
+
     init(url: URL) {
         self.url = url
     }
-    
+
     deinit {
         stopMonitoring()
     }
-    
+
     func startMonitoring() -> AsyncStream<FileChangeEvent> {
         print("Start monitoring folder: \(url.path)")
         return AsyncStream { continuation in
-            // First set up parent folder monitoring
-            setupParentMonitor(continuation: continuation)
-            
-            // Then set up target folder monitoring
-            setupFolderMonitor(continuation: continuation)
-            
-            continuation.onTermination = { _ in
-                self.cleanupMonitors()
+            self.continuation = continuation
+            self.folderExists = FileManager.default.fileExists(atPath: self.url.path)
+
+            // Set up parent folder monitoring for deletion/recreation detection
+            self.setupParentMonitor()
+
+            // Set up FSEvents monitoring for file changes
+            if self.folderExists {
+                self.setupFSEventsMonitor()
+            }
+
+            continuation.onTermination = { [weak self] _ in
+                self?.stopMonitoring()
             }
         }
     }
-    
-    private func setupParentMonitor(continuation: AsyncStream<FileChangeEvent>.Continuation) {
-        guard let parentURL = url.deletingLastPathComponent().absoluteURL as URL? else {
-            print("Could not determine parent folder")
-            return
-        }
-        
+
+    private func setupParentMonitor() {
+        let parentURL = url.deletingLastPathComponent()
+
         parentDescriptor = open(parentURL.path, O_EVTONLY)
         guard parentDescriptor != -1 else {
             print("Failed to open parent directory: \(parentURL.path)")
             return
         }
-        
+
         parentMonitor = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: parentDescriptor,
-            eventMask: [.all],
-            queue: .main) // Change to main queue
-        
+            eventMask: [.write, .delete, .rename],
+            queue: .main
+        )
+
         parentMonitor?.setEventHandler { [weak self] in
             guard let self = self else { return }
-            
-            // Check if our target folder exists
-            let folderExists = FileManager.default.fileExists(atPath: self.url.path)
-            
-            if folderExists {
-                // If folder exists but we're receiving an event, it might have been recreated
-                print("Parent folder changed, checking if target folder was recreated")
-                // Set up monitoring again
-                self.setupFolderMonitor(continuation: continuation)
-                continuation.yield(.folderRecreated)
-            } else {
-                // Target folder might have been deleted
+
+            let currentlyExists = FileManager.default.fileExists(atPath: self.url.path)
+
+            if !self.folderExists && currentlyExists {
+                // Folder was recreated
+                print("Target folder was recreated")
+                self.folderExists = true
+                self.setupFSEventsMonitor()
+                self.continuation?.yield(.folderRecreated)
+            } else if self.folderExists && !currentlyExists {
+                // Folder was deleted
                 print("Target folder was deleted")
-                continuation.yield(.folderDeleted)
+                self.folderExists = false
+                self.stopFSEventsMonitor()
+                self.continuation?.yield(.folderDeleted)
             }
         }
-        
+
         parentMonitor?.setCancelHandler { [weak self] in
             guard let self = self else { return }
-            close(self.parentDescriptor)
-            self.parentDescriptor = -1
+            if self.parentDescriptor != -1 {
+                close(self.parentDescriptor)
+                self.parentDescriptor = -1
+            }
         }
-        
+
         parentMonitor?.resume()
     }
-    
-    private func setupFolderMonitor(continuation: AsyncStream<FileChangeEvent>.Continuation) {
-        // Make sure folder exists
+
+    private func setupFSEventsMonitor() {
+        // Stop existing FSEvents monitor if any
+        stopFSEventsMonitor()
+
         guard FileManager.default.fileExists(atPath: url.path) else {
             print("Folder does not exist: \(url.path)")
             return
         }
-        
-        Task {
-            for await _ in self.monitorFolder() {
-                // Dispatch to main thread
-                await MainActor.run {
-                    print("Folder changed")
-                    
-                    do {
-                        // Get the current list of files
-                        let _ = try FileManager.default.contentsOfDirectory(
-                            at: url,
-                            includingPropertiesForKeys: nil)
-                        
-                        // Determine if files were added, modified, or deleted
-                        continuation.yield(.folderChanged)
-                    } catch {
-                        print("Error reading directory contents: \(error)")
+
+        var context = FSEventStreamContext(
+            version: 0,
+            info: Unmanaged.passUnretained(self).toOpaque(),
+            retain: nil,
+            release: nil,
+            copyDescription: nil
+        )
+
+        let pathsToWatch = [url.path] as CFArray
+
+        let callback: FSEventStreamCallback = { (
+            _: ConstFSEventStreamRef,
+            clientCallBackInfo: UnsafeMutableRawPointer?,
+            numEvents: Int,
+            eventPaths: UnsafeMutableRawPointer,
+            eventFlags: UnsafePointer<FSEventStreamEventFlags>,
+            _: UnsafePointer<FSEventStreamEventId>
+        ) in
+            guard let clientCallBackInfo = clientCallBackInfo else { return }
+            let monitor = Unmanaged<FolderMonitor>.fromOpaque(clientCallBackInfo).takeUnretainedValue()
+
+            let paths = Unmanaged<CFArray>.fromOpaque(eventPaths).takeUnretainedValue() as! [String]
+
+            for i in 0..<numEvents {
+                let path = paths[i]
+                let flags = eventFlags[i]
+                let fileURL = URL(fileURLWithPath: path)
+
+                DispatchQueue.main.async {
+                    if flags & UInt32(kFSEventStreamEventFlagItemRemoved) != 0 {
+                        print("File deleted: \(path)")
+                        monitor.continuation?.yield(.fileDeleted(fileURL))
+                    } else if flags & UInt32(kFSEventStreamEventFlagItemCreated) != 0 {
+                        print("File created: \(path)")
+                        monitor.continuation?.yield(.fileCreated(fileURL))
+                    } else if flags & UInt32(kFSEventStreamEventFlagItemModified) != 0 {
+                        print("File modified: \(path)")
+                        monitor.continuation?.yield(.fileModified(fileURL))
+                    } else if flags & UInt32(kFSEventStreamEventFlagItemRenamed) != 0 {
+                        // Renamed can mean created or deleted depending on context
+                        if FileManager.default.fileExists(atPath: path) {
+                            print("File renamed/created: \(path)")
+                            monitor.continuation?.yield(.fileCreated(fileURL))
+                        } else {
+                            print("File renamed/deleted: \(path)")
+                            monitor.continuation?.yield(.fileDeleted(fileURL))
+                        }
+                    } else {
+                        // Generic change
+                        print("Folder changed: \(path)")
+                        monitor.continuation?.yield(.folderChanged)
                     }
                 }
             }
         }
+
+        streamRef = FSEventStreamCreate(
+            kCFAllocatorDefault,
+            callback,
+            &context,
+            pathsToWatch,
+            FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
+            0.3, // Latency in seconds
+            UInt32(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagUseCFTypes)
+        )
+
+        guard let streamRef = streamRef else {
+            print("Failed to create FSEventStream")
+            return
+        }
+
+        FSEventStreamScheduleWithRunLoop(streamRef, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
+        FSEventStreamStart(streamRef)
+        print("FSEvents monitoring started for: \(url.path)")
     }
-    
-    private func monitorFolder() -> AsyncStream<Void> {
-        return AsyncStream { continuation in
-            let descriptor = open(url.path, O_EVTONLY)
-            guard descriptor != -1 else {
-                print("Failed to open directory: \(url.path)")
-                continuation.finish()
-                return
-            }
-            
-            let source = DispatchSource.makeFileSystemObjectSource(
-                fileDescriptor: descriptor,
-                eventMask: [.all],
-                queue: .main) // Change to main queue
-            
-            source.setEventHandler {
-                continuation.yield()
-            }
-            
-            source.setCancelHandler {
-                close(descriptor)
-                continuation.finish()
-            }
-            
-            source.resume()
-            
-            continuation.onTermination = { _ in
-                source.cancel()
-            }
+
+    private func stopFSEventsMonitor() {
+        if let streamRef = streamRef {
+            FSEventStreamStop(streamRef)
+            FSEventStreamInvalidate(streamRef)
+            FSEventStreamRelease(streamRef)
+            self.streamRef = nil
         }
     }
-    
+
     private func cleanupMonitors() {
+        // Clean up FSEvents monitor
+        stopFSEventsMonitor()
+
         // Clean up parent monitor
         parentMonitor?.cancel()
-        if parentDescriptor != -1 {
-            close(parentDescriptor)
-            parentDescriptor = -1
-        }
+        parentMonitor = nil
     }
-    
+
     func stopMonitoring() {
         print("Stop monitoring folder")
-        task?.cancel()
-        task = nil
         cleanupMonitors()
+        continuation?.finish()
+        continuation = nil
     }
 }

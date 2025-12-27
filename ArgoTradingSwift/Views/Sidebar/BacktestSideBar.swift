@@ -36,6 +36,7 @@ struct BacktestSideBar: View {
                     EmptyView()
                 }
             }
+            .id(backtestService.currentBacktestTab)
         }
         .contextMenu {
             Button {

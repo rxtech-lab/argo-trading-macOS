@@ -33,6 +33,7 @@ struct ResultSection: View {
                         ForEach(results) { resultItem in
                             NavigationLink(value: NavigationPath.backtest(backtest: .result(url: resultItem.statsFileURL))) {
                                 ResultFileRow(resultItem: resultItem)
+                                    .id(resultItem.id)
                                     .contextMenu {
                                         Button {
                                             let folder = resultItem.statsFileURL.deletingLastPathComponent()
