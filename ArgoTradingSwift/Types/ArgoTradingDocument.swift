@@ -64,6 +64,13 @@ struct ArgoTradingDocument: FileDocument {
         return schemas.first { $0.id == id }
     }
 
+    /// Returns true if backtest can be run: schema selected, dataset selected, and strategy path is valid
+    var canRunBacktest: Bool {
+        guard let schema = selectedSchema else { return false }
+        guard selectedDatasetURL != nil else { return false }
+        return schema.hasValidStrategyPath
+    }
+
     mutating func addSchema(_ schema: Schema) {
         schemas.append(schema)
     }

@@ -246,4 +246,52 @@ struct ArgoTradingDocumentTests {
 
         #expect(document.isSchemaStrategyMissing(strategyFiles: strategyFiles) == true)
     }
+
+    // MARK: - canRunBacktest Tests
+
+    @Test func canRunBacktestReturnsFalseWhenNoSchemaSelected() {
+        var document = ArgoTradingDocument()
+        document.selectedDatasetURL = URL(fileURLWithPath: "/path/to/dataset.parquet")
+
+        #expect(document.canRunBacktest == false)
+    }
+
+    @Test func canRunBacktestReturnsFalseWhenNoDatasetSelected() {
+        var document = ArgoTradingDocument()
+        let schema = Schema(name: "Test Schema", strategyPath: "test.wasm")
+        document.addSchema(schema)
+        document.selectedSchemaId = schema.id
+
+        #expect(document.canRunBacktest == false)
+    }
+
+    @Test func canRunBacktestReturnsFalseWhenStrategyPathIsEmpty() {
+        var document = ArgoTradingDocument()
+        let schema = Schema(name: "Test Schema", strategyPath: "")
+        document.addSchema(schema)
+        document.selectedSchemaId = schema.id
+        document.selectedDatasetURL = URL(fileURLWithPath: "/path/to/dataset.parquet")
+
+        #expect(document.canRunBacktest == false)
+    }
+
+    @Test func canRunBacktestReturnsTrueWhenAllConditionsMet() {
+        var document = ArgoTradingDocument()
+        let schema = Schema(name: "Test Schema", strategyPath: "test.wasm")
+        document.addSchema(schema)
+        document.selectedSchemaId = schema.id
+        document.selectedDatasetURL = URL(fileURLWithPath: "/path/to/dataset.parquet")
+
+        #expect(document.canRunBacktest == true)
+    }
+
+    @Test func canRunBacktestReturnsFalseWhenSchemaIdNotFound() {
+        var document = ArgoTradingDocument()
+        let schema = Schema(name: "Test Schema", strategyPath: "test.wasm")
+        document.addSchema(schema)
+        document.selectedSchemaId = UUID() // Different ID
+        document.selectedDatasetURL = URL(fileURLWithPath: "/path/to/dataset.parquet")
+
+        #expect(document.canRunBacktest == false)
+    }
 }

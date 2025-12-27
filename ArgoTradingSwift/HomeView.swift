@@ -14,6 +14,7 @@ struct HomeView: View {
     @Environment(DatasetService.self) var datasetService
     @Environment(StrategyService.self) var strategyService
     @Environment(ToolbarStatusService.self) var toolbarStatusService
+    @Environment(BacktestService.self) var backtestService
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -26,14 +27,33 @@ struct HomeView: View {
             .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {} label: {
-                        Label("Stop", systemImage: "square.fill")
+                    Group {
+                        if backtestService.isRunning {
+                            Button {
+                                backtestService.cancel()
+                            } label: {
+                                Label("Stop", systemImage: "square.fill")
+                            }
+                            .transition(.scale.combined(with: .opacity))
+                        } else {
+                            Button {
+                                guard let schema = document.selectedSchema,
+                                      let datasetURL = document.selectedDatasetURL else { return }
+                                backtestService.runBacktest(
+                                    schema: schema,
+                                    datasetURL: datasetURL,
+                                    strategyFolder: document.strategyFolder,
+                                    resultFolder: document.resultFolder,
+                                    toolbarStatusService: toolbarStatusService
+                                )
+                            } label: {
+                                Label("Start", systemImage: "play.fill")
+                            }
+                            .disabled(!document.canRunBacktest)
+                            .transition(.scale.combined(with: .opacity))
+                        }
                     }
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button {} label: {
-                        Label("Start", systemImage: "play.fill")
-                    }
+                    .animation(.easeInOut(duration: 0.2), value: backtestService.isRunning)
                 }
             }
         } content: {
@@ -58,7 +78,7 @@ struct HomeView: View {
             ToolbarItem(placement: .navigation) {
                 SidebarModePicker(navigationService: navigationService)
             }
-            ToolbarItem(placement: .principal) {
+            ToolbarItemGroup(placement: .principal) {
                 ToolbarRunningSectionView(
                     document: $document,
                     status: toolbarStatusService.toolbarRunningStatus,
@@ -66,6 +86,12 @@ struct HomeView: View {
                     strategyFiles: strategyService.strategyFiles
                 )
                 .padding(.horizontal, 8)
+
+                Spacer()
+
+                ToolbarErrorView(toolbarStatus: toolbarStatusService.toolbarRunningStatus)
+
+                Spacer()
             }
         }
         .onAppear {

@@ -14,10 +14,10 @@
             filePath = "ArgoTradingSwift/Types/ArgoTradingDocument.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "27"
-            endingLineNumber = "27"
-            landmarkName = "init(configuration:)"
-            landmarkType = "7">
+            startingLineNumber = "34"
+            endingLineNumber = "34"
+            landmarkName = "ArgoTradingDocument"
+            landmarkType = "14">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -137,6 +137,22 @@
             startingLineNumber = "45"
             endingLineNumber = "45"
             landmarkName = "cancel()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "EEBB22A2-7F3F-47CD-8CA6-F53EC9E429FC"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "ArgoTradingSwift/Services/BacktestService.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "51"
+            endingLineNumber = "51"
+            landmarkName = "runBacktest(schema:datasetURL:strategyFolder:resultFolder:toolbarStatusService:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

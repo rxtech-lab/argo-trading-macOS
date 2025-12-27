@@ -80,15 +80,15 @@ struct ToolbarRunningSectionView: View {
 
             Spacer()
             statusView()
-                .id(status.animationId)
+                .frame(maxWidth: 400, alignment: .trailing)
                 .transition(.asymmetric(
                     insertion: .move(edge: .bottom).combined(with: .opacity),
                     removal: .move(edge: .top).combined(with: .opacity)
                 ))
-                .animation(.easeInOut(duration: 0.25), value: status.animationId)
         }
-        .frame(minWidth: 600)
+        .frame(minWidth: 700)
         .clipped()
+        .animation(.easeInOut(duration: 0.25), value: status.animationId)
     }
 
     @ViewBuilder
@@ -125,13 +125,7 @@ struct ToolbarRunningSectionView: View {
 
         case .backtesting(let label, let progress):
             HStack(spacing: 8) {
-                Text(label)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                Text("\(progress.current)")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                Text("\(progress.total)")
+                Text("\(label) \(progress.current)/\(progress.total)")
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
