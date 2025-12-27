@@ -52,9 +52,9 @@ struct OrdersTableView: View {
     @TableColumnBuilder<Order, KeyPathComparator<Order>>
     private var basicColumns: some TableColumnContent<Order, KeyPathComparator<Order>> {
         TableColumn("Timestamp", value: \.timestamp) { order in
-            Text(order.timestamp, format: .dateTime.month().day().hour().minute().second())
+            Text(order.timestamp, format: .dateTime.year().month().day().hour().minute().second())
         }
-        .width(min: 120, ideal: 140)
+        .width(min: 140, ideal: 160)
 
         TableColumn("Symbol", value: \.symbol) { order in
             Text(order.symbol)

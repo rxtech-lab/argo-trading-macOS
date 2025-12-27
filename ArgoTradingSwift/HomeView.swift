@@ -54,6 +54,7 @@ struct HomeView: View {
                             }
                             .disabled(!document.canRunBacktest)
                             .transition(.scale.combined(with: .opacity))
+                            .keyboardShortcut("r", modifiers: .command)
                         }
                     }
                     .animation(.easeInOut(duration: 0.2), value: backtestService.isRunning)
@@ -150,6 +151,7 @@ private struct BacktestContentView: View {
 
 private struct BacktestDetailView: View {
     var navigationService: NavigationService
+    @Environment(BacktestResultService.self) var backtestResultService
 
     var body: some View {
         switch navigationService.path {
@@ -165,13 +167,22 @@ private struct BacktestDetailView: View {
                     description: Text("Strategy historical results will appear here")
                 )
                 .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
-            case .result:
-                ContentUnavailableView(
-                    "Result Details",
-                    systemImage: "chart.bar.doc.horizontal",
-                    description: Text("Additional result details will appear here")
-                )
-                .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+            case .result(let url):
+                if let resultItem = backtestResultService.getResultItem(for: url) {
+                    BacktestChartView(
+                        dataFilePath: resultItem.result.dataFilePath,
+                        tradesFilePath: resultItem.result.tradesFilePath,
+                        marksFilePath: resultItem.result.marksFilePath
+                    )
+                    .navigationSplitViewColumnWidth(min: 400, ideal: 500, max: 700)
+                } else {
+                    ContentUnavailableView(
+                        "Result Not Found",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text("The selected result could not be loaded")
+                    )
+                    .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+                }
             default:
                 ContentUnavailableView(
                     "No Dataset Selected",

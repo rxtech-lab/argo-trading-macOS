@@ -620,4 +620,201 @@ class DuckDBService: DuckDBServiceProtocol {
             pageSize: pageSize
         )
     }
+
+    /// Fetch all mark data from a parquet file
+    func fetchMarkData(filePath: URL) async throws -> [Mark] {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+
+        // Check if file exists
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: filePath.path) else {
+            throw DuckDBError.missingDataset
+        }
+
+        // Query all marks - columns: id, market_data_id, signal_type, signal_name, signal_time, signal_symbol, color, shape, title, message, category
+        let query = """
+        SELECT
+            id,
+            market_data_id,
+            signal_type,
+            signal_name,
+            CAST(signal_time AS VARCHAR),
+            signal_symbol,
+            color,
+            shape,
+            title,
+            message,
+            category
+        FROM read_parquet('\(filePath.path)')
+        ORDER BY id ASC
+        """
+
+        let result = try connection.query(query)
+
+        let idColumn = result[0].cast(to: Int64.self)
+        let marketDataIdColumn = result[1].cast(to: String.self)
+        let signalTypeColumn = result[2].cast(to: String.self)
+        let signalNameColumn = result[3].cast(to: String.self)
+        let signalTimeColumn = result[4].cast(to: String.self)
+        let signalSymbolColumn = result[5].cast(to: String.self)
+        let colorColumn = result[6].cast(to: String.self)
+        let shapeColumn = result[7].cast(to: String.self)
+        let titleColumn = result[8].cast(to: String.self)
+        let messageColumn = result[9].cast(to: String.self)
+        let categoryColumn = result[10].cast(to: String.self)
+
+        let dataFrame = DataFrame(columns: [
+            TabularData.Column(idColumn).eraseToAnyColumn(),
+            TabularData.Column(marketDataIdColumn).eraseToAnyColumn(),
+            TabularData.Column(signalTypeColumn).eraseToAnyColumn(),
+            TabularData.Column(signalNameColumn).eraseToAnyColumn(),
+            TabularData.Column(signalTimeColumn).eraseToAnyColumn(),
+            TabularData.Column(signalSymbolColumn).eraseToAnyColumn(),
+            TabularData.Column(colorColumn).eraseToAnyColumn(),
+            TabularData.Column(shapeColumn).eraseToAnyColumn(),
+            TabularData.Column(titleColumn).eraseToAnyColumn(),
+            TabularData.Column(messageColumn).eraseToAnyColumn(),
+            TabularData.Column(categoryColumn).eraseToAnyColumn(),
+        ])
+
+        // ISO8601 date formatter for signal_time (format: 2022-12-31T15:30:00.000Z)
+        let iso8601Formatter = ISO8601DateFormatter()
+        iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        return dataFrame.rows.compactMap { row in
+            let shapeStr = row[7, String.self] ?? "circle"
+            let shape = MarkShape(rawValue: shapeStr) ?? .circle
+
+            // Build signal from flattened columns
+            var signal: Signal?
+            if let signalTypeStr = row[2, String.self],
+               let signalType = SignalType(rawValue: signalTypeStr) {
+                let signalTimeStr = row[4, String.self] ?? ""
+                let signalTime = iso8601Formatter.date(from: signalTimeStr) ?? Date()
+
+                signal = Signal(
+                    time: signalTime,
+                    type: signalType,
+                    name: row[3, String.self] ?? "",
+                    reason: "",
+                    rawValue: nil,
+                    symbol: row[5, String.self] ?? "",
+                    indicator: ""
+                )
+            }
+
+            return Mark(
+                marketDataId: row[1, String.self] ?? "",
+                color: row[6, String.self] ?? "#FFFFFF",
+                shape: shape,
+                title: row[8, String.self] ?? "",
+                message: row[9, String.self] ?? "",
+                category: row[10, String.self] ?? "",
+                signal: signal
+            )
+        }
+    }
+
+    /// Fetch all trades from a parquet file (non-paginated for chart overlay)
+    func fetchAllTrades(filePath: URL) async throws -> [Trade] {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+
+        // Check if file exists
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: filePath.path) else {
+            throw DuckDBError.missingDataset
+        }
+
+        // Fetch all trades ordered by timestamp
+        let query = """
+        SELECT
+            order_id,
+            symbol,
+            order_type,
+            quantity,
+            price,
+            CAST(timestamp AS VARCHAR),
+            is_completed,
+            reason,
+            message,
+            strategy_name,
+            CAST(executed_at AS VARCHAR),
+            executed_qty,
+            executed_price,
+            commission,
+            pnl,
+            position_type
+        FROM read_parquet('\(filePath.path)')
+        ORDER BY timestamp ASC
+        """
+
+        let result = try connection.query(query)
+
+        let orderIdColumn = result[0].cast(to: String.self)
+        let symbolColumn = result[1].cast(to: String.self)
+        let orderTypeColumn = result[2].cast(to: String.self)
+        let quantityColumn = result[3].cast(to: Double.self)
+        let priceColumn = result[4].cast(to: Double.self)
+        let timestampColumn = result[5].cast(to: String.self)
+        let isCompletedColumn = result[6].cast(to: Bool.self)
+        let reasonColumn = result[7].cast(to: String.self)
+        let messageColumn = result[8].cast(to: String.self)
+        let strategyNameColumn = result[9].cast(to: String.self)
+        let executedAtColumn = result[10].cast(to: String.self)
+        let executedQtyColumn = result[11].cast(to: Double.self)
+        let executedPriceColumn = result[12].cast(to: Double.self)
+        let commissionColumn = result[13].cast(to: Double.self)
+        let pnlColumn = result[14].cast(to: Double.self)
+        let positionTypeColumn = result[15].cast(to: String.self)
+
+        let dataFrame = DataFrame(columns: [
+            TabularData.Column(orderIdColumn).eraseToAnyColumn(),
+            TabularData.Column(symbolColumn).eraseToAnyColumn(),
+            TabularData.Column(orderTypeColumn).eraseToAnyColumn(),
+            TabularData.Column(quantityColumn).eraseToAnyColumn(),
+            TabularData.Column(priceColumn).eraseToAnyColumn(),
+            TabularData.Column(timestampColumn).eraseToAnyColumn(),
+            TabularData.Column(isCompletedColumn).eraseToAnyColumn(),
+            TabularData.Column(reasonColumn).eraseToAnyColumn(),
+            TabularData.Column(messageColumn).eraseToAnyColumn(),
+            TabularData.Column(strategyNameColumn).eraseToAnyColumn(),
+            TabularData.Column(executedAtColumn).eraseToAnyColumn(),
+            TabularData.Column(executedQtyColumn).eraseToAnyColumn(),
+            TabularData.Column(executedPriceColumn).eraseToAnyColumn(),
+            TabularData.Column(commissionColumn).eraseToAnyColumn(),
+            TabularData.Column(pnlColumn).eraseToAnyColumn(),
+            TabularData.Column(positionTypeColumn).eraseToAnyColumn(),
+        ])
+
+        return dataFrame.rows.map { row in
+            let timestampStr = row[5, String.self]
+            let timestamp = Self.utcDateFormatter.date(from: timestampStr ?? "") ?? Date()
+
+            let executedAtStr = row[10, String.self]
+            let executedAt = executedAtStr.flatMap { Self.utcDateFormatter.date(from: $0) }
+
+            return Trade(
+                orderId: row[0, String.self] ?? "",
+                symbol: row[1, String.self] ?? "",
+                orderType: row[2, String.self] ?? "",
+                quantity: row[3, Double.self] ?? 0.0,
+                price: row[4, Double.self] ?? 0.0,
+                timestamp: timestamp,
+                isCompleted: row[6, Bool.self] ?? false,
+                reason: row[7, String.self] ?? "",
+                message: row[8, String.self] ?? "",
+                strategyName: row[9, String.self] ?? "",
+                executedAt: executedAt,
+                executedQty: row[11, Double.self] ?? 0.0,
+                executedPrice: row[12, Double.self] ?? 0.0,
+                commission: row[13, Double.self] ?? 0.0,
+                pnl: row[14, Double.self] ?? 0.0,
+                positionType: row[15, String.self] ?? ""
+            )
+        }
+    }
 }

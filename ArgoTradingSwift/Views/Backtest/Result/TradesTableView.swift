@@ -53,9 +53,9 @@ struct TradesTableView: View {
     @TableColumnBuilder<Trade, KeyPathComparator<Trade>>
     private var basicColumns: some TableColumnContent<Trade, KeyPathComparator<Trade>> {
         TableColumn("Timestamp", value: \.timestamp) { trade in
-            Text(trade.timestamp, format: .dateTime.month().day().hour().minute().second())
+            Text(trade.timestamp, format: .dateTime.year().month().day().hour().minute().second())
         }
-        .width(min: 120, ideal: 140)
+        .width(min: 140, ideal: 160)
 
         TableColumn("Symbol", value: \.symbol) { trade in
             Text(trade.symbol)
