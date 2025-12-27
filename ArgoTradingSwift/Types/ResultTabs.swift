@@ -10,6 +10,7 @@ import SwiftUI
 enum ResultTab: String, CaseIterable, Identifiable {
     case general = "General"
     case trades = "Trades"
+    case orders = "Orders"
 
     var id: String { self.rawValue }
 }

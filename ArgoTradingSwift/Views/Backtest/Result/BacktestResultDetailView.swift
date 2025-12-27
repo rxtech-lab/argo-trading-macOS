@@ -30,6 +30,8 @@ struct BacktestResultDetailView: View {
                 buildGeneralTab()
             case .trades:
                 TradesTableView(filePath: URL(fileURLWithPath: result.tradesFilePath))
+            case .orders:
+                OrdersTableView(filePath: URL(fileURLWithPath: result.ordersFilePath))
             }
         }
         .padding(.top, 8)

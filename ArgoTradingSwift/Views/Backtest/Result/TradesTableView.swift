@@ -20,8 +20,6 @@ struct TradesTableView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            headerView
-            Divider()
             tableView
             Divider()
             footerView
@@ -35,16 +33,6 @@ struct TradesTableView: View {
         .onChange(of: sortOrder) { _, _ in
             Task { await loadTrades(page: 1) }
         }
-    }
-
-    private var headerView: some View {
-        HStack {
-            Text("Trades")
-                .font(.headline)
-            Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
     }
 
     private var tableView: some View {

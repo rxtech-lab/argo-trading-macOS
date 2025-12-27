@@ -505,4 +505,119 @@ class DuckDBService: DuckDBServiceProtocol {
             pageSize: pageSize
         )
     }
+
+    /// Fetch order data from a parquet file with pagination
+    func fetchOrderData(
+        filePath: URL,
+        page: Int = 1,
+        pageSize: Int = 100,
+        sortColumn: String = "timestamp",
+        sortDirection: String = "DESC"
+    ) async throws -> PaginationResult<Order> {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+
+        // Check if file exists
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: filePath.path) else {
+            throw DuckDBError.missingDataset
+        }
+
+        // Validate sortColumn to prevent SQL injection
+        let validColumns = [
+            "order_id", "symbol", "order_type", "quantity", "price",
+            "timestamp", "is_completed", "reason", "message",
+            "strategy_name", "position_type"
+        ]
+        let column = validColumns.contains(sortColumn) ? sortColumn : "timestamp"
+
+        // Validate sortDirection to prevent SQL injection
+        let direction = (sortDirection == "ASC" || sortDirection == "DESC") ? sortDirection : "DESC"
+
+        // First get the total count
+        let countQuery = """
+        SELECT COUNT(*) as total
+        FROM read_parquet('\(filePath.path)')
+        """
+
+        let countResult = try connection.query(countQuery)
+        let totalCount = countResult[0].cast(to: Int.self)[0]
+
+        // Calculate offset
+        let offset = (page - 1) * pageSize
+
+        // Main query with pagination and sorting
+        let query = """
+        SELECT
+            order_id,
+            symbol,
+            order_type,
+            quantity,
+            price,
+            CAST(timestamp AS VARCHAR),
+            is_completed,
+            reason,
+            message,
+            strategy_name,
+            position_type
+        FROM read_parquet('\(filePath.path)')
+        ORDER BY \(column) \(direction)
+        LIMIT \(pageSize) OFFSET \(offset)
+        """
+
+        let result = try connection.query(query)
+
+        let orderIdColumn = result[0].cast(to: String.self)
+        let symbolColumn = result[1].cast(to: String.self)
+        let orderTypeColumn = result[2].cast(to: String.self)
+        let quantityColumn = result[3].cast(to: Double.self)
+        let priceColumn = result[4].cast(to: Double.self)
+        let timestampColumn = result[5].cast(to: String.self)
+        let isCompletedColumn = result[6].cast(to: Bool.self)
+        let reasonColumn = result[7].cast(to: String.self)
+        let messageColumn = result[8].cast(to: String.self)
+        let strategyNameColumn = result[9].cast(to: String.self)
+        let positionTypeColumn = result[10].cast(to: String.self)
+
+        let dataFrame = DataFrame(columns: [
+            TabularData.Column(orderIdColumn).eraseToAnyColumn(),
+            TabularData.Column(symbolColumn).eraseToAnyColumn(),
+            TabularData.Column(orderTypeColumn).eraseToAnyColumn(),
+            TabularData.Column(quantityColumn).eraseToAnyColumn(),
+            TabularData.Column(priceColumn).eraseToAnyColumn(),
+            TabularData.Column(timestampColumn).eraseToAnyColumn(),
+            TabularData.Column(isCompletedColumn).eraseToAnyColumn(),
+            TabularData.Column(reasonColumn).eraseToAnyColumn(),
+            TabularData.Column(messageColumn).eraseToAnyColumn(),
+            TabularData.Column(strategyNameColumn).eraseToAnyColumn(),
+            TabularData.Column(positionTypeColumn).eraseToAnyColumn(),
+        ])
+
+        let orders = dataFrame.rows.map { row in
+            let timestampStr = row[5, String.self]
+            let timestamp = Self.utcDateFormatter.date(from: timestampStr ?? "") ?? Date()
+
+            return Order(
+                orderId: row[0, String.self] ?? "",
+                symbol: row[1, String.self] ?? "",
+                orderType: row[2, String.self] ?? "",
+                quantity: row[3, Double.self] ?? 0.0,
+                price: row[4, Double.self] ?? 0.0,
+                timestamp: timestamp,
+                isCompleted: row[6, Bool.self] ?? false,
+                reason: row[7, String.self] ?? "",
+                message: row[8, String.self] ?? "",
+                strategyName: row[9, String.self] ?? "",
+                positionType: row[10, String.self] ?? ""
+            )
+        }
+
+        return PaginationResult(
+            items: orders,
+            total: totalCount ?? 0,
+            page: page,
+            pageSize: pageSize
+        )
+    }
 }
