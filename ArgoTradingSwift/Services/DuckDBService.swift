@@ -366,4 +366,143 @@ class DuckDBService: DuckDBServiceProtocol {
             )
         }
     }
+
+    /// Fetch trade data from a parquet file with pagination
+    func fetchTradeData(
+        filePath: URL,
+        page: Int = 1,
+        pageSize: Int = 100,
+        sortColumn: String = "timestamp",
+        sortDirection: String = "DESC"
+    ) async throws -> PaginationResult<Trade> {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+
+        // Check if file exists
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: filePath.path) else {
+            throw DuckDBError.missingDataset
+        }
+
+        // Validate sortColumn to prevent SQL injection
+        let validColumns = [
+            "order_id", "symbol", "order_type", "quantity", "price",
+            "timestamp", "is_completed", "reason", "message",
+            "strategy_name", "executed_at", "executed_qty", "executed_price",
+            "commission", "pnl", "position_type"
+        ]
+        let column = validColumns.contains(sortColumn) ? sortColumn : "timestamp"
+
+        // Validate sortDirection to prevent SQL injection
+        let direction = (sortDirection == "ASC" || sortDirection == "DESC") ? sortDirection : "DESC"
+
+        // First get the total count
+        let countQuery = """
+        SELECT COUNT(*) as total
+        FROM read_parquet('\(filePath.path)')
+        """
+
+        let countResult = try connection.query(countQuery)
+        let totalCount = countResult[0].cast(to: Int.self)[0]
+
+        // Calculate offset
+        let offset = (page - 1) * pageSize
+
+        // Main query with pagination and sorting
+        let query = """
+        SELECT
+            order_id,
+            symbol,
+            order_type,
+            quantity,
+            price,
+            CAST(timestamp AS VARCHAR),
+            is_completed,
+            reason,
+            message,
+            strategy_name,
+            CAST(executed_at AS VARCHAR),
+            executed_qty,
+            executed_price,
+            commission,
+            pnl,
+            position_type
+        FROM read_parquet('\(filePath.path)')
+        ORDER BY \(column) \(direction)
+        LIMIT \(pageSize) OFFSET \(offset)
+        """
+
+        let result = try connection.query(query)
+
+        let orderIdColumn = result[0].cast(to: String.self)
+        let symbolColumn = result[1].cast(to: String.self)
+        let orderTypeColumn = result[2].cast(to: String.self)
+        let quantityColumn = result[3].cast(to: Double.self)
+        let priceColumn = result[4].cast(to: Double.self)
+        let timestampColumn = result[5].cast(to: String.self)
+        let isCompletedColumn = result[6].cast(to: Bool.self)
+        let reasonColumn = result[7].cast(to: String.self)
+        let messageColumn = result[8].cast(to: String.self)
+        let strategyNameColumn = result[9].cast(to: String.self)
+        let executedAtColumn = result[10].cast(to: String.self)
+        let executedQtyColumn = result[11].cast(to: Double.self)
+        let executedPriceColumn = result[12].cast(to: Double.self)
+        let commissionColumn = result[13].cast(to: Double.self)
+        let pnlColumn = result[14].cast(to: Double.self)
+        let positionTypeColumn = result[15].cast(to: String.self)
+
+        let dataFrame = DataFrame(columns: [
+            TabularData.Column(orderIdColumn).eraseToAnyColumn(),
+            TabularData.Column(symbolColumn).eraseToAnyColumn(),
+            TabularData.Column(orderTypeColumn).eraseToAnyColumn(),
+            TabularData.Column(quantityColumn).eraseToAnyColumn(),
+            TabularData.Column(priceColumn).eraseToAnyColumn(),
+            TabularData.Column(timestampColumn).eraseToAnyColumn(),
+            TabularData.Column(isCompletedColumn).eraseToAnyColumn(),
+            TabularData.Column(reasonColumn).eraseToAnyColumn(),
+            TabularData.Column(messageColumn).eraseToAnyColumn(),
+            TabularData.Column(strategyNameColumn).eraseToAnyColumn(),
+            TabularData.Column(executedAtColumn).eraseToAnyColumn(),
+            TabularData.Column(executedQtyColumn).eraseToAnyColumn(),
+            TabularData.Column(executedPriceColumn).eraseToAnyColumn(),
+            TabularData.Column(commissionColumn).eraseToAnyColumn(),
+            TabularData.Column(pnlColumn).eraseToAnyColumn(),
+            TabularData.Column(positionTypeColumn).eraseToAnyColumn(),
+        ])
+
+        let trades = dataFrame.rows.map { row in
+            let timestampStr = row[5, String.self]
+            let timestamp = Self.utcDateFormatter.date(from: timestampStr ?? "") ?? Date()
+
+            let executedAtStr = row[10, String.self]
+            let executedAt = executedAtStr.flatMap { Self.utcDateFormatter.date(from: $0) }
+
+            return Trade(
+                orderId: row[0, String.self] ?? "",
+                symbol: row[1, String.self] ?? "",
+                orderType: row[2, String.self] ?? "",
+                quantity: row[3, Double.self] ?? 0.0,
+                price: row[4, Double.self] ?? 0.0,
+                timestamp: timestamp,
+                isCompleted: row[6, Bool.self] ?? false,
+                reason: row[7, String.self] ?? "",
+                message: row[8, String.self] ?? "",
+                strategyName: row[9, String.self] ?? "",
+                executedAt: executedAt,
+                executedQty: row[11, Double.self] ?? 0.0,
+                executedPrice: row[12, Double.self] ?? 0.0,
+                commission: row[13, Double.self] ?? 0.0,
+                pnl: row[14, Double.self] ?? 0.0,
+                positionType: row[15, String.self] ?? ""
+            )
+        }
+
+        return PaginationResult(
+            items: trades,
+            total: totalCount ?? 0,
+            page: page,
+            pageSize: pageSize
+        )
+    }
 }

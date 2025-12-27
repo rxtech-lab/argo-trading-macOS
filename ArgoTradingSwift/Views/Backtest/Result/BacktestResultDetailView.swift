@@ -29,10 +29,10 @@ struct BacktestResultDetailView: View {
             case .general:
                 buildGeneralTab()
             case .trades:
-                EmptyView()
+                TradesTableView(filePath: URL(fileURLWithPath: result.tradesFilePath))
             }
         }
-        .padding()
+        .padding(.top, 8)
         .navigationTitle(result.symbol)
     }
 
