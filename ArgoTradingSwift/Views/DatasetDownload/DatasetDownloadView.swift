@@ -148,9 +148,8 @@ extension DatasetDownloadView {
                 // User cancelled - no alert needed (cancel() already sets idle status)
                 print("Download cancelled")
             } catch {
-                let errorDescription = error.localizedDescription
                 // skip alert for context canceled errors
-                if errorDescription.contains("context canceled") {
+                if error.isContextCancelled {
                     await self.toolbarStatusService.setStatus(.downloadCancelled(label: "Dataset Download"))
                     return
                 }

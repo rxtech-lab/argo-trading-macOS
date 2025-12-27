@@ -27,6 +27,7 @@ struct Schema: Codable, Identifiable, Hashable {
     var id: UUID
     var name: String
     var parameters: Data
+    var backtestEngineConfig: Data
     var strategyPath: String
     var runningStatus: SchemaRunningStatus
     var createdAt: Date
@@ -36,6 +37,7 @@ struct Schema: Codable, Identifiable, Hashable {
         id: UUID = UUID(),
         name: String,
         parameters: Data = Data(),
+        backtestEngineConfig: Data = Data(),
         strategyPath: String = "",
         runningStatus: SchemaRunningStatus = .idle,
         createdAt: Date = Date(),
@@ -44,6 +46,7 @@ struct Schema: Codable, Identifiable, Hashable {
         self.id = id
         self.name = name
         self.parameters = parameters
+        self.backtestEngineConfig = backtestEngineConfig
         self.strategyPath = strategyPath
         self.runningStatus = runningStatus
         self.createdAt = createdAt

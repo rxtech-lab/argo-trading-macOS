@@ -39,13 +39,15 @@ struct HomeView: View {
                             Button {
                                 guard let schema = document.selectedSchema,
                                       let datasetURL = document.selectedDatasetURL else { return }
-                                backtestService.runBacktest(
-                                    schema: schema,
-                                    datasetURL: datasetURL,
-                                    strategyFolder: document.strategyFolder,
-                                    resultFolder: document.resultFolder,
-                                    toolbarStatusService: toolbarStatusService
-                                )
+                                Task.detached {
+                                    await backtestService.runBacktest(
+                                        schema: schema,
+                                        datasetURL: datasetURL,
+                                        strategyFolder: document.strategyFolder,
+                                        resultFolder: document.resultFolder,
+                                        toolbarStatusService: toolbarStatusService
+                                    )
+                                }
                             } label: {
                                 Label("Start", systemImage: "play.fill")
                             }

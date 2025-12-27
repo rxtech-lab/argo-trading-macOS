@@ -7,6 +7,7 @@
 
 import ArgoTrading
 import SwiftUI
+import Yams
 
 @Observable
 class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
@@ -42,7 +43,7 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
         strategyFolder: URL,
         resultFolder: URL,
         toolbarStatusService: ToolbarStatusService
-    ) {
+    ) async {
         self.toolbarStatusService = toolbarStatusService
         isRunning = true
 
@@ -88,67 +89,72 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
         backtestTask = Task.detached { [weak self, strategyFolder, resultFolder] in
             guard let self = self else { return }
             do {
-                let config = """
-                initial_capital: 10000000
-                broker: interactive_broker
-                start_time: "2025-01-01T00:00:00Z"
-                end_time: "2025-04-04T00:00:00Z"
-                """
+                // Convert JSON config to YAML using Yams
+                let configDict = (try? JSONSerialization.jsonObject(with: schema.backtestEngineConfig) as? [String: Any]) ?? [:]
+                let config = (try? Yams.dump(object: configDict)) ?? ""
 
                 let absoluteStrategyPath = strategyFolder.appendingPathComponent(schema.strategyPath).toPathStringWithoutFilePrefix()
 
                 try self.argoEngine?.run(config, strategyPath: absoluteStrategyPath, resultsFolderPath: resultFolder.toPathStringWithoutFilePrefix())
             } catch {
-                print("Backtest error: \(error)")
-                await MainActor.run {
-                    self.isRunning = false
+                if !error.isContextCancelled {
+                    await MainActor.run {
+                        self.isRunning = false
+                    }
+                    await self.toolbarStatusService?.setStatus(.error(
+                        label: "Backtest",
+                        errors: [error.localizedDescription],
+                        at: Date()
+                    ))
                 }
-                await self.toolbarStatusService?.setStatus(.error(
-                    label: "Backtest",
-                    errors: [error.localizedDescription],
-                    at: Date()
-                ))
             }
         }
     }
 
     func cancel() {
         _ = argoEngine?.cancel()
-        argoEngine = nil
-        backtestTask?.cancel()
-        backtestTask = nil
-        isRunning = false
-        toolbarStatusService?.setStatusImmediately(.idle)
+        Task { @MainActor in
+            self.argoEngine = nil
+            self.backtestTask?.cancel()
+            self.backtestTask = nil
+            self.isRunning = false
+        }
     }
 
     // MARK: - SwiftargoArgoHelperProtocol
 
     func onBacktestStart(_ totalStrategies: Int, totalConfigs: Int, totalDataFiles: Int) throws {
-        self.totalStrategies = totalStrategies
-        self.totalConfigs = totalConfigs
-        self.totalDataFiles = totalDataFiles
-        totalDataPoints = totalStrategies * totalConfigs * totalDataFiles
-        isRunning = true
-        toolbarStatusService?.setStatusImmediately(.backtesting(
-            label: "Starting backtest...",
-            progress: Progress(current: 0, total: max(totalDataPoints, 1))
-        ))
+        Task { @MainActor in
+            self.totalStrategies = totalStrategies
+            self.totalConfigs = totalConfigs
+            self.totalDataFiles = totalDataFiles
+            self.totalDataPoints = totalStrategies * totalConfigs * totalDataFiles
+            self.isRunning = true
+            self.toolbarStatusService?.setStatusImmediately(.backtesting(
+                label: "Starting backtest...",
+                progress: Progress(current: 0, total: max(self.totalDataPoints, 1))
+            ))
+        }
     }
 
     func onBacktestEnd(_ err: (any Error)?) {
-        isRunning = false
-        argoEngine = nil
-        backtestTask = nil
+        Task { @MainActor in
+            self.isRunning = false
+            self.argoEngine = nil
+            self.backtestTask = nil
 
-        Task {
             if let err = err {
-                await toolbarStatusService?.setStatus(.error(
-                    label: "Backtest",
-                    errors: [err.localizedDescription],
-                    at: Date()
-                ))
+                if !err.isContextCancelled {
+                    await self.toolbarStatusService?.setStatus(.error(
+                        label: "Backtest",
+                        errors: [err.localizedDescription],
+                        at: Date()
+                    ))
+                } else {
+                    await self.toolbarStatusService?.setStatus(.idle)
+                }
             } else {
-                await toolbarStatusService?.setStatus(.finished(
+                await self.toolbarStatusService?.setStatus(.finished(
                     message: "Backtest completed",
                     at: Date()
                 ))
@@ -157,11 +163,13 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
     }
 
     func onStrategyStart(_ strategyIndex: Int, strategyName: String?, totalStrategies: Int) throws {
-        currentStrategy = strategyName ?? "Strategy \(strategyIndex + 1)"
-        toolbarStatusService?.setStatusImmediately(.backtesting(
-            label: "Running \(currentStrategy)",
-            progress: currentProgress
-        ))
+        Task { @MainActor in
+            self.currentStrategy = strategyName ?? "Strategy \(strategyIndex + 1)"
+            self.toolbarStatusService?.setStatusImmediately(.backtesting(
+                label: "Running \(self.currentStrategy)",
+                progress: self.currentProgress
+            ))
+        }
     }
 
     func onStrategyEnd(_ strategyIndex: Int, strategyName: String?) {
@@ -176,11 +184,13 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
         dataFilePath: String?,
         totalDataPoints: Int
     ) throws {
-        currentDataFile = URL(fileURLWithPath: dataFilePath ?? "").lastPathComponent
-        toolbarStatusService?.setStatusImmediately(.backtesting(
-            label: "\(currentDataFile)",
-            progress: currentProgress
-        ))
+        Task { @MainActor in
+            self.currentDataFile = URL(fileURLWithPath: dataFilePath ?? "").lastPathComponent
+            self.toolbarStatusService?.setStatusImmediately(.backtesting(
+                label: "\(self.currentDataFile)",
+                progress: self.currentProgress
+            ))
+        }
     }
 
     func onRunEnd(
@@ -194,10 +204,12 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
     }
 
     func onProcessData(_ current: Int, total: Int) throws {
-        currentProgress = Progress(current: current, total: total)
-        toolbarStatusService?.setStatusImmediately(.backtesting(
-            label: currentStrategy,
-            progress: currentProgress
-        ))
+        Task { @MainActor in
+            self.currentProgress = Progress(current: current, total: total)
+            self.toolbarStatusService?.setStatusImmediately(.backtesting(
+                label: self.currentStrategy,
+                progress: self.currentProgress
+            ))
+        }
     }
 }
