@@ -67,14 +67,10 @@ struct ToolbarRunningSectionViewStatusTests {
             strategyFiles: []
         )
 
-        let labelText = try sut.inspect().find(text: label)
-        #expect(try labelText.string() == label)
-
-        let currentText = try sut.inspect().find(text: "\(progress.current)")
-        #expect(try currentText.string() == "\(progress.current)")
-
-        let totalText = try sut.inspect().find(text: "\(progress.total)")
-        #expect(try totalText.string() == "\(progress.total)")
+        // The view combines label and progress into a single Text: "Backtesting 45/100"
+        let expectedText = "\(label) \(progress.current)/\(progress.total)"
+        let labelText = try sut.inspect().find(text: expectedText)
+        #expect(try labelText.string() == expectedText)
     }
 
     @MainActor
