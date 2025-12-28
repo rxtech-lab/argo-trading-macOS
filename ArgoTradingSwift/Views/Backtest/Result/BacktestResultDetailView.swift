@@ -72,9 +72,9 @@ struct BacktestResultDetailView: View {
             }
 
             Section("Trade Holding Time") {
-                LabeledContent("Minimum", value: formatDuration(result.tradeHoldingTime.min))
-                LabeledContent("Maximum", value: formatDuration(result.tradeHoldingTime.max))
-                LabeledContent("Average", value: formatDuration(result.tradeHoldingTime.avg))
+                LabeledContent("Minimum", value: DurationFormatter.format(result.tradeHoldingTime.min))
+                LabeledContent("Maximum", value: DurationFormatter.format(result.tradeHoldingTime.max))
+                LabeledContent("Average", value: DurationFormatter.format(result.tradeHoldingTime.avg))
             }
 
             Section("Fees") {
@@ -104,23 +104,5 @@ struct BacktestResultDetailView: View {
         formatter.maximumFractionDigits = 2
         formatter.multiplier = 1
         return formatter.string(from: NSNumber(value: value / 100)) ?? "\(value)%"
-    }
-
-    private func formatDuration(_ seconds: Double) -> String {
-        if seconds == 0 {
-            return "0s"
-        }
-
-        let hours = Int(seconds) / 3600
-        let minutes = (Int(seconds) % 3600) / 60
-        let secs = Int(seconds) % 60
-
-        if hours > 0 {
-            return "\(hours)h \(minutes)m \(secs)s"
-        } else if minutes > 0 {
-            return "\(minutes)m \(secs)s"
-        } else {
-            return "\(secs)s"
-        }
     }
 }
