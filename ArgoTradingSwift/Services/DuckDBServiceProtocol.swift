@@ -33,4 +33,12 @@ protocol DuckDBServiceProtocol {
         startOffset: Int,
         count: Int
     ) async throws -> [PriceData]
+
+    /// Get the row offset (0-based) for a given timestamp
+    /// Returns the offset where this timestamp would appear in the sorted data
+    func getOffsetForTimestamp(
+        filePath: URL,
+        timestamp: Date,
+        interval: ChartTimeInterval
+    ) async throws -> Int
 }

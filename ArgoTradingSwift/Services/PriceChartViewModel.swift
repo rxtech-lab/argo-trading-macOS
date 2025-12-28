@@ -171,6 +171,75 @@ class PriceChartViewModel {
         }
     }
 
+    /// Scroll to a specific timestamp, loading data if necessary
+    /// - Parameters:
+    ///   - timestamp: The target timestamp to scroll to
+    ///   - visibleCount: Number of visible bars for centering
+    func scrollToTimestamp(_ timestamp: Date, visibleCount: Int) async {
+        guard !isLoading else { return }
+
+        do {
+            // Get the database offset for this timestamp
+            let targetOffset = try await dbService.getOffsetForTimestamp(
+                filePath: url,
+                timestamp: timestamp,
+                interval: timeInterval
+            )
+
+            // Check if the target is within currently loaded data
+            let loadedStart = currentOffset
+            let loadedEnd = currentOffset + loadedData.count
+
+            if targetOffset >= loadedStart && targetOffset < loadedEnd {
+                // Data is already loaded - just scroll to it
+                let localIndex = targetOffset - currentOffset
+                scrollPositionIndex = max(0, localIndex - visibleCount / 2)
+            } else {
+                // Need to load data around the target timestamp
+                await loadDataAroundOffset(targetOffset, visibleCount: visibleCount)
+            }
+        } catch {
+            onError?(error.localizedDescription)
+        }
+    }
+
+    /// Load data centered around a specific offset
+    private func loadDataAroundOffset(_ targetOffset: Int, visibleCount: Int) async {
+        guard !isLoading else { return }
+        isLoading = true
+
+        // Reset state for new data chunk
+        loadedData = []
+        sortedData = []
+        indexedData = []
+        stableYAxisDomain = nil
+
+        do {
+            // Calculate start offset to center the target
+            let halfBuffer = bufferSize / 2
+            let startOffset = max(0, targetOffset - halfBuffer)
+            currentOffset = startOffset
+
+            let fetchedData = try await dbService.fetchAggregatedPriceDataRange(
+                filePath: url,
+                interval: timeInterval,
+                startOffset: startOffset,
+                count: bufferSize
+            )
+
+            updateCachedProperties(from: fetchedData)
+            loadedData = fetchedData
+
+            // Set scroll position to center on target
+            let localIndex = targetOffset - startOffset
+            scrollPositionIndex = max(0, min(localIndex - visibleCount / 2, sortedData.count - visibleCount))
+        } catch {
+            onError?(error.localizedDescription)
+        }
+
+        isLoading = false
+    }
+
     // MARK: - Private Methods
 
     private func updateCachedProperties(from data: [PriceData]) {

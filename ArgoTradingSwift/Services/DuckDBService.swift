@@ -367,6 +367,45 @@ class DuckDBService: DuckDBServiceProtocol {
         }
     }
 
+    /// Get the row offset (0-based) for a given timestamp
+    /// Returns the offset where this timestamp would appear in the sorted data
+    func getOffsetForTimestamp(
+        filePath: URL,
+        timestamp: FoundationDate,
+        interval: ChartTimeInterval
+    ) async throws -> Int {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+
+        let timestampStr = Self.utcDateFormatter.string(from: timestamp)
+
+        if interval == .oneSecond {
+            // For 1s interval, count rows before this timestamp
+            let query = """
+            SELECT COUNT(*) as offset_count
+            FROM read_parquet('\(filePath.path)')
+            WHERE time <= '\(timestampStr)'
+            """
+            let result = try connection.query(query)
+            return max(0, (result[0].cast(to: Int.self)[0] ?? 1) - 1)
+        } else {
+            // For aggregated intervals, use time bucket
+            let timeBucketExpr = Self.timeBucketExpression(for: interval)
+            let query = """
+            WITH aggregated AS (
+                SELECT DISTINCT \(timeBucketExpr) as interval_time
+                FROM read_parquet('\(filePath.path)')
+            )
+            SELECT COUNT(*) as offset_count
+            FROM aggregated
+            WHERE interval_time <= '\(timestampStr)'
+            """
+            let result = try connection.query(query)
+            return max(0, (result[0].cast(to: Int.self)[0] ?? 1) - 1)
+        }
+    }
+
     /// Fetch trade data from a parquet file with pagination
     func fetchTradeData(
         filePath: URL,

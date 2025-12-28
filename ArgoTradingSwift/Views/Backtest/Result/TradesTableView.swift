@@ -13,6 +13,7 @@ struct TradesTableView: View {
 
     @Environment(DuckDBService.self) private var dbService
     @Environment(AlertManager.self) private var alertManager
+    @Environment(BacktestResultService.self) private var backtestResultService
 
     @State private var data: PaginationResult<Trade> = PaginationResult(items: [], total: 0, page: 0, pageSize: 0)
     @State private var selectedRows: Set<String> = []
@@ -34,6 +35,11 @@ struct TradesTableView: View {
         }
         .onChange(of: sortOrder) { _, _ in
             Task { await loadTrades(page: 1) }
+        }
+        .onChange(of: selectedRows) { _, newSelection in
+            guard let firstId = newSelection.first,
+                  let trade = data.items.first(where: { $0.id == firstId }) else { return }
+            backtestResultService.scrollChartToTimestamp(trade.timestamp, dataFilePath: dataFilePath.path)
         }
     }
 
@@ -242,4 +248,5 @@ extension TradesTableView {
     )
     .environment(DuckDBService())
     .environment(AlertManager())
+    .environment(BacktestResultService())
 }

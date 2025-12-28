@@ -6,6 +6,7 @@
 //
 
 import Charts
+import Combine
 import SwiftUI
 
 /// Represents the visible logical range of the chart (similar to lightweight-charts)
@@ -73,16 +74,20 @@ struct PriceChartView: View {
     // Hover state for tooltips
     @State private var hoveredTrade: TradeOverlay?
     @State private var hoveredMark: MarkOverlay?
+    // Debounce scroll changes
+    @State private var scrollSubject = PassthroughSubject<Int, Never>()
+    @State private var scrollCancellable: AnyCancellable?
 
     // MARK: - Computed Overlay Indices (lazy computation)
 
     /// Get the timestamp range of loaded data for filtering overlays
     private var dataTimestampRange: ClosedRange<Date>? {
         guard let first = indexedData.first?.data.date,
-              let last = indexedData.last?.data.date else {
+              let last = indexedData.last?.data.date
+        else {
             return nil
         }
-        return first...last
+        return first ... last
     }
 
     /// Compute trade overlay indices and prices on-demand using binary search
@@ -293,15 +298,24 @@ struct PriceChartView: View {
             }
         }))
         .onChange(of: scrollPosition) { oldIndex, newIndex in
-            if newIndex != oldIndex && newIndex > 0 {
-                let range = VisibleLogicalRange(
-                    from: newIndex,
-                    to: newIndex + visibleCount,
-                    visibleCount: visibleCount,
-                    totalCount: indexedData.count
-                )
-                onScrollChange?(range)
+            if newIndex != oldIndex && newIndex >= 0 && !isLoading {
+                scrollSubject.send(newIndex)
             }
+        }
+        .onAppear {
+            scrollCancellable = scrollSubject
+                .removeDuplicates()
+                .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+                .sink { newIndex in
+                    print("New index: \(newIndex)")
+                    let range = VisibleLogicalRange(
+                        from: newIndex,
+                        to: newIndex + visibleCount,
+                        visibleCount: visibleCount,
+                        totalCount: indexedData.count
+                    )
+                    onScrollChange?(range)
+                }
         }
         .onChange(of: selectedIndex) { _, newIndex in
             // Update hovered trade/mark based on selection

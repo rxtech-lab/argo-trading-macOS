@@ -8,11 +8,25 @@
 import Foundation
 import Yams
 
+/// Request to scroll the chart to a specific timestamp
+struct ChartScrollRequest: Equatable {
+    let id: UUID = UUID()
+    let timestamp: Date
+    let dataFilePath: String
+
+    static func == (lhs: ChartScrollRequest, rhs: ChartScrollRequest) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
 @Observable
 class BacktestResultService {
     private(set) var resultsByDate: [Date: [BacktestResultItem]] = [:]
     private(set) var sortedDates: [Date] = []
     private var allResultItems: [UUID: BacktestResultItem] = [:]
+
+    /// Scroll request for chart synchronization between tables and chart
+    var chartScrollRequest: ChartScrollRequest?
 
     private var folderMonitor: FolderMonitor?
     private var monitoringTask: Task<Void, Never>?
@@ -58,6 +72,16 @@ class BacktestResultService {
 
     func getResultItem(for statsFileURL: URL) -> BacktestResultItem? {
         allResultItems.values.first { $0.statsFileURL == statsFileURL }
+    }
+
+    /// Request the chart to scroll to a specific timestamp
+    func scrollChartToTimestamp(_ timestamp: Date, dataFilePath: String) {
+        chartScrollRequest = ChartScrollRequest(timestamp: timestamp, dataFilePath: dataFilePath)
+    }
+
+    /// Clear the current scroll request (called after chart processes it)
+    func clearScrollRequest() {
+        chartScrollRequest = nil
     }
 
     @MainActor

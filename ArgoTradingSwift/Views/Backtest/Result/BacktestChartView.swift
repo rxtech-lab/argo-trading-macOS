@@ -15,13 +15,13 @@ struct BacktestChartView: View {
 
     @Environment(DuckDBService.self) private var dbService
     @Environment(AlertManager.self) private var alertManager
+    @Environment(BacktestResultService.self) private var backtestResultService
 
     @State private var viewModel: PriceChartViewModel?
     @State private var chartType: ChartType = .candlestick
     @State private var selectedIndex: Int?
     @State private var zoomScale: CGFloat = 1.0
     @State private var scrollPosition: Int = 0
-    @State private var loadDataTask: Task<Void, Never>?
     @GestureState private var magnifyBy: CGFloat = 1.0
 
     // Overlay data
@@ -118,6 +118,15 @@ struct BacktestChartView: View {
             Task {
                 await initializeViewModel()
                 await loadOverlayData()
+            }
+        }
+        .onChange(of: backtestResultService.chartScrollRequest) { _, newRequest in
+            guard let request = newRequest,
+                  request.dataFilePath == dataFilePath else { return }
+
+            Task {
+                await viewModel?.scrollToTimestamp(request.timestamp, visibleCount: visibleCount)
+                backtestResultService.clearScrollRequest()
             }
         }
         .gesture(magnificationGesture)
@@ -232,19 +241,14 @@ struct BacktestChartView: View {
                 onScrollChange: { range in
                     vm.scrollPositionIndex = range.from
                     if range.isNearStart(threshold: 50) {
-                        loadDataTask?.cancel()
-                        loadDataTask = Task {
-                            try? await Task.sleep(for: .milliseconds(50))
-                            guard !Task.isCancelled else { return }
+                        print("Load more at beginning triggered, \(vm.isLoading)")
+                        Task {
                             await vm.loadMoreAtBeginning()
                         }
                     }
 
                     if range.isNearEnd(threshold: 50) {
-                        loadDataTask?.cancel()
-                        loadDataTask = Task {
-                            try? await Task.sleep(for: .milliseconds(50))
-                            guard !Task.isCancelled else { return }
+                        Task {
                             await vm.loadMoreAtEnd()
                         }
                     }
