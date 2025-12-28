@@ -58,7 +58,7 @@ xcodebuild test \
     CODE_SIGNING_ALLOWED=NO \
     | tee "$TEST_RESULTS_DIR/xcodebuild.log"
 
-TEST_EXIT_CODE=$?
+TEST_EXIT_CODE=${PIPESTATUS[0]}
 set -e  # Re-enable exit on error
 
 # Check if result bundle was created
