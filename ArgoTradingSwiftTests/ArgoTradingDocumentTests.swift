@@ -186,4 +186,112 @@ struct ArgoTradingDocumentTests {
         #expect(document.schemas[0].strategyPath == "new.wasm")
         #expect(document.schemas[1].strategyPath == "other.wasm")
     }
+
+    // MARK: - isSchemaStrategyMissing Tests
+
+    @Test func isSchemaStrategyMissingReturnsFalseWhenNoSchemaSelected() {
+        let document = ArgoTradingDocument()
+        let strategyFiles = [URL(fileURLWithPath: "/strategies/test.wasm")]
+
+        #expect(document.isSchemaStrategyMissing(strategyFiles: strategyFiles) == false)
+    }
+
+    @Test func isSchemaStrategyMissingReturnsTrueWhenStrategyPathIsEmpty() {
+        var document = ArgoTradingDocument()
+        let schema = Schema(name: "Test Schema", strategyPath: "")
+        document.addSchema(schema)
+        document.selectedSchemaId = schema.id
+        let strategyFiles = [URL(fileURLWithPath: "/strategies/test.wasm")]
+
+        #expect(document.isSchemaStrategyMissing(strategyFiles: strategyFiles) == true)
+    }
+
+    @Test func isSchemaStrategyMissingReturnsTrueWhenStrategyFileNotFound() {
+        var document = ArgoTradingDocument()
+        let schema = Schema(name: "Test Schema", strategyPath: "missing.wasm")
+        document.addSchema(schema)
+        document.selectedSchemaId = schema.id
+        let strategyFiles = [URL(fileURLWithPath: "/strategies/other.wasm")]
+
+        #expect(document.isSchemaStrategyMissing(strategyFiles: strategyFiles) == true)
+    }
+
+    @Test func isSchemaStrategyMissingReturnsFalseWhenStrategyFileExists() {
+        var document = ArgoTradingDocument()
+        let schema = Schema(name: "Test Schema", strategyPath: "test.wasm")
+        document.addSchema(schema)
+        document.selectedSchemaId = schema.id
+        let strategyFiles = [URL(fileURLWithPath: "/strategies/test.wasm")]
+
+        #expect(document.isSchemaStrategyMissing(strategyFiles: strategyFiles) == false)
+    }
+
+    @Test func isSchemaStrategyMissingMatchesByLastPathComponent() {
+        var document = ArgoTradingDocument()
+        let schema = Schema(name: "Test Schema", strategyPath: "my_strategy.wasm")
+        document.addSchema(schema)
+        document.selectedSchemaId = schema.id
+        // Different directory path but same filename
+        let strategyFiles = [URL(fileURLWithPath: "/some/other/path/my_strategy.wasm")]
+
+        #expect(document.isSchemaStrategyMissing(strategyFiles: strategyFiles) == false)
+    }
+
+    @Test func isSchemaStrategyMissingReturnsTrueWithEmptyStrategyFilesList() {
+        var document = ArgoTradingDocument()
+        let schema = Schema(name: "Test Schema", strategyPath: "test.wasm")
+        document.addSchema(schema)
+        document.selectedSchemaId = schema.id
+        let strategyFiles: [URL] = []
+
+        #expect(document.isSchemaStrategyMissing(strategyFiles: strategyFiles) == true)
+    }
+
+    // MARK: - canRunBacktest Tests
+
+    @Test func canRunBacktestReturnsFalseWhenNoSchemaSelected() {
+        var document = ArgoTradingDocument()
+        document.selectedDatasetURL = URL(fileURLWithPath: "/path/to/dataset.parquet")
+
+        #expect(document.canRunBacktest == false)
+    }
+
+    @Test func canRunBacktestReturnsFalseWhenNoDatasetSelected() {
+        var document = ArgoTradingDocument()
+        let schema = Schema(name: "Test Schema", strategyPath: "test.wasm")
+        document.addSchema(schema)
+        document.selectedSchemaId = schema.id
+
+        #expect(document.canRunBacktest == false)
+    }
+
+    @Test func canRunBacktestReturnsFalseWhenStrategyPathIsEmpty() {
+        var document = ArgoTradingDocument()
+        let schema = Schema(name: "Test Schema", strategyPath: "")
+        document.addSchema(schema)
+        document.selectedSchemaId = schema.id
+        document.selectedDatasetURL = URL(fileURLWithPath: "/path/to/dataset.parquet")
+
+        #expect(document.canRunBacktest == false)
+    }
+
+    @Test func canRunBacktestReturnsTrueWhenAllConditionsMet() {
+        var document = ArgoTradingDocument()
+        let schema = Schema(name: "Test Schema", strategyPath: "test.wasm")
+        document.addSchema(schema)
+        document.selectedSchemaId = schema.id
+        document.selectedDatasetURL = URL(fileURLWithPath: "/path/to/dataset.parquet")
+
+        #expect(document.canRunBacktest == true)
+    }
+
+    @Test func canRunBacktestReturnsFalseWhenSchemaIdNotFound() {
+        var document = ArgoTradingDocument()
+        let schema = Schema(name: "Test Schema", strategyPath: "test.wasm")
+        document.addSchema(schema)
+        document.selectedSchemaId = UUID() // Different ID
+        document.selectedDatasetURL = URL(fileURLWithPath: "/path/to/dataset.parquet")
+
+        #expect(document.canRunBacktest == false)
+    }
 }

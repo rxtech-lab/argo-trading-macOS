@@ -1,36 +1,55 @@
 //
-//  ChartContentView.swift
+//  BacktestChartView.swift
 //  ArgoTradingSwift
 //
-//  Created by Claude on 12/22/25.
+//  Created by Claude on 12/27/25.
 //
 
 import SwiftUI
 
-struct ChartContentView: View {
-    let url: URL
+/// Chart view for backtest results with trade and mark overlays
+struct BacktestChartView: View {
+    let dataFilePath: String
+    let tradesFilePath: String
+    let marksFilePath: String
 
     @Environment(DuckDBService.self) private var dbService
     @Environment(AlertManager.self) private var alertManager
+    @Environment(BacktestResultService.self) private var backtestResultService
 
     @State private var viewModel: PriceChartViewModel?
     @State private var chartType: ChartType = .candlestick
     @State private var selectedIndex: Int?
     @State private var zoomScale: CGFloat = 1.0
     @State private var scrollPosition: Int = 0
-    @State private var loadDataTask: Task<Void, Never>?
     @GestureState private var magnifyBy: CGFloat = 1.0
+
+    // Overlay data
+    @State private var trades: [Trade] = []
+    @State private var marks: [Mark] = []
+    @State private var tradeOverlays: [TradeOverlay] = []
+    @State private var markOverlays: [MarkOverlay] = []
 
     // Zoom configuration
     private let baseVisibleCount = 100
     private let minZoom: CGFloat = 0.1
     private let maxZoom: CGFloat = 5.0
 
-    // MARK: - Computed Properties
+    private var dataURL: URL {
+        URL(fileURLWithPath: dataFilePath)
+    }
+
+    private var tradesURL: URL {
+        URL(fileURLWithPath: tradesFilePath)
+    }
+
+    private var marksURL: URL {
+        URL(fileURLWithPath: marksFilePath)
+    }
 
     /// Available time intervals filtered based on the original data timespan
     private var availableIntervals: [ChartTimeInterval] {
-        ChartTimeInterval.filtered(for: url)
+        ChartTimeInterval.filtered(for: dataURL)
     }
 
     private var visibleCount: Int {
@@ -56,7 +75,7 @@ struct ChartContentView: View {
                     ContentUnavailableView(
                         "No Data",
                         systemImage: "chart.xyaxis.line",
-                        description: Text("Load a dataset to view the chart")
+                        description: Text("No price data available")
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if vm.isLoading && vm.loadedData.isEmpty {
@@ -79,31 +98,49 @@ struct ChartContentView: View {
         .padding()
         .task {
             await initializeViewModel()
-        }
-        .onChange(of: url) { _, newUrl in
-            Task {
-                await initializeViewModel(for: newUrl)
-            }
+            await loadOverlayData()
         }
         .onChange(of: viewModel?.scrollPositionIndex) { _, newValue in
-            // Sync scroll position from view model (e.g., after loading more data)
             if let newValue, newValue != scrollPosition {
                 scrollPosition = newValue
             }
         }
+        // Note: Removed onChange(of: sortedData) - overlays now compute indices lazily
+        .onChange(of: dataFilePath) { _, _ in
+            // Reset all state and reload when data file changes
+            viewModel = nil
+            trades = []
+            marks = []
+            tradeOverlays = []
+            markOverlays = []
+            scrollPosition = 0
+            print("Data file changed, reloading chart and overlays")
+            Task {
+                await initializeViewModel()
+                await loadOverlayData()
+            }
+        }
+        .onChange(of: backtestResultService.chartScrollRequest) { _, newRequest in
+            guard let request = newRequest,
+                  request.dataFilePath == dataFilePath else { return }
+
+            Task {
+                await viewModel?.scrollToTimestamp(request.timestamp, visibleCount: visibleCount)
+                backtestResultService.clearScrollRequest()
+            }
+        }
+        .gesture(magnificationGesture)
     }
 
     // MARK: - Initialization
 
-    private func initializeViewModel(for fileUrl: URL? = nil) async {
-        let targetUrl = fileUrl ?? url
-        let vm = PriceChartViewModel(url: targetUrl, dbService: dbService)
+    private func initializeViewModel() async {
+        let vm = PriceChartViewModel(url: dataURL, dbService: dbService)
         vm.onError = { message in
             alertManager.showAlert(message: message)
         }
         viewModel = vm
 
-        // Initialize database before any operations
         do {
             try dbService.initDatabase()
         } catch {
@@ -111,8 +148,8 @@ struct ChartContentView: View {
             return
         }
 
-        // Set the default interval to the minimum valid interval based on data timespan
-        let fileName = targetUrl.lastPathComponent
+        // Set the default interval based on data timespan
+        let fileName = dataURL.lastPathComponent
         if let parsed = ParquetFileNameParser.parse(fileName),
            let minInterval = parsed.minimumInterval
         {
@@ -120,8 +157,51 @@ struct ChartContentView: View {
         }
 
         await vm.loadInitialData(visibleCount: visibleCount)
-        // Sync initial scroll position from view model
         scrollPosition = vm.scrollPositionIndex
+    }
+
+    private func loadOverlayData() async {
+        do {
+            try dbService.initDatabase()
+
+            // Load trades
+            if FileManager.default.fileExists(atPath: tradesFilePath) {
+                trades = try await dbService.fetchAllTrades(filePath: tradesURL)
+            }
+
+            // Load marks
+            if FileManager.default.fileExists(atPath: marksFilePath) {
+                marks = try await dbService.fetchMarkData(filePath: marksURL)
+            }
+
+            buildOverlays()
+        } catch {
+            alertManager.showAlert(message: "Failed to load overlay data: \(error.localizedDescription)")
+        }
+    }
+
+    private func buildOverlays() {
+        // Build trade overlays with timestamps (indices computed lazily in PriceChartView)
+        tradeOverlays = trades.compactMap { trade in
+            let isBuy = trade.side == .buy
+            return TradeOverlay(
+                id: trade.orderId,
+                timestamp: trade.timestamp,
+                price: trade.executedPrice,
+                isBuy: isBuy,
+                trade: trade
+            )
+        }
+
+        // Build mark overlays with marketDataId (indices computed lazily in PriceChartView)
+        markOverlays = marks.map { mark in
+            MarkOverlay(
+                id: mark.marketDataId,
+                marketDataId: mark.marketDataId,
+                price: 0, // Price will be looked up in PriceChartView
+                mark: mark
+            )
+        }
     }
 
     // MARK: - Header
@@ -135,7 +215,7 @@ struct ChartContentView: View {
         )
     }
 
-    // MARK: - Legend (shows OHLCV on hover)
+    // MARK: - Legend
 
     private var legendView: some View {
         ChartLegendView(
@@ -156,22 +236,19 @@ struct ChartContentView: View {
                 visibleCount: visibleCount,
                 isLoading: vm.isLoading,
                 scrollPosition: $scrollPosition,
+                tradeOverlays: tradeOverlays,
+                markOverlays: markOverlays,
                 onScrollChange: { range in
                     vm.scrollPositionIndex = range.from
                     if range.isNearStart(threshold: 50) {
-                        loadDataTask?.cancel()
-                        loadDataTask = Task {
-                            try? await Task.sleep(for: .milliseconds(50))
-                            guard !Task.isCancelled else { return }
+                        print("Load more at beginning triggered, \(vm.isLoading)")
+                        Task {
                             await vm.loadMoreAtBeginning()
                         }
                     }
 
                     if range.isNearEnd(threshold: 50) {
-                        loadDataTask?.cancel()
-                        loadDataTask = Task {
-                            try? await Task.sleep(for: .milliseconds(50))
-                            guard !Task.isCancelled else { return }
+                        Task {
                             await vm.loadMoreAtEnd()
                         }
                     }
@@ -201,6 +278,20 @@ struct ChartContentView: View {
 
     private var scrollInfoView: some View {
         HStack {
+            // Overlay info
+            HStack(spacing: 12) {
+                if !tradeOverlays.isEmpty {
+                    Label("\(tradeOverlays.count) trades", systemImage: "arrow.up.arrow.down")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if !markOverlays.isEmpty {
+                    Label("\(markOverlays.count) marks", systemImage: "mappin")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Spacer()
 
             if let vm = viewModel {
@@ -216,7 +307,7 @@ struct ChartContentView: View {
         .frame(height: 24)
     }
 
-    // MARK: - Chart Controls (interval selector + chart type picker)
+    // MARK: - Chart Controls
 
     private var chartControlsView: some View {
         ChartControlsView(
@@ -235,10 +326,4 @@ struct ChartContentView: View {
             }
         )
     }
-}
-
-#Preview {
-    ChartContentView(url: URL(fileURLWithPath: "/tmp/test.parquet"))
-        .environment(DuckDBService())
-        .environment(AlertManager())
 }

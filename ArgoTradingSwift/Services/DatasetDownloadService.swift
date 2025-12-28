@@ -36,10 +36,10 @@ class DatasetDownloadService: NSObject, SwiftargoMarketDownloaderHelperProtocol 
             currentMessage = message
         }
 
-        toolbarStatusService?.toolbarRunningStatus = .downloading(
+        toolbarStatusService?.setStatusImmediately(.downloading(
             label: currentTicker,
             progress: Progress(current: Int(current), total: Int(total))
-        )
+        ))
     }
 
     func cancel() {
@@ -48,6 +48,6 @@ class DatasetDownloadService: NSObject, SwiftargoMarketDownloaderHelperProtocol 
         downloadTask?.cancel()
         downloadTask = nil
         isDownloading = false
-        toolbarStatusService?.toolbarRunningStatus = .idle
+        toolbarStatusService?.setStatusImmediately(.idle)
     }
 }

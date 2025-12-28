@@ -15,6 +15,7 @@ struct SchemaEditorView: View {
     @Environment(SchemaService.self) var schemaService
     @Environment(StrategyService.self) var strategyService
     @Environment(\.dismiss) var dismiss
+    @Environment(BacktestService.self) var backtestService
 
     let isEditing: Bool
     let existingSchema: Schema?
@@ -22,59 +23,49 @@ struct SchemaEditorView: View {
     @State private var name: String = ""
     @State private var selectedStrategyURL: URL?
     @State private var strategyMetadata: SwiftargoStrategyMetadata?
-    @State private var jsonSchema: JSONSchema?
-    @State private var formData: FormData = .object(properties: [:])
+    @State private var strategySchema: JSONSchema?
+    @State private var backtestSchema: JSONSchema?
+    @State private var strategyFormData: FormData = .object(properties: [:])
+    @State private var backtestFormData: FormData = .object(properties: [:])
     @State private var isLoadingMetadata = false
-    @State private var error: String?
+    @State private var strategyError: String?
+    @State private var backtestError: String?
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("General") {
-                    TextField("Schema Name", text: $name)
+        TabView {
+            Tab("Backtest", systemImage: "list.bullet.clipboard.fill") {
+                buildBacktestView()
+            }
+            Tab("Strategy", systemImage: "app.fill") {
+                buildStrategyView()
+            }
 
-                    Picker("Strategy", selection: $selectedStrategyURL) {
-                        Text("Select a strategy").tag(nil as URL?)
-                        ForEach(strategyService.strategyFiles, id: \.self) { file in
-                            Text(file.deletingPathExtension().lastPathComponent)
-                                .tag(file as URL?)
-                        }
-                    }
+        }.tabViewStyle(.sidebarAdaptable)
+            .frame(minWidth: 600, minHeight: 700)
+            .onAppear {
+                // Load backtest engine schema
+                do {
+                    let schemaString = try backtestService.getBacktestEngineConfigSchema()
+                    backtestSchema = try JSONSchema(jsonString: schemaString)
+                } catch {
+                    print("Failed to load backtest schema: \(error)")
+                    self.backtestError = error.localizedDescription
                 }
 
-                if isLoadingMetadata {
-                    Section("Parameters") {
-                        HStack {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Loading strategy parameters...")
-                                .foregroundStyle(.secondary)
-                        }
+                if isEditing, let schema = existingSchema {
+                    name = schema.name
+                    selectedStrategyURL = strategyService.strategyFiles.first {
+                        $0.lastPathComponent == schema.strategyPath ||
+                            $0.path.hasSuffix(schema.strategyPath)
                     }
-                } else if let schema = jsonSchema {
-                    Section("Parameters") {
-                        JSONSchemaForm(
-                            schema: schema,
-                            formData: $formData,
-                            showSubmitButton: false
-                        )
+                    if let dict = try? JSONSerialization.jsonObject(with: schema.parameters) {
+                        strategyFormData = formDataFromAny(dict)
                     }
-                } else if selectedStrategyURL != nil && error == nil {
-                    Section("Parameters") {
-                        Text("Could not load strategy parameters")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                if let error {
-                    Section {
-                        Text(error)
-                            .foregroundStyle(.red)
+                    if let dict = try? JSONSerialization.jsonObject(with: schema.backtestEngineConfig) {
+                        backtestFormData = formDataFromAny(dict)
                     }
                 }
             }
-            .formStyle(.grouped)
-            .navigationTitle(isEditing ? "Edit Schema" : "Create Schema")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -89,34 +80,85 @@ struct SchemaEditorView: View {
                     .disabled(name.isEmpty || selectedStrategyURL == nil)
                 }
             }
-        }
-        .frame(minWidth: 500, minHeight: 400)
-        .onAppear {
-            if isEditing, let schema = existingSchema {
-                name = schema.name
-                selectedStrategyURL = strategyService.strategyFiles.first {
-                    $0.lastPathComponent == schema.strategyPath ||
-                        $0.path.hasSuffix(schema.strategyPath)
+            .onChange(of: selectedStrategyURL) { _, newURL in
+                loadStrategyMetadata(from: newURL)
+            }
+    }
+
+    @ViewBuilder
+    private func buildBacktestView() -> some View {
+        Form {
+            Section("Backtest Engine Configuration") {
+                if let backtestSchema = backtestSchema {
+                    JSONSchemaForm(schema: backtestSchema, formData: $backtestFormData, showErrorList: false, showSubmitButton: false)
                 }
-                if let dict = try? JSONSerialization.jsonObject(with: schema.parameters) {
-                    formData = formDataFromAny(dict)
+
+                if let error = backtestError {
+                    Text(error)
                 }
             }
         }
-        .onChange(of: selectedStrategyURL) { _, newURL in
-            loadStrategyMetadata(from: newURL)
+        .formStyle(.grouped)
+    }
+
+    @ViewBuilder
+    func buildStrategyView() -> some View {
+        Form {
+            Section("General") {
+                TextField("Schema Name", text: $name)
+
+                Picker("Strategy", selection: $selectedStrategyURL) {
+                    Text("Select a strategy").tag(nil as URL?)
+                    ForEach(strategyService.strategyFiles, id: \.self) { file in
+                        Text(file.deletingPathExtension().lastPathComponent)
+                            .tag(file as URL?)
+                    }
+                }
+            }
+
+            if isLoadingMetadata {
+                Section("Parameters") {
+                    HStack {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Loading strategy parameters...")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else if let schema = strategySchema {
+                Section("Parameters") {
+                    JSONSchemaForm(
+                        schema: schema,
+                        formData: $strategyFormData,
+                        showSubmitButton: false
+                    )
+                }
+            } else if selectedStrategyURL != nil && strategyError == nil {
+                Section("Parameters") {
+                    Text("Could not load strategy parameters")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let strategyError {
+                Section {
+                    Text(strategyError)
+                        .foregroundStyle(.red)
+                }
+            }
         }
+        .formStyle(.grouped)
     }
 
     private func loadStrategyMetadata(from url: URL?) {
         guard let url else {
             strategyMetadata = nil
-            jsonSchema = nil
+            strategySchema = nil
             return
         }
 
         isLoadingMetadata = true
-        error = nil
+        strategyError = nil
 
         Task.detached {
             do {
@@ -128,13 +170,13 @@ struct SchemaEditorView: View {
                 await MainActor.run {
                     strategyMetadata = metadata
                     if let schemaString = metadata?.schema {
-                        jsonSchema = try? JSONSchema(jsonString: schemaString)
+                        strategySchema = try? JSONSchema(jsonString: schemaString)
                     }
                     isLoadingMetadata = false
                 }
             } catch {
                 await MainActor.run {
-                    self.error = error.localizedDescription
+                    self.strategyError = error.localizedDescription
                     isLoadingMetadata = false
                 }
             }
@@ -145,8 +187,10 @@ struct SchemaEditorView: View {
         guard let strategyURL = selectedStrategyURL else { return }
 
         do {
-            let dict = formData.toDictionary() ?? [:]
+            let dict = strategyFormData.toDictionary() ?? [:]
             let parametersData = try JSONSerialization.data(withJSONObject: dict)
+            let backtestDict = backtestFormData.toDictionary() ?? [:]
+            let backtestData = try JSONSerialization.data(withJSONObject: backtestDict)
             let strategyPath = strategyURL.lastPathComponent
 
             if isEditing, let existing = existingSchema {
@@ -154,12 +198,14 @@ struct SchemaEditorView: View {
                 updated.name = name
                 updated.strategyPath = strategyPath
                 updated.parameters = parametersData
+                updated.backtestEngineConfig = backtestData
                 updated.updatedAt = Date()
                 document.updateSchema(updated)
             } else {
                 let schema = Schema(
                     name: name,
                     parameters: parametersData,
+                    backtestEngineConfig: backtestData,
                     strategyPath: strategyPath
                 )
                 document.addSchema(schema)
@@ -167,7 +213,7 @@ struct SchemaEditorView: View {
             schemaService.dismissEditor()
             dismiss()
         } catch {
-            self.error = error.localizedDescription
+            strategyError = error.localizedDescription
         }
     }
 

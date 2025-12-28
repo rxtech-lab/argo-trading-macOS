@@ -12,7 +12,10 @@ struct HomeView: View {
     @Binding var document: ArgoTradingDocument
     @Environment(NavigationService.self) var navigationService
     @Environment(DatasetService.self) var datasetService
+    @Environment(StrategyService.self) var strategyService
     @Environment(ToolbarStatusService.self) var toolbarStatusService
+    @Environment(BacktestService.self) var backtestService
+    @Environment(BacktestResultService.self) var backtestResultService
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -25,14 +28,36 @@ struct HomeView: View {
             .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {} label: {
-                        Label("Stop", systemImage: "square.fill")
+                    Group {
+                        if backtestService.isRunning {
+                            Button {
+                                backtestService.cancel()
+                            } label: {
+                                Label("Stop", systemImage: "square.fill")
+                            }
+                            .transition(.scale.combined(with: .opacity))
+                        } else {
+                            Button {
+                                guard let schema = document.selectedSchema,
+                                      let datasetURL = document.selectedDatasetURL else { return }
+                                Task.detached {
+                                    await backtestService.runBacktest(
+                                        schema: schema,
+                                        datasetURL: datasetURL,
+                                        strategyFolder: document.strategyFolder,
+                                        resultFolder: document.resultFolder,
+                                        toolbarStatusService: toolbarStatusService
+                                    )
+                                }
+                            } label: {
+                                Label("Start", systemImage: "play.fill")
+                            }
+                            .disabled(!document.canRunBacktest)
+                            .transition(.scale.combined(with: .opacity))
+                            .keyboardShortcut("r", modifiers: .command)
+                        }
                     }
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button {} label: {
-                        Label("Start", systemImage: "play.fill")
-                    }
+                    .animation(.easeInOut(duration: 0.2), value: backtestService.isRunning)
                 }
             }
         } content: {
@@ -57,16 +82,31 @@ struct HomeView: View {
             ToolbarItem(placement: .navigation) {
                 SidebarModePicker(navigationService: navigationService)
             }
-            ToolbarItem(placement: .principal) {
-                ToolbarRunningSectionView(document: $document, status: toolbarStatusService.toolbarRunningStatus)
-                    .padding(.horizontal, 8)
+            ToolbarItemGroup(placement: .principal) {
+                ToolbarRunningSectionView(
+                    document: $document,
+                    status: toolbarStatusService.toolbarRunningStatus,
+                    datasetFiles: datasetService.datasetFiles,
+                    strategyFiles: strategyService.strategyFiles
+                )
+                .padding(.horizontal, 8)
+
+                Spacer()
+
+                ToolbarErrorView(toolbarStatus: toolbarStatusService.toolbarRunningStatus)
+
+                Spacer()
             }
         }
         .onAppear {
             datasetService.setDataFolder(document.dataFolder)
+            backtestResultService.setResultFolder(document.resultFolder)
         }
         .onChange(of: document.dataFolder) { _, newFolder in
             datasetService.setDataFolder(newFolder)
+        }
+        .onChange(of: document.resultFolder) { _, newFolder in
+            backtestResultService.setResultFolder(newFolder)
         }
     }
 }
@@ -75,6 +115,7 @@ struct HomeView: View {
 
 private struct BacktestContentView: View {
     var navigationService: NavigationService
+    @Environment(BacktestResultService.self) var backtestResultService
 
     var body: some View {
         switch navigationService.path {
@@ -86,6 +127,21 @@ private struct BacktestContentView: View {
             case .strategy(let url):
                 StrategyDetailView(url: url)
                     .frame(minWidth: 400)
+            case .result(let url):
+                if let resultItem = backtestResultService.getResultItem(for: url) {
+                    BacktestChartView(
+                        dataFilePath: resultItem.result.dataFilePath,
+                        tradesFilePath: resultItem.result.tradesFilePath,
+                        marksFilePath: resultItem.result.marksFilePath
+                    )
+                    .frame(minWidth: 500)
+                } else {
+                    ContentUnavailableView(
+                        "Result Not Found",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text("The selected result could not be loaded")
+                    )
+                }
             default:
                 ContentUnavailableView(
                     "No Dataset Selected",
@@ -99,6 +155,7 @@ private struct BacktestContentView: View {
 
 private struct BacktestDetailView: View {
     var navigationService: NavigationService
+    @Environment(BacktestResultService.self) var backtestResultService
 
     var body: some View {
         switch navigationService.path {
@@ -114,6 +171,18 @@ private struct BacktestDetailView: View {
                     description: Text("Strategy historical results will appear here")
                 )
                 .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+            case .result(let url):
+                if let resultItem = backtestResultService.getResultItem(for: url) {
+                    BacktestResultDetailView(resultItem: resultItem)
+                        .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+                } else {
+                    ContentUnavailableView(
+                        "Result Not Found",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text("The selected result could not be loaded")
+                    )
+                    .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+                }
             default:
                 ContentUnavailableView(
                     "No Dataset Selected",

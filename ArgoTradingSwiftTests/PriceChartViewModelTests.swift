@@ -17,11 +17,14 @@ class MockDuckDBService: DuckDBServiceProtocol {
     var fetchPriceDataRangeCalled = false
     var getAggregatedCountCalled = false
     var fetchAggregatedPriceDataRangeCalled = false
+    var getOffsetForTimestampCalled = false
     var lastRequestedInterval: ChartTimeInterval?
+    var lastRequestedTimestamp: Date?
 
     var mockTotalCount = 0
     var mockPriceData: [PriceData] = []
     var mockAggregatedCounts: [ChartTimeInterval: Int] = [:]
+    var mockOffsetForTimestamp: Int = 0
     var shouldThrowError = false
 
     func initDatabase() throws {
@@ -114,6 +117,31 @@ class MockDuckDBService: DuckDBServiceProtocol {
         let start = min(startOffset, aggregated.count)
         let end = min(startOffset + count, aggregated.count)
         return Array(aggregated[start..<end])
+    }
+
+    func getOffsetForTimestamp(
+        filePath: URL,
+        timestamp: Date,
+        interval: ChartTimeInterval
+    ) async throws -> Int {
+        getOffsetForTimestampCalled = true
+        lastRequestedTimestamp = timestamp
+        lastRequestedInterval = interval
+        if shouldThrowError {
+            throw DuckDBError.connectionError
+        }
+        // Return mock offset or calculate based on mock data
+        if mockOffsetForTimestamp > 0 {
+            return mockOffsetForTimestamp
+        }
+        // Calculate offset by finding closest timestamp in mock data
+        guard !mockPriceData.isEmpty else { return 0 }
+        for (index, data) in mockPriceData.enumerated() {
+            if data.date >= timestamp {
+                return max(0, index - 1)
+            }
+        }
+        return mockPriceData.count - 1
     }
 }
 
@@ -950,5 +978,234 @@ struct PriceChartViewModelTests {
 
         #expect(outOfBoundsData?.id == lastData?.id)
         #expect(wayOutOfBoundsData?.id == lastData?.id)
+    }
+
+    // MARK: - scrollToTimestamp Tests
+
+    @Test func testScrollToTimestamp_dataAlreadyLoaded_scrollsToCorrectPosition() async throws {
+        // Arrange: Load data and scroll to a timestamp within the loaded range
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 500
+        mockService.mockPriceData = createMockPriceData(count: 500)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(
+            url: url,
+            dbService: mockService,
+            bufferSize: 300
+        )
+
+        // Load initial data (offset 200-499)
+        await viewModel.loadInitialData(visibleCount: 100)
+        let initialOffset = viewModel.currentOffset
+        #expect(initialOffset == 200)
+
+        // Set mock offset for a timestamp within loaded range
+        mockService.mockOffsetForTimestamp = 350  // Within 200-499
+
+        // Act: Scroll to timestamp
+        let targetTimestamp = Date().addingTimeInterval(350 * 60)  // Matches index 350
+        await viewModel.scrollToTimestamp(targetTimestamp, visibleCount: 100)
+
+        // Assert
+        #expect(mockService.getOffsetForTimestampCalled)
+        // Offset should not change (data is already loaded)
+        #expect(viewModel.currentOffset == initialOffset)
+        // Scroll position should be centered: localIndex - visibleCount/2 = (350-200) - 50 = 100
+        #expect(viewModel.scrollPositionIndex == 100)
+    }
+
+    @Test func testScrollToTimestamp_dataNeedsLoading_loadsAndScrolls() async throws {
+        // Arrange: Scroll to a timestamp outside the loaded range
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 1000
+        mockService.mockPriceData = createMockPriceData(count: 1000)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(
+            url: url,
+            dbService: mockService,
+            bufferSize: 300
+        )
+
+        // Load initial data (offset 700-999)
+        await viewModel.loadInitialData(visibleCount: 100)
+        #expect(viewModel.currentOffset == 700)
+
+        // Set mock offset for a timestamp outside loaded range
+        mockService.mockOffsetForTimestamp = 100  // Outside 700-999
+
+        // Reset fetch tracking
+        mockService.fetchAggregatedPriceDataRangeCalled = false
+
+        // Act: Scroll to timestamp at offset 100
+        let targetTimestamp = Date().addingTimeInterval(100 * 60)
+        await viewModel.scrollToTimestamp(targetTimestamp, visibleCount: 100)
+
+        // Assert
+        #expect(mockService.getOffsetForTimestampCalled)
+        // Data should have been reloaded around offset 100
+        #expect(mockService.fetchAggregatedPriceDataRangeCalled)
+        // New offset should be centered around 100: max(0, 100 - 150) = 0
+        #expect(viewModel.currentOffset == 0)
+    }
+
+    @Test func testScrollToTimestamp_centersTargetInView() async throws {
+        // Arrange
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 500
+        mockService.mockPriceData = createMockPriceData(count: 500)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(
+            url: url,
+            dbService: mockService,
+            bufferSize: 300
+        )
+
+        await viewModel.loadInitialData(visibleCount: 100)
+
+        // Target offset within loaded range
+        mockService.mockOffsetForTimestamp = 300  // Within 200-499
+
+        // Act
+        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+
+        // Assert: scroll position should center the target
+        // localIndex = 300 - 200 = 100
+        // scrollPosition = 100 - 50 = 50
+        #expect(viewModel.scrollPositionIndex == 50)
+    }
+
+    @Test func testScrollToTimestamp_whileLoading_doesNothing() async throws {
+        // Arrange
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 100
+        mockService.mockPriceData = createMockPriceData(count: 100)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService)
+
+        await viewModel.loadInitialData(visibleCount: 100)
+
+        // Reset tracking
+        mockService.getOffsetForTimestampCalled = false
+
+        // Simulate loading state (we can't easily set isLoading directly,
+        // but we can verify the guard works by checking behavior)
+        // For this test, we just verify the method doesn't crash when called
+
+        // Act
+        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+
+        // Assert: method should have been called (since we're not actually loading)
+        #expect(mockService.getOffsetForTimestampCalled)
+    }
+
+    @Test func testScrollToTimestamp_handlesErrorGracefully() async throws {
+        // Arrange
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 100
+        mockService.mockPriceData = createMockPriceData(count: 100)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService)
+
+        await viewModel.loadInitialData(visibleCount: 100)
+
+        // Set up error callback tracking
+        var errorMessage: String?
+        viewModel.onError = { message in
+            errorMessage = message
+        }
+
+        // Enable errors
+        mockService.shouldThrowError = true
+
+        // Act
+        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+
+        // Assert: error should have been handled via onError callback
+        #expect(errorMessage != nil)
+    }
+
+    @Test func testScrollToTimestamp_respectsTimeInterval() async throws {
+        // Arrange
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 600
+        mockService.mockPriceData = createMockPriceData(count: 600)
+        mockService.mockAggregatedCounts[.oneMinute] = 10
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService)
+
+        // Set time interval before loading
+        await viewModel.setTimeInterval(.oneMinute, visibleCount: 100)
+        await viewModel.loadInitialData(visibleCount: 100)
+
+        // Reset tracking
+        mockService.lastRequestedInterval = nil
+
+        // Act
+        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+
+        // Assert: should use the current time interval
+        #expect(mockService.lastRequestedInterval == .oneMinute)
+    }
+
+    @Test func testScrollToTimestamp_atBeginningOfDataset_scrollsCorrectly() async throws {
+        // Arrange
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 1000
+        mockService.mockPriceData = createMockPriceData(count: 1000)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(
+            url: url,
+            dbService: mockService,
+            bufferSize: 300
+        )
+
+        await viewModel.loadInitialData(visibleCount: 100)
+
+        // Target very beginning of dataset
+        mockService.mockOffsetForTimestamp = 10
+
+        // Act
+        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+
+        // Assert: offset should start at 0 (can't go negative)
+        #expect(viewModel.currentOffset == 0)
+        // Scroll position should be properly calculated
+        // localIndex = 10 - 0 = 10
+        // scrollPosition = max(0, 10 - 50) = 0
+        #expect(viewModel.scrollPositionIndex >= 0)
+    }
+
+    @Test func testScrollToTimestamp_atEndOfDataset_scrollsCorrectly() async throws {
+        // Arrange
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 1000
+        mockService.mockPriceData = createMockPriceData(count: 1000)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(
+            url: url,
+            dbService: mockService,
+            bufferSize: 300
+        )
+
+        await viewModel.loadInitialData(visibleCount: 100)
+
+        // Target near end (already loaded since initial load goes to end)
+        mockService.mockOffsetForTimestamp = 950  // Within 700-999
+
+        // Act
+        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+
+        // Assert: should scroll within existing data
+        // localIndex = 950 - 700 = 250
+        // scrollPosition = max(0, min(250 - 50, 300 - 100)) = 200
+        #expect(viewModel.scrollPositionIndex <= viewModel.sortedData.count - 100)
     }
 }

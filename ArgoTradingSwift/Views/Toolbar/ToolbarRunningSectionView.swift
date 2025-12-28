@@ -3,20 +3,16 @@ import SwiftUI
 struct ToolbarRunningSectionView: View {
     @Binding var document: ArgoTradingDocument
     let status: ToolbarRunningStatus
-    @Environment(DatasetService.self) var datasetService
-    @Environment(SchemaService.self) var schemaService
-    @Environment(StrategyService.self) var strategyService
+    let datasetFiles: [URL]
+    let strategyFiles: [URL]
 
     @State private var showDatasetPicker = false
     @State private var showSchemaPicker = false
     @State private var isHoveringDatasetButton = false
     @State private var isHoveringSchemaButton = false
 
-    /// Returns true if the selected schema has no strategy or the strategy file is missing
     private var isSchemaStrategyMissing: Bool {
-        guard let schema = document.selectedSchema else { return false }
-        if schema.strategyPath.isEmpty { return true }
-        return !strategyService.strategyFiles.contains { $0.lastPathComponent == schema.strategyPath }
+        document.isSchemaStrategyMissing(strategyFiles: strategyFiles)
     }
 
     var body: some View {
@@ -78,21 +74,21 @@ struct ToolbarRunningSectionView: View {
                 DatasetPickerPopover(
                     document: $document,
                     isPresented: $showDatasetPicker,
-                    datasetFiles: datasetService.datasetFiles
+                    datasetFiles: datasetFiles
                 )
             }
 
             Spacer()
             statusView()
-                .id(status.animationId)
+                .frame(maxWidth: 400, alignment: .trailing)
                 .transition(.asymmetric(
                     insertion: .move(edge: .bottom).combined(with: .opacity),
                     removal: .move(edge: .top).combined(with: .opacity)
                 ))
-                .animation(.easeInOut(duration: 0.25), value: status.animationId)
         }
-        .frame(minWidth: 600)
+        .frame(minWidth: 700)
         .clipped()
+        .animation(.easeInOut(duration: 0.25), value: status.animationId)
     }
 
     @ViewBuilder
@@ -101,6 +97,7 @@ struct ToolbarRunningSectionView: View {
         case .idle:
             Text("Idle")
                 .font(.callout)
+                .id("idle")
 
         case .running(let label):
             HStack(spacing: 6) {
@@ -110,6 +107,7 @@ struct ToolbarRunningSectionView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+            .id("running-\(label)")
 
         case .downloading(let label, let progress):
             HStack(spacing: 8) {
@@ -123,16 +121,11 @@ struct ToolbarRunningSectionView: View {
                     .controlSize(.small)
                     .progressViewStyle(.circular)
             }
+            .id("downloading-\(label)")
 
         case .backtesting(let label, let progress):
             HStack(spacing: 8) {
-                Text(label)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                Text("\(progress.current)")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                Text("\(progress.total)")
+                Text("\(label) \(progress.current)/\(progress.total)")
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
@@ -142,6 +135,7 @@ struct ToolbarRunningSectionView: View {
                     .controlSize(.small)
                     .progressViewStyle(.circular)
             }
+            .id("backtesting-\(label)")
 
         case .error(let label, _, let date):
             HStack(spacing: 6) {
@@ -155,6 +149,7 @@ struct ToolbarRunningSectionView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+            .id("error-\(label)")
 
         case .downloadCancelled(let label):
             HStack(spacing: 6) {
@@ -163,6 +158,7 @@ struct ToolbarRunningSectionView: View {
                 Text("\(label) **Cancelled**")
                     .font(.callout)
             }
+            .id("downloadCancelled-\(label)")
 
         case .finished(let message, let date):
             HStack(spacing: 6) {
@@ -176,6 +172,7 @@ struct ToolbarRunningSectionView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+            .id("finished-\(message)")
         }
     }
 
@@ -198,43 +195,53 @@ struct ToolbarRunningSectionView: View {
 }
 
 #Preview("Idle") {
-    ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .idle)
-        .environment(DatasetService())
-        .environment(SchemaService())
-        .environment(StrategyService())
-        .padding()
+    ToolbarRunningSectionView(
+        document: .constant(ArgoTradingDocument()),
+        status: .idle,
+        datasetFiles: [],
+        strategyFiles: []
+    )
+    .padding()
 }
 
 #Preview("Running") {
-    ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .running(label: "Building..."))
-        .environment(DatasetService())
-        .environment(SchemaService())
-        .environment(StrategyService())
-        .padding()
+    ToolbarRunningSectionView(
+        document: .constant(ArgoTradingDocument()),
+        status: .running(label: "Building..."),
+        datasetFiles: [],
+        strategyFiles: []
+    )
+    .padding()
 }
 
 #Preview("Backtesting") {
-    ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .backtesting(label: "Backtesting", progress: Progress(current: 45, total: 100)))
-        .environment(DatasetService())
-        .environment(SchemaService())
-        .environment(StrategyService())
-        .padding()
+    ToolbarRunningSectionView(
+        document: .constant(ArgoTradingDocument()),
+        status: .backtesting(label: "Backtesting", progress: Progress(current: 45, total: 100)),
+        datasetFiles: [],
+        strategyFiles: []
+    )
+    .padding()
 }
 
 #Preview("Error") {
-    ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .error(label: "", errors: ["Something went wrong"], at: Date()))
-        .environment(DatasetService())
-        .environment(SchemaService())
-        .environment(StrategyService())
-        .padding()
+    ToolbarRunningSectionView(
+        document: .constant(ArgoTradingDocument()),
+        status: .error(label: "", errors: ["Something went wrong"], at: Date()),
+        datasetFiles: [],
+        strategyFiles: []
+    )
+    .padding()
 }
 
 #Preview("Finished") {
-    ToolbarRunningSectionView(document: .constant(ArgoTradingDocument()), status: .finished(message: "Build Succeeded", at: Date()))
-        .environment(DatasetService())
-        .environment(SchemaService())
-        .environment(StrategyService())
-        .padding()
+    ToolbarRunningSectionView(
+        document: .constant(ArgoTradingDocument()),
+        status: .finished(message: "Build Succeeded", at: Date()),
+        datasetFiles: [],
+        strategyFiles: []
+    )
+    .padding()
 }
 
 #Preview("Missing Strategy") {
@@ -244,10 +251,9 @@ struct ToolbarRunningSectionView: View {
             schemas: [schema],
             selectedSchemaId: schema.id
         )),
-        status: .idle
+        status: .idle,
+        datasetFiles: [],
+        strategyFiles: []
     )
-    .environment(DatasetService())
-    .environment(SchemaService())
-    .environment(StrategyService())
     .padding()
 }

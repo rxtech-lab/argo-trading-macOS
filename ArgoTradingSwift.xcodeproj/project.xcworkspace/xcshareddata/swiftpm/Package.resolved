@@ -1,5 +1,5 @@
 {
-  "originHash" : "8866a9b0e3e1b7db3363aa691bbb643e5f5b255f14d5abe99cda4294a6df4439",
+  "originHash" : "ae94a8f8143515c182015bb2c7646036073ba23e9aaa11de2af05b4e20c808f4",
   "pins" : [
     {
       "identity" : "duckdb-swift",
@@ -34,7 +34,7 @@
       "location" : "https://github.com/sirily11/swift-jsonschema-form",
       "state" : {
         "branch" : "main",
-        "revision" : "df11f3df453067c1dbb9be9da94f06361d8789a5"
+        "revision" : "d296a07d23d7690a0f3f33be6e7047ffbd8fab72"
       }
     },
     {
@@ -44,6 +44,15 @@
       "state" : {
         "revision" : "e9a06346499a3a889165647e3f23f8a7b2609a1c",
         "version" : "0.10.3"
+      }
+    },
+    {
+      "identity" : "yams",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jpsim/Yams",
+      "state" : {
+        "revision" : "51b5127c7fb6ffac106ad6d199aaa33c5024895f",
+        "version" : "6.2.0"
       }
     }
   ],

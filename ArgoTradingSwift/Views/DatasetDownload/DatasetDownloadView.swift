@@ -138,32 +138,29 @@ extension DatasetDownloadView {
 
                 // Check cancellation before dismissing
                 if !Task.isCancelled {
-                    await MainActor.run {
-                        self.toolbarStatusService.toolbarRunningStatus = .finished(
-                            message: "Downloaded \(self.ticker)",
-                            at: Date()
-                        )
-                    }
+                    await self.toolbarStatusService.setStatus(.finished(
+                        message: "Downloaded \(self.ticker)",
+                        at: Date()
+                    ))
                     await dismiss()
                 }
             } catch is CancellationError {
                 // User cancelled - no alert needed (cancel() already sets idle status)
                 print("Download cancelled")
             } catch {
-                let errorDescription = error.localizedDescription
                 // skip alert for context canceled errors
-                if errorDescription.contains("context canceled") {
-                    self.toolbarStatusService.toolbarRunningStatus = .downloadCancelled(label: "Dataset Download")
+                if error.isContextCancelled {
+                    await self.toolbarStatusService.setStatus(.downloadCancelled(label: "Dataset Download"))
                     return
                 }
                 await MainActor.run {
                     self.alertManager.showAlert(message: error.localizedDescription)
-                    self.toolbarStatusService.toolbarRunningStatus = .error(
-                        label: "Dataset Download",
-                        errors: [error.localizedDescription],
-                        at: Date()
-                    )
                 }
+                await self.toolbarStatusService.setStatus(.error(
+                    label: "Dataset Download",
+                    errors: [error.localizedDescription],
+                    at: Date()
+                ))
             }
             await MainActor.run {
                 self.datasetDownloadService.isDownloading = false

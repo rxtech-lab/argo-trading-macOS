@@ -12,6 +12,7 @@ struct BacktestSideBar: View {
     @Environment(DatasetDownloadService.self) var downloadService
     @Environment(StrategyService.self) var strategyService
     @Environment(BacktestService.self) private var backtestService
+    @Environment(BacktestResultService.self) private var backtestResultService
 
     @Bindable var navigationService: NavigationService
     @Binding var document: ArgoTradingDocument
@@ -29,12 +30,13 @@ struct BacktestSideBar: View {
                         BacktestSection(document: $document)
                         StrategySection(document: $document, strategyFolder: document.strategyFolder)
                     case .results:
-                        EmptyView()
+                        ResultSection(document: $document, resultFolder: document.resultFolder)
                     }
                 default:
                     EmptyView()
                 }
             }
+            .id(backtestService.currentBacktestTab)
         }
         .contextMenu {
             Button {

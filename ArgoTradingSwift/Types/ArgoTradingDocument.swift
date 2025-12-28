@@ -64,6 +64,13 @@ struct ArgoTradingDocument: FileDocument {
         return schemas.first { $0.id == id }
     }
 
+    /// Returns true if backtest can be run: schema selected, dataset selected, and strategy path is valid
+    var canRunBacktest: Bool {
+        guard let schema = selectedSchema else { return false }
+        guard selectedDatasetURL != nil else { return false }
+        return schema.hasValidStrategyPath
+    }
+
     mutating func addSchema(_ schema: Schema) {
         schemas.append(schema)
     }
@@ -97,6 +104,13 @@ struct ArgoTradingDocument: FileDocument {
                 schemas[index].updatedAt = Date()
             }
         }
+    }
+
+    /// Returns true if the selected schema has no strategy or the strategy file is missing from the provided list
+    func isSchemaStrategyMissing(strategyFiles: [URL]) -> Bool {
+        guard let schema = selectedSchema else { return false }
+        if schema.strategyPath.isEmpty { return true }
+        return !strategyFiles.contains { $0.lastPathComponent == schema.strategyPath }
     }
 }
 

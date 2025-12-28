@@ -18,11 +18,15 @@ struct SchemaPickerPopover: View {
     @State private var isManageHovered = false
 
     private var filteredSchemas: [Schema] {
-        if schemaFilter.isEmpty {
-            return document.schemas
+        Self.filterSchemas(document.schemas, with: schemaFilter)
+    }
+
+    static func filterSchemas(_ schemas: [Schema], with filter: String) -> [Schema] {
+        if filter.isEmpty {
+            return schemas
         }
-        return document.schemas.filter {
-            $0.name.localizedCaseInsensitiveContains(schemaFilter)
+        return schemas.filter {
+            $0.name.localizedCaseInsensitiveContains(filter)
         }
     }
 

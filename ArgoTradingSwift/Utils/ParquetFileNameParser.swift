@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct ParsedParquetFileName {
+struct ParsedParquetFileName: Hashable {
     let ticker: String
     let startDate: Date
     let endDate: Date
