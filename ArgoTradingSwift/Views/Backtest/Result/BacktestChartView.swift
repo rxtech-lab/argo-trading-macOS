@@ -174,11 +174,10 @@ struct BacktestChartView: View {
     private func buildOverlays() {
         // Build trade overlays with timestamps (indices computed lazily in PriceChartView)
         tradeOverlays = trades.compactMap { trade in
-            guard let executedAt = trade.executedAt else { return nil }
-            let isBuy = trade.orderType.lowercased().contains("buy")
+            let isBuy = trade.side == .buy
             return TradeOverlay(
                 id: trade.orderId,
-                timestamp: executedAt,
+                timestamp: trade.timestamp,
                 price: trade.executedPrice,
                 isBuy: isBuy,
                 trade: trade

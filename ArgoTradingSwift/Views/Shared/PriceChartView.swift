@@ -76,12 +76,14 @@ struct PriceChartView: View {
 
     // MARK: - Computed Overlay Indices (lazy computation)
 
-    /// Compute trade overlay indices on-demand using binary search
-    private var visibleTradeOverlays: [(overlay: TradeOverlay, index: Int)] {
+    /// Compute trade overlay indices and prices on-demand using binary search
+    private var visibleTradeOverlays: [(overlay: TradeOverlay, index: Int, price: Double)] {
         guard !indexedData.isEmpty else { return [] }
         return tradeOverlays.compactMap { overlay in
-            if let index = findClosestIndex(for: overlay.timestamp) {
-                return (overlay, index)
+            if let index = findClosestIndex(for: overlay.timestamp),
+               let data = indexedData.first(where: { $0.index == index })
+            {
+                return (overlay, index, data.data.close)
             }
             return nil
         }
@@ -128,6 +130,19 @@ struct PriceChartView: View {
         return indexedData[low].index
     }
 
+    /// Adjust overlay index to avoid edge clipping
+    /// Shifts index inward if at boundaries so overlays remain visible
+    private func adjustedIndexForDisplay(_ index: Int) -> Int {
+        guard indexedData.count > 2 else { return index }
+        let maxIndex = indexedData.count - 1
+        if index < 1 {
+            return 1
+        } else if index >= maxIndex {
+            return maxIndex - 1
+        }
+        return index
+    }
+
     var body: some View {
         Chart {
             // Price data
@@ -161,16 +176,14 @@ struct PriceChartView: View {
             // Trade overlays (label + line + arrow) - computed lazily
             ForEach(visibleTradeOverlays, id: \.overlay.id) { item in
                 let overlay = item.overlay
-                let index = item.index
-                let lineOffset = tradeLineOffset(isBuy: overlay.isBuy)
-                let lineStart = overlay.price + lineOffset
+                let displayIndex = adjustedIndexForDisplay(item.index)
 
                 // Label above the line
                 PointMark(
-                    x: .value("Index", index),
-                    y: .value("Price", item.overlay.price)
+                    x: .value("Index", displayIndex),
+                    y: .value("Price", item.price)
                 )
-                .symbolSize(100)
+                .symbolSize(10)
                 .foregroundStyle(.red)
                 .interpolationMethod(.catmullRom)
                 .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
@@ -185,20 +198,12 @@ struct PriceChartView: View {
                                 .fill(overlay.isBuy ? .green : .red)
                         )
                 }
-
-//                // Vertical line extending from price
-//                RuleMark(
-//                    x: .value("Index", index),
-//                    y: .value("Start", lineStart),
-//                )
-//                .foregroundStyle(.gray.opacity(0.5))
-//                .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
             }
 
             // Mark overlays (shapes) - computed lazily
             ForEach(visibleMarkOverlays, id: \.overlay.id) { item in
                 PointMark(
-                    x: .value("Index", item.index),
+                    x: .value("Index", adjustedIndexForDisplay(item.index)),
                     y: .value("Price", item.price)
                 )
                 .symbol {
@@ -362,7 +367,7 @@ private struct TradeTooltipView: View {
     let trade: Trade
 
     private var isBuy: Bool {
-        trade.orderType.lowercased().contains("buy")
+        trade.side == .buy
     }
 
     var body: some View {
@@ -370,7 +375,7 @@ private struct TradeTooltipView: View {
             HStack {
                 Image(systemName: isBuy ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
                     .foregroundColor(isBuy ? .green : .red)
-                Text(trade.orderType.uppercased())
+                Text(trade.side.rawValue.uppercased())
                     .font(.caption.bold())
             }
 
@@ -378,10 +383,15 @@ private struct TradeTooltipView: View {
 
             LabeledContent("Symbol", value: trade.symbol)
             LabeledContent("Position", value: trade.positionType)
+            if let date = trade.executedAt {
+                LabeledContent("Date", value: date.formatted(date: .abbreviated, time: .standard))
+            }
             LabeledContent("Qty", value: String(format: "%.4f", trade.executedQty))
             LabeledContent("Price", value: String(format: "%.2f", trade.executedPrice))
-            LabeledContent("PnL", value: String(format: "%.2f", trade.pnl))
-                .foregroundColor(trade.pnl >= 0 ? .green : .red)
+            if trade.side == .sell {
+                LabeledContent("PnL", value: String(format: "%.2f", trade.pnl))
+                    .foregroundColor(trade.pnl >= 0 ? .green : .red)
+            }
 
             if !trade.reason.isEmpty {
                 Divider()

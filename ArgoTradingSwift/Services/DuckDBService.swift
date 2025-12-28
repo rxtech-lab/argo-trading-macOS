@@ -350,13 +350,13 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(volumeColumn).eraseToAnyColumn(),
         ])
 
-        return dataFrame.rows.enumerated().map { (index, row) in
+        return dataFrame.rows.enumerated().map { index, row in
             let time = row[0, String.self]
             let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? Date()
 
             return PriceData(
                 date: utcDate,
-                id: "agg-\(startOffset + index)",  // Generate unique ID for aggregated rows
+                id: "agg-\(startOffset + index)", // Generate unique ID for aggregated rows
                 ticker: row[1, String.self] ?? "",
                 open: row[2, Double.self] ?? 0.0,
                 high: row[3, Double.self] ?? 0.0,
@@ -390,7 +390,7 @@ class DuckDBService: DuckDBServiceProtocol {
             "order_id", "symbol", "order_type", "quantity", "price",
             "timestamp", "is_completed", "reason", "message",
             "strategy_name", "executed_at", "executed_qty", "executed_price",
-            "commission", "pnl", "position_type"
+            "commission", "pnl", "position_type",
         ]
         let column = validColumns.contains(sortColumn) ? sortColumn : "timestamp"
 
@@ -477,11 +477,12 @@ class DuckDBService: DuckDBServiceProtocol {
 
             let executedAtStr = row[10, String.self]
             let executedAt = executedAtStr.flatMap { Self.utcDateFormatter.date(from: $0) }
+            let orderSide = row[2, String.self] ?? ""
 
             return Trade(
                 orderId: row[0, String.self] ?? "",
                 symbol: row[1, String.self] ?? "",
-                orderType: row[2, String.self] ?? "",
+                side: OrderSide(rawValue: orderSide) ?? .buy,
                 quantity: row[3, Double.self] ?? 0.0,
                 price: row[4, Double.self] ?? 0.0,
                 timestamp: timestamp,
@@ -528,7 +529,7 @@ class DuckDBService: DuckDBServiceProtocol {
         let validColumns = [
             "order_id", "symbol", "order_type", "quantity", "price",
             "timestamp", "is_completed", "reason", "message",
-            "strategy_name", "position_type"
+            "strategy_name", "position_type",
         ]
         let column = validColumns.contains(sortColumn) ? sortColumn : "timestamp"
 
@@ -690,7 +691,8 @@ class DuckDBService: DuckDBServiceProtocol {
             // Build signal from flattened columns
             var signal: Signal?
             if let signalTypeStr = row[2, String.self],
-               let signalType = SignalType(rawValue: signalTypeStr) {
+               let signalType = SignalType(rawValue: signalTypeStr)
+            {
                 let signalTimeStr = row[4, String.self] ?? ""
                 let signalTime = iso8601Formatter.date(from: signalTimeStr) ?? Date()
 
@@ -797,10 +799,12 @@ class DuckDBService: DuckDBServiceProtocol {
             let executedAtStr = row[10, String.self]
             let executedAt = executedAtStr.flatMap { Self.utcDateFormatter.date(from: $0) }
 
+            let orderSide = row[2, String.self]
+
             return Trade(
                 orderId: row[0, String.self] ?? "",
                 symbol: row[1, String.self] ?? "",
-                orderType: row[2, String.self] ?? "",
+                side: OrderSide(rawValue: orderSide ?? "") ?? .buy,
                 quantity: row[3, Double.self] ?? 0.0,
                 price: row[4, Double.self] ?? 0.0,
                 timestamp: timestamp,

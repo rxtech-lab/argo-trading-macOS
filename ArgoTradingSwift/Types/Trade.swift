@@ -7,10 +7,20 @@
 
 import Foundation
 
+enum OrderSide: String, Codable, CaseIterable, Hashable {
+    case buy = "BUY"
+    case sell = "SELL"
+}
+
+enum OrderType: String, Codable, CaseIterable, Hashable {
+    case market = "MARKET"
+    case limit = "LIMIT"
+}
+
 struct Trade: Codable, Hashable, Identifiable {
     let orderId: String
     let symbol: String
-    let orderType: String
+    let side: OrderSide
     let quantity: Double
     let price: Double
     let timestamp: Date

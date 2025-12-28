@@ -62,8 +62,8 @@ struct TradesTableView: View {
         }
         .width(min: 60, ideal: 80)
 
-        TableColumn("Type", value: \.orderType) { trade in
-            Text(trade.orderType)
+        TableColumn("Side", value: \.side.rawValue) { trade in
+            Text(trade.side.rawValue)
         }
         .width(min: 50, ideal: 60)
 
@@ -179,7 +179,7 @@ extension TradesTableView {
         switch first.keyPath {
         case \Trade.timestamp: column = "timestamp"
         case \Trade.symbol: column = "symbol"
-        case \Trade.orderType: column = "order_type"
+        case \Trade.side: column = "order_type"
         case \Trade.positionType: column = "position_type"
         case \Trade.quantity: column = "quantity"
         case \Trade.price: column = "price"
