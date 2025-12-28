@@ -5,7 +5,6 @@
 //  Created by Claude on 12/27/25.
 //
 
-import Charts
 import SwiftUI
 
 /// Chart view for backtest results with trade and mark overlays
@@ -106,9 +105,20 @@ struct BacktestChartView: View {
                 scrollPosition = newValue
             }
         }
-        .onChange(of: viewModel?.sortedData) { _, _ in
-            // Rebuild overlays when price data changes (e.g., during scroll/load)
-            buildOverlays()
+        // Note: Removed onChange(of: sortedData) - overlays now compute indices lazily
+        .onChange(of: dataFilePath) { _, _ in
+            // Reset all state and reload when data file changes
+            viewModel = nil
+            trades = []
+            marks = []
+            tradeOverlays = []
+            markOverlays = []
+            scrollPosition = 0
+            print("Data file changed, reloading chart and overlays")
+            Task {
+                await initializeViewModel()
+                await loadOverlayData()
+            }
         }
         .gesture(magnificationGesture)
     }
@@ -132,7 +142,8 @@ struct BacktestChartView: View {
         // Set the default interval based on data timespan
         let fileName = dataURL.lastPathComponent
         if let parsed = ParquetFileNameParser.parse(fileName),
-           let minInterval = parsed.minimumInterval {
+           let minInterval = parsed.minimumInterval
+        {
             await vm.setTimeInterval(minInterval, visibleCount: visibleCount)
         }
 
@@ -161,146 +172,47 @@ struct BacktestChartView: View {
     }
 
     private func buildOverlays() {
-        guard let vm = viewModel, !vm.sortedData.isEmpty else {
-            tradeOverlays = []
-            markOverlays = []
-            return
-        }
-
-        // Build trade overlays by matching timestamps to price data indices
+        // Build trade overlays with timestamps (indices computed lazily in PriceChartView)
         tradeOverlays = trades.compactMap { trade in
             guard let executedAt = trade.executedAt else { return nil }
-
-            // Find the closest price data index for this trade timestamp
-            if let index = findClosestIndex(for: executedAt, in: vm.sortedData) {
-                let isBuy = trade.orderType.lowercased().contains("buy")
-                return TradeOverlay(
-                    id: trade.orderId,
-                    index: index,
-                    price: trade.executedPrice,
-                    isBuy: isBuy,
-                    trade: trade
-                )
-            }
-            return nil
+            let isBuy = trade.orderType.lowercased().contains("buy")
+            return TradeOverlay(
+                id: trade.orderId,
+                timestamp: executedAt,
+                price: trade.executedPrice,
+                isBuy: isBuy,
+                trade: trade
+            )
         }
 
-        // Build mark overlays by matching market_data_id to price data
-        markOverlays = marks.compactMap { mark in
-            // Try to find price data by ID
-            if let index = vm.sortedData.firstIndex(where: { $0.id == mark.marketDataId }) {
-                let priceData = vm.sortedData[index]
-                return MarkOverlay(
-                    id: mark.marketDataId,
-                    index: index,
-                    price: priceData.close,
-                    mark: mark
-                )
-            }
-            return nil
+        // Build mark overlays with marketDataId (indices computed lazily in PriceChartView)
+        markOverlays = marks.map { mark in
+            MarkOverlay(
+                id: mark.marketDataId,
+                marketDataId: mark.marketDataId,
+                price: 0, // Price will be looked up in PriceChartView
+                mark: mark
+            )
         }
-    }
-
-    /// Find the closest index in sorted price data for a given timestamp
-    private func findClosestIndex(for date: Date, in data: [PriceData]) -> Int? {
-        guard !data.isEmpty else { return nil }
-
-        // Binary search for closest timestamp
-        var low = 0
-        var high = data.count - 1
-
-        while low < high {
-            let mid = (low + high) / 2
-            if data[mid].date < date {
-                low = mid + 1
-            } else {
-                high = mid
-            }
-        }
-
-        // Check if the found index or its neighbor is closer
-        if low > 0 {
-            let diffLow = abs(data[low].date.timeIntervalSince(date))
-            let diffPrev = abs(data[low - 1].date.timeIntervalSince(date))
-            if diffPrev < diffLow {
-                return low - 1
-            }
-        }
-
-        return low
     }
 
     // MARK: - Header
 
     private var headerView: some View {
-        HStack {
-            Text("Price Chart")
-                .font(.headline)
-
-            Spacer()
-
-            // Zoom controls
-            HStack(spacing: 8) {
-                Button {
-                    withAnimation {
-                        zoomScale = max(minZoom, zoomScale / 1.5)
-                    }
-                } label: {
-                    Image(systemName: "minus.magnifyingglass")
-                }
-                .buttonStyle(.borderless)
-
-                Text("\(Int(zoomScale * 100))%")
-                    .font(.caption)
-                    .frame(width: 40)
-
-                Button {
-                    withAnimation {
-                        zoomScale = min(maxZoom, zoomScale * 1.5)
-                    }
-                } label: {
-                    Image(systemName: "plus.magnifyingglass")
-                }
-                .buttonStyle(.borderless)
-
-                Button {
-                    withAnimation {
-                        zoomScale = 1.0
-                    }
-                } label: {
-                    Image(systemName: "arrow.counterclockwise")
-                }
-                .buttonStyle(.borderless)
-                .disabled(zoomScale == 1.0)
-            }
-        }
+        ChartHeaderView(
+            title: "Price Chart",
+            zoomScale: $zoomScale,
+            minZoom: minZoom,
+            maxZoom: maxZoom
+        )
     }
 
     // MARK: - Legend
 
     private var legendView: some View {
-        Group {
-            if let idx = selectedIndex,
-               let item = viewModel?.priceData(at: idx) {
-                HStack(spacing: 16) {
-                    Text(item.date, format: .dateTime.month().day().hour().minute())
-                        .foregroundStyle(.secondary)
-
-                    Group {
-                        LegendItem(label: "O", value: item.open, color: .primary)
-                        LegendItem(label: "H", value: item.high, color: .green)
-                        LegendItem(label: "L", value: item.low, color: .red)
-                        LegendItem(label: "C", value: item.close, color: item.close >= item.open ? .green : .red)
-                        LegendItem(label: "V", value: item.volume, color: .blue, decimals: 0)
-                    }
-                }
-                .font(.system(.body, design: .monospaced))
-            } else {
-                Text("Hover over chart to see values")
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(height: 24)
+        ChartLegendView(
+            priceData: selectedIndex.flatMap { viewModel?.priceData(at: $0) }
+        )
     }
 
     // MARK: - Chart Content
@@ -314,19 +226,32 @@ struct BacktestChartView: View {
                 candlestickWidth: candlestickWidth,
                 yAxisDomain: vm.yAxisDomain,
                 visibleCount: visibleCount,
+                isLoading: vm.isLoading,
                 scrollPosition: $scrollPosition,
-                selectedIndex: $selectedIndex,
                 tradeOverlays: tradeOverlays,
                 markOverlays: markOverlays,
-                onScrollChange: { newIndex in
-                    vm.scrollPositionIndex = newIndex
-
-                    loadDataTask?.cancel()
-                    loadDataTask = Task {
-                        try? await Task.sleep(for: .milliseconds(50))
-                        guard !Task.isCancelled else { return }
-                        await vm.checkAndLoadMoreData(at: newIndex, visibleCount: visibleCount)
+                onScrollChange: { range in
+                    vm.scrollPositionIndex = range.from
+                    if range.isNearStart(threshold: 50) {
+                        loadDataTask?.cancel()
+                        loadDataTask = Task {
+                            try? await Task.sleep(for: .milliseconds(50))
+                            guard !Task.isCancelled else { return }
+                            await vm.loadMoreAtBeginning()
+                        }
                     }
+
+                    if range.isNearEnd(threshold: 50) {
+                        loadDataTask?.cancel()
+                        loadDataTask = Task {
+                            try? await Task.sleep(for: .milliseconds(50))
+                            guard !Task.isCancelled else { return }
+                            await vm.loadMoreAtEnd()
+                        }
+                    }
+                },
+                onSelectionChange: { newIndex in
+                    selectedIndex = newIndex
                 }
             )
             .gesture(magnificationGesture)
@@ -382,67 +307,20 @@ struct BacktestChartView: View {
     // MARK: - Chart Controls
 
     private var chartControlsView: some View {
-        HStack(spacing: 12) {
-            // Interval selector
-            HStack(spacing: 4) {
-                Text("Interval:")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Picker("Interval", selection: Binding(
-                    get: { viewModel?.timeInterval ?? .oneSecond },
-                    set: { newInterval in
-                        guard let vm = viewModel else { return }
-                        Task {
-                            await vm.setTimeInterval(newInterval, visibleCount: visibleCount)
-                        }
-                    }
-                )) {
-                    ForEach(availableIntervals) { interval in
-                        Text(interval.displayName).tag(interval)
-                    }
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .disabled(viewModel?.isLoading ?? false)
-            }
-
-            // Loading indicator
-            if let vm = viewModel, vm.isLoading {
-                ProgressView()
-                    .scaleEffect(0.6)
-            }
-
-            Spacer()
-
-            // Chart type picker
-            Picker("", selection: $chartType) {
-                ForEach(ChartType.allCases) { type in
-                    Text(type.rawValue).tag(type)
+        ChartControlsView(
+            availableIntervals: availableIntervals,
+            selectedInterval: Binding(
+                get: { viewModel?.timeInterval ?? .oneSecond },
+                set: { _ in }
+            ),
+            chartType: $chartType,
+            isLoading: viewModel?.isLoading ?? false,
+            onIntervalChange: { newInterval in
+                guard let vm = viewModel else { return }
+                Task {
+                    await vm.setTimeInterval(newInterval, visibleCount: visibleCount)
                 }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(width: 180)
-        }
-        .frame(height: 32)
-    }
-}
-
-// MARK: - Legend Item Component
-
-private struct LegendItem: View {
-    let label: String
-    let value: Double
-    let color: Color
-    var decimals: Int = 2
-
-    var body: some View {
-        HStack(spacing: 2) {
-            Text(label)
-                .foregroundStyle(.secondary)
-            Text(value, format: .number.precision(.fractionLength(decimals)))
-                .foregroundStyle(color)
-        }
+        )
     }
 }

@@ -33,6 +33,7 @@ class PriceChartViewModel {
     var yAxisDomain: ClosedRange<Double> {
         stableYAxisDomain ?? currentDataYAxisDomain
     }
+
     private(set) var totalCount: Int = 0
     private(set) var currentOffset: Int = 0
     private(set) var isLoading = false
@@ -185,16 +186,18 @@ class PriceChartViewModel {
         let maxY = data.map(\.high).max() ?? 100
         let range = maxY - minY
         let padding = max(range * 0.05, 0.01)
-        currentDataYAxisDomain = (minY - padding)...(maxY + padding)
+        withAnimation {
+            currentDataYAxisDomain = (minY - padding)...(maxY + padding)
 
-        // On first load, set the stable domain
-        // On subsequent loads, expand it if new data falls outside current bounds
-        if let existingDomain = stableYAxisDomain {
-            let newLower = min(existingDomain.lowerBound, currentDataYAxisDomain.lowerBound)
-            let newUpper = max(existingDomain.upperBound, currentDataYAxisDomain.upperBound)
-            stableYAxisDomain = newLower...newUpper
-        } else {
-            stableYAxisDomain = currentDataYAxisDomain
+            // On first load, set the stable domain
+            // On subsequent loads, expand it if new data falls outside current bounds
+            if let existingDomain = stableYAxisDomain {
+                let newLower = min(existingDomain.lowerBound, currentDataYAxisDomain.lowerBound)
+                let newUpper = max(existingDomain.upperBound, currentDataYAxisDomain.upperBound)
+                stableYAxisDomain = newLower...newUpper
+            } else {
+                stableYAxisDomain = currentDataYAxisDomain
+            }
         }
     }
 
@@ -202,7 +205,7 @@ class PriceChartViewModel {
         indexedData = sortedData.enumerated().map { IndexedPrice(index: $0.offset, data: $0.element) }
     }
 
-    private func loadMoreAtBeginning() async {
+    func loadMoreAtBeginning() async {
         guard !isLoading else { return }
         isLoading = true
 
@@ -230,6 +233,7 @@ class PriceChartViewModel {
             }
 
             updateCachedProperties(from: combinedData)
+
             loadedData = combinedData
 
             // Adjust scroll position by prepended count to maintain visual position
@@ -241,7 +245,7 @@ class PriceChartViewModel {
         isLoading = false
     }
 
-    private func loadMoreAtEnd() async {
+    func loadMoreAtEnd() async {
         guard !isLoading else { return }
         isLoading = true
 

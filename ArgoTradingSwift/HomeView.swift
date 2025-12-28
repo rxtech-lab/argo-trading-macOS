@@ -129,8 +129,12 @@ private struct BacktestContentView: View {
                     .frame(minWidth: 400)
             case .result(let url):
                 if let resultItem = backtestResultService.getResultItem(for: url) {
-                    BacktestResultDetailView(resultItem: resultItem)
-                        .frame(minWidth: 400)
+                    BacktestChartView(
+                        dataFilePath: resultItem.result.dataFilePath,
+                        tradesFilePath: resultItem.result.tradesFilePath,
+                        marksFilePath: resultItem.result.marksFilePath
+                    )
+                    .frame(minWidth: 500)
                 } else {
                     ContentUnavailableView(
                         "Result Not Found",
@@ -169,12 +173,8 @@ private struct BacktestDetailView: View {
                 .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
             case .result(let url):
                 if let resultItem = backtestResultService.getResultItem(for: url) {
-                    BacktestChartView(
-                        dataFilePath: resultItem.result.dataFilePath,
-                        tradesFilePath: resultItem.result.tradesFilePath,
-                        marksFilePath: resultItem.result.marksFilePath
-                    )
-                    .navigationSplitViewColumnWidth(min: 400, ideal: 500, max: 700)
+                    BacktestResultDetailView(resultItem: resultItem)
+                        .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
                 } else {
                     ContentUnavailableView(
                         "Result Not Found",
