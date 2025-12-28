@@ -9,6 +9,7 @@ import SwiftUI
 
 struct OrdersTableView: View {
     let filePath: URL
+    let dataFilePath: URL
 
     @Environment(DuckDBService.self) private var dbService
     @Environment(AlertManager.self) private var alertManager
@@ -17,6 +18,7 @@ struct OrdersTableView: View {
     @State private var selectedRows: Set<String> = []
     @State private var sortOrder: [KeyPathComparator<Order>] = [KeyPathComparator(\.timestamp, order: .reverse)]
     @State private var isLoading: Bool = false
+    @State private var selectedOrderForDetail: Order?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -40,12 +42,29 @@ struct OrdersTableView: View {
             basicColumns
             metadataColumns
         }
+        .contextMenu(forSelectionType: String.self) { selectedIds in
+            if let firstId = selectedIds.first,
+               let order = data.items.first(where: { $0.id == firstId }) {
+                Button {
+                    selectedOrderForDetail = order
+                } label: {
+                    Label("View Surrounding Price Data", systemImage: "chart.bar.xaxis")
+                }
+            }
+        }
         .overlay {
             if isLoading {
                 ProgressView()
                     .padding()
                     .glassEffect()
             }
+        }
+        .sheet(item: $selectedOrderForDetail) { order in
+            SurroundingPriceDataSheet(
+                timestamp: order.timestamp,
+                dataFilePath: dataFilePath,
+                title: "\(order.symbol) - \(order.orderType.capitalized)"
+            )
         }
     }
 
@@ -188,7 +207,10 @@ extension OrdersTableView {
 }
 
 #Preview {
-    OrdersTableView(filePath: URL(fileURLWithPath: "/tmp/orders.parquet"))
-        .environment(DuckDBService())
-        .environment(AlertManager())
+    OrdersTableView(
+        filePath: URL(fileURLWithPath: "/tmp/orders.parquet"),
+        dataFilePath: URL(fileURLWithPath: "/tmp/data.parquet")
+    )
+    .environment(DuckDBService())
+    .environment(AlertManager())
 }

@@ -76,14 +76,29 @@ struct PriceChartView: View {
 
     // MARK: - Computed Overlay Indices (lazy computation)
 
+    /// Get the timestamp range of loaded data for filtering overlays
+    private var dataTimestampRange: ClosedRange<Date>? {
+        guard let first = indexedData.first?.data.date,
+              let last = indexedData.last?.data.date else {
+            return nil
+        }
+        return first...last
+    }
+
     /// Compute trade overlay indices and prices on-demand using binary search
     private var visibleTradeOverlays: [(overlay: TradeOverlay, index: Int, price: Double)] {
-        guard !indexedData.isEmpty else { return [] }
+        guard !indexedData.isEmpty,
+              let range = dataTimestampRange else { return [] }
+
         return tradeOverlays.compactMap { overlay in
+            // Skip trades outside the data timestamp range
+            guard range.contains(overlay.timestamp) else { return nil }
+
             if let index = findClosestIndex(for: overlay.timestamp),
                let data = indexedData.first(where: { $0.index == index })
             {
-                return (overlay, index, data.data.close)
+                let price = chartType == .candlestick ? data.data.high : data.data.close
+                return (overlay, index, price)
             }
             return nil
         }
@@ -92,8 +107,14 @@ struct PriceChartView: View {
     /// Compute mark overlay indices on-demand by matching marketDataId
     private var visibleMarkOverlays: [(overlay: MarkOverlay, index: Int, price: Double)] {
         guard !indexedData.isEmpty else { return [] }
-        // Create lookup dictionary for O(1) access
-        let dataById = Dictionary(indexedData.map { ($0.data.id, ($0.index, $0.data.close)) }, uniquingKeysWith: { first, _ in first })
+        // Create lookup dictionary for O(1) access - use high price for candlestick, close for line
+        let dataById = Dictionary(
+            indexedData.map { item in
+                let price = chartType == .candlestick ? item.data.high : item.data.close
+                return (item.data.id, (item.index, price))
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
         return markOverlays.compactMap { overlay in
             if let (index, price) = dataById[overlay.marketDataId] {
                 return (overlay, index, price)
@@ -402,7 +423,7 @@ private struct TradeTooltipView: View {
         }
         .font(.caption)
         .padding(8)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .glassEffect(in: .rect(cornerRadius: 12))
         .frame(maxWidth: 200)
     }
 }

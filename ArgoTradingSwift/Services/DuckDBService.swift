@@ -719,6 +719,90 @@ class DuckDBService: DuckDBServiceProtocol {
         }
     }
 
+    /// Fetch price data centered around a specific timestamp
+    /// Returns approximately `count` rows with the target timestamp in the middle
+    func fetchPriceDataAroundTimestamp(
+        filePath: URL,
+        timestamp: FoundationDate,
+        count: Int = 100
+    ) async throws -> [PriceData] {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+
+        // Check if file exists
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: filePath.path) else {
+            throw DuckDBError.missingDataset
+        }
+
+        // Format timestamp for SQL query
+        let timestampStr = Self.utcDateFormatter.string(from: timestamp)
+
+        // Find the row number where the timestamp falls
+        let findRowQuery = """
+        WITH numbered AS (
+            SELECT ROW_NUMBER() OVER (ORDER BY time ASC) as rn
+            FROM read_parquet('\(filePath.path)')
+            WHERE time <= '\(timestampStr)'
+        )
+        SELECT COALESCE(MAX(rn), 1) as target_row FROM numbered
+        """
+
+        let rowResult = try connection.query(findRowQuery)
+        let targetRow = rowResult[0].cast(to: Int.self)[0] ?? 1
+
+        // Calculate offset to center the data around the target row
+        let halfCount = count / 2
+        let startOffset = max(0, targetRow - halfCount - 1)
+
+        // Fetch the surrounding data
+        let query = """
+        SELECT id, CAST(time AS VARCHAR), symbol, open, high, low, close, volume
+        FROM read_parquet('\(filePath.path)')
+        ORDER BY time ASC
+        LIMIT \(count) OFFSET \(startOffset)
+        """
+
+        let result = try connection.query(query)
+
+        let idColumn = result[0].cast(to: String.self)
+        let timeColumn = result[1].cast(to: String.self)
+        let symbolColumn = result[2].cast(to: String.self)
+        let openColumn = result[3].cast(to: Double.self)
+        let highColumn = result[4].cast(to: Double.self)
+        let lowColumn = result[5].cast(to: Double.self)
+        let closeColumn = result[6].cast(to: Double.self)
+        let volumeColumn = result[7].cast(to: Double.self)
+
+        let dataFrame = DataFrame(columns: [
+            TabularData.Column(idColumn).eraseToAnyColumn(),
+            TabularData.Column(timeColumn).eraseToAnyColumn(),
+            TabularData.Column(symbolColumn).eraseToAnyColumn(),
+            TabularData.Column(openColumn).eraseToAnyColumn(),
+            TabularData.Column(highColumn).eraseToAnyColumn(),
+            TabularData.Column(lowColumn).eraseToAnyColumn(),
+            TabularData.Column(closeColumn).eraseToAnyColumn(),
+            TabularData.Column(volumeColumn).eraseToAnyColumn(),
+        ])
+
+        return dataFrame.rows.map { row in
+            let time = row[1, String.self]
+            let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? FoundationDate()
+
+            return PriceData(
+                date: utcDate,
+                id: row[0, String.self] ?? "",
+                ticker: row[2, String.self] ?? "",
+                open: row[3, Double.self] ?? 0.0,
+                high: row[4, Double.self] ?? 0.0,
+                low: row[5, Double.self] ?? 0.0,
+                close: row[6, Double.self] ?? 0.0,
+                volume: row[7, Double.self] ?? 0.0
+            )
+        }
+    }
+
     /// Fetch all trades from a parquet file (non-paginated for chart overlay)
     func fetchAllTrades(filePath: URL) async throws -> [Trade] {
         guard let connection = connection else {

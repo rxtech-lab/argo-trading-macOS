@@ -9,6 +9,7 @@ import SwiftUI
 
 struct TradesTableView: View {
     let filePath: URL
+    let dataFilePath: URL
 
     @Environment(DuckDBService.self) private var dbService
     @Environment(AlertManager.self) private var alertManager
@@ -17,6 +18,7 @@ struct TradesTableView: View {
     @State private var selectedRows: Set<String> = []
     @State private var sortOrder: [KeyPathComparator<Trade>] = [KeyPathComparator(\.timestamp, order: .reverse)]
     @State private var isLoading: Bool = false
+    @State private var selectedTradeForDetail: Trade?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,12 +43,29 @@ struct TradesTableView: View {
             executionColumns
             metadataColumns
         }
+        .contextMenu(forSelectionType: String.self) { selectedIds in
+            if let firstId = selectedIds.first,
+               let trade = data.items.first(where: { $0.id == firstId }) {
+                Button {
+                    selectedTradeForDetail = trade
+                } label: {
+                    Label("View Surrounding Price Data", systemImage: "chart.bar.xaxis")
+                }
+            }
+        }
         .overlay {
             if isLoading {
                 ProgressView()
                     .padding()
                     .glassEffect()
             }
+        }
+        .sheet(item: $selectedTradeForDetail) { trade in
+            SurroundingPriceDataSheet(
+                timestamp: trade.timestamp,
+                dataFilePath: dataFilePath,
+                title: "\(trade.symbol) - \(trade.side.rawValue.capitalized)"
+            )
         }
     }
 
@@ -217,7 +236,10 @@ extension TradesTableView {
 }
 
 #Preview {
-    TradesTableView(filePath: URL(fileURLWithPath: "/tmp/trades.parquet"))
-        .environment(DuckDBService())
-        .environment(AlertManager())
+    TradesTableView(
+        filePath: URL(fileURLWithPath: "/tmp/trades.parquet"),
+        dataFilePath: URL(fileURLWithPath: "/tmp/data.parquet")
+    )
+    .environment(DuckDBService())
+    .environment(AlertManager())
 }
