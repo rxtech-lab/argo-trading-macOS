@@ -6,7 +6,7 @@ on:
 jobs:
   test-xcode:
     name: Test Xcode App
-    runs-on: macos-26
+    runs-on: macos-latest
 
     steps:
       - name: Checkout code
