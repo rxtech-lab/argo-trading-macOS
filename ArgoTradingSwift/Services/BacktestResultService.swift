@@ -10,7 +10,7 @@ import Yams
 
 /// Request to scroll the chart to a specific timestamp
 struct ChartScrollRequest: Equatable {
-    let id: UUID = UUID()
+    let id: UUID = .init()
     let timestamp: Date
     let dataFilePath: String
 

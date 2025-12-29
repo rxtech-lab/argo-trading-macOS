@@ -673,7 +673,7 @@
 			repositoryURL = "https://github.com/rxtech-lab/argo-trading";
 			requirement = {
 				kind = exactVersion;
-				version = 1.4.3;
+				version = 1.6.0;
 			};
 		};
 		DFD3A5462EF822EC0020D062 /* XCRemoteSwiftPackageReference "duckdb-swift" */ = {

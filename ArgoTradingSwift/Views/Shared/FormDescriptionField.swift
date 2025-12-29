@@ -16,6 +16,7 @@ struct FormDescriptionField: View {
             Text(title)
             Spacer()
             Text(value)
+                .multilineTextAlignment(.trailing)
         }
     }
 }
