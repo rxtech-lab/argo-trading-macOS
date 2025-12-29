@@ -600,7 +600,8 @@ class DuckDBService: DuckDBServiceProtocol {
             reason,
             message,
             strategy_name,
-            position_type
+            position_type,
+            status,
         FROM read_parquet('\(filePath.path)')
         ORDER BY \(column) \(direction)
         LIMIT \(pageSize) OFFSET \(offset)
@@ -619,6 +620,7 @@ class DuckDBService: DuckDBServiceProtocol {
         let messageColumn = result[8].cast(to: String.self)
         let strategyNameColumn = result[9].cast(to: String.self)
         let positionTypeColumn = result[10].cast(to: String.self)
+        let statusColumn = result[11].cast(to: String.self)
 
         let dataFrame = DataFrame(columns: [
             TabularData.Column(orderIdColumn).eraseToAnyColumn(),
@@ -632,11 +634,13 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(messageColumn).eraseToAnyColumn(),
             TabularData.Column(strategyNameColumn).eraseToAnyColumn(),
             TabularData.Column(positionTypeColumn).eraseToAnyColumn(),
+            TabularData.Column(statusColumn).eraseToAnyColumn(),
         ])
 
         let orders = dataFrame.rows.map { row in
             let timestampStr = row[5, String.self]
             let timestamp = Self.utcDateFormatter.date(from: timestampStr ?? "") ?? Date()
+            let orderStatisStr = row[11, String.self] ?? ""
 
             return Order(
                 orderId: row[0, String.self] ?? "",
@@ -649,7 +653,9 @@ class DuckDBService: DuckDBServiceProtocol {
                 reason: row[7, String.self] ?? "",
                 message: row[8, String.self] ?? "",
                 strategyName: row[9, String.self] ?? "",
-                positionType: row[10, String.self] ?? ""
+                positionType: row[10, String.self] ?? "",
+                // fallback to .filled if status is unrecognized since it is the default status
+                status: OrderStatus(rawValue: orderStatisStr) ?? .filled
             )
         }
 

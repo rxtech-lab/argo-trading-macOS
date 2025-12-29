@@ -50,7 +50,8 @@ struct OrdersTableView: View {
         }
         .contextMenu(forSelectionType: String.self) { selectedIds in
             if let firstId = selectedIds.first,
-               let order = data.items.first(where: { $0.id == firstId }) {
+               let order = data.items.first(where: { $0.id == firstId })
+            {
                 Button {
                     selectedOrderForDetail = order
                 } label: {
@@ -85,6 +86,11 @@ struct OrdersTableView: View {
             Text(order.symbol)
         }
         .width(min: 60, ideal: 80)
+
+        TableColumn("Status", value: \.status) { order in
+            Text(order.status.rawValue)
+                .foregroundStyle(order.status.forgroundColor)
+        }
 
         TableColumn("Type", value: \.orderType) { order in
             Text(order.orderType)

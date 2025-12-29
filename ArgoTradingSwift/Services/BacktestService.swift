@@ -30,6 +30,15 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
     var currentDataFile: String = ""
     var currentProgress: Progress = .init(current: 0, total: 0)
 
+    // Error accumulation
+    var accumulatedErrors: [String] = []
+
+    private func appendError(_ error: String) {
+        Task { @MainActor in
+            self.accumulatedErrors.append(error)
+        }
+    }
+
     func getBacktestEngineConfigSchema() throws -> String {
         let schema = SwiftargoGetBacktestEngineConfigSchema()
         return schema
@@ -125,6 +134,7 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
 
     func onBacktestStart(_ totalStrategies: Int, totalConfigs: Int, totalDataFiles: Int) throws {
         Task { @MainActor in
+            self.accumulatedErrors = []
             self.totalStrategies = totalStrategies
             self.totalConfigs = totalConfigs
             self.totalDataFiles = totalDataFiles
@@ -143,16 +153,20 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
             self.argoEngine = nil
             self.backtestTask = nil
 
-            if let err = err {
-                if !err.isContextCancelled {
-                    await self.toolbarStatusService?.setStatus(.error(
-                        label: "Backtest",
-                        errors: [err.localizedDescription],
-                        at: Date()
-                    ))
-                } else {
-                    await self.toolbarStatusService?.setStatus(.idle)
-                }
+            // Combine passed error with accumulated errors
+            var allErrors = self.accumulatedErrors
+            if let err = err, !err.isContextCancelled {
+                allErrors.append(err.localizedDescription)
+            }
+
+            if !allErrors.isEmpty {
+                await self.toolbarStatusService?.setStatus(.error(
+                    label: "Backtest",
+                    errors: allErrors,
+                    at: Date()
+                ))
+            } else if err?.isContextCancelled == true {
+                await self.toolbarStatusService?.setStatus(.idle)
             } else {
                 await self.toolbarStatusService?.setStatus(.finished(
                     message: "Backtest completed",

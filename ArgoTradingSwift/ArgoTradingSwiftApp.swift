@@ -30,6 +30,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 @main
 struct ArgoTradingSwiftApp: App {
+    @Environment(\.openWindow) private var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     @State private var datasetDownloadService = DatasetDownloadService()
@@ -60,6 +61,7 @@ struct ArgoTradingSwiftApp: App {
         DocumentGroup(viewing: ArgoTradingDocument.self) { document in
             HomeView(document: document.$document)
                 .alertManager(alertService)
+                .frame(minWidth: 1400, minHeight: 600)
                 .sheet(isPresented: $datasetDownloadService.showDownloadView) {
                     DatasetDownloadView(document: document.$document)
                 }
@@ -82,6 +84,13 @@ struct ArgoTradingSwiftApp: App {
         .commands {
             DocumentCommand()
             DatasetCommand()
+            CommandGroup(replacing: CommandGroupPlacement.appInfo) {
+                Button {
+                    openWindow(id: "about")
+                } label: {
+                    Text("About \(Bundle.main.appName ?? "")")
+                }
+            }
         }
         .environment(toolbarStatusService)
         .environment(datasetDownloadService)
@@ -93,5 +102,12 @@ struct ArgoTradingSwiftApp: App {
         .environment(backtestService)
         .environment(schemaService)
         .environment(backtestResultService)
+
+        // Define a custom About window that can be opened once
+        Window("About My App", id: "about") {
+            AboutView()
+        }
+        .windowResizability(.contentSize) // Make it non-resizable
+        .restorationBehavior(.disabled) // Prevent state restoration
     }
 }
