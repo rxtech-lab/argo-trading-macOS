@@ -4,7 +4,7 @@ ArgoTrading is a document-based macOS SwiftUI app for building, backtesting, and
 
 ## Requirements
 - macOS with Xcode installed (SwiftUI + Swift Concurrency toolchain)
-- `ArgoTrading.xcframework` available at `../../argo-trading/pkg/swift-argo/` relative to this repository
+- Dependencies are resolved via Swift Package Manager (automatic download in Xcode)
 - DuckDB native library included with the project
 
 ## Project structure
@@ -17,9 +17,8 @@ ArgoTrading is a document-based macOS SwiftUI app for building, backtesting, and
   - Schemas & dataset selection used by the backtest runner
 
 ## Getting started
-1. Ensure `ArgoTrading.xcframework` is available at the expected path or update the Xcode project reference.
-2. Open `ArgoTradingSwift.xcodeproj` in Xcode.
-3. Build and run to open the welcome window, create a new project, or open an existing `.rxtrading` document.
+1. Open `ArgoTradingSwift.xcodeproj` in Xcode (SPM will fetch dependencies automatically).
+2. Build and run to open the welcome window, create a new project, or open an existing `.rxtrading` document.
 
 ## Build & test
 Run from the repository root:
