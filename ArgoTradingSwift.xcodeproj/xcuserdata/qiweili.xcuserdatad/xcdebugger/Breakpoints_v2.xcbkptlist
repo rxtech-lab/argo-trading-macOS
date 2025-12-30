@@ -314,36 +314,6 @@
             endingLineNumber = "158"
             landmarkName = "onBacktestEnd(_:)"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "E20FFEFC-4626-4362-8AD1-90FCF8894D57 - f58b647cd9c4e384"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(1) suspend resume partial function for closure #1 () async -&gt; () in ArgoTradingSwift.BacktestService.onBacktestEnd(Swift.Optional&lt;Swift.Error&gt;) -&gt; ()"
-                  moduleName = "ArgoTradingSwift.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/qiweili/Desktop/rxlab/ArgoTradingSwift/ArgoTradingSwift/Services/BacktestService.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "158"
-                  endingLineNumber = "158">
-               </Location>
-               <Location
-                  uuid = "E20FFEFC-4626-4362-8AD1-90FCF8894D57 - f58b647cd9c4e384"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "(1) suspend resume partial function for closure #1 () async -&gt; () in ArgoTradingSwift.BacktestService.onBacktestEnd(Swift.Optional&lt;Swift.Error&gt;) -&gt; ()"
-                  moduleName = "ArgoTradingSwift.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/qiweili/Desktop/rxlab/ArgoTradingSwift/ArgoTradingSwift/Services/BacktestService.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "158"
-                  endingLineNumber = "158">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

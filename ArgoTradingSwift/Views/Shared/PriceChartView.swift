@@ -92,25 +92,35 @@ struct PriceChartView: View {
 
     /// Compute trade overlay indices and prices on-demand using binary search
     private var visibleTradeOverlays: [(overlay: TradeOverlay, index: Int, price: Double)] {
-        guard !indexedData.isEmpty,
-              let range = dataTimestampRange else { return [] }
-
-        return tradeOverlays.compactMap { overlay in
-            // Skip trades outside the data timestamp range
-            guard range.contains(overlay.timestamp) else { return nil }
-
-            if let index = findClosestIndex(for: overlay.timestamp),
-               let data = indexedData.first(where: { $0.index == index })
-            {
-                let price = chartType == .candlestick ? data.data.high : data.data.close
-                return (overlay, index, price)
-            }
-            return nil
-        }
+        Self.filterVisibleTradeOverlays(
+            tradeOverlays: tradeOverlays,
+            indexedData: indexedData,
+            chartType: chartType
+        )
     }
 
     /// Compute mark overlay indices on-demand by matching marketDataId
     private var visibleMarkOverlays: [(overlay: MarkOverlay, index: Int, price: Double)] {
+        Self.filterVisibleMarkOverlays(
+            markOverlays: markOverlays,
+            indexedData: indexedData,
+            chartType: chartType
+        )
+    }
+
+    // MARK: - Static Filter Methods (for testing)
+
+    /// Filter mark overlays to only include those with matching market data IDs
+    /// - Parameters:
+    ///   - markOverlays: The mark overlays to filter
+    ///   - indexedData: The loaded price data with indices
+    ///   - chartType: The chart type (affects which price is used)
+    /// - Returns: Visible overlays with their index and price
+    static func filterVisibleMarkOverlays(
+        markOverlays: [MarkOverlay],
+        indexedData: [IndexedPrice],
+        chartType: ChartType
+    ) -> [(overlay: MarkOverlay, index: Int, price: Double)] {
         guard !indexedData.isEmpty else { return [] }
         // Create lookup dictionary for O(1) access - use high price for candlestick, close for line
         let dataById = Dictionary(
@@ -126,6 +136,66 @@ struct PriceChartView: View {
             }
             return nil
         }
+    }
+
+    /// Filter trade overlays to only include those within the data timestamp range
+    /// - Parameters:
+    ///   - tradeOverlays: The trade overlays to filter
+    ///   - indexedData: The loaded price data with indices
+    ///   - chartType: The chart type (affects which price is used)
+    /// - Returns: Visible overlays with their index and price
+    static func filterVisibleTradeOverlays(
+        tradeOverlays: [TradeOverlay],
+        indexedData: [IndexedPrice],
+        chartType: ChartType
+    ) -> [(overlay: TradeOverlay, index: Int, price: Double)] {
+        guard !indexedData.isEmpty,
+              let first = indexedData.first?.data.date,
+              let last = indexedData.last?.data.date
+        else { return [] }
+
+        let timestampRange = first ... last
+
+        return tradeOverlays.compactMap { overlay in
+            // Skip trades outside the data timestamp range
+            guard timestampRange.contains(overlay.timestamp) else { return nil }
+
+            if let index = findClosestIndex(for: overlay.timestamp, in: indexedData),
+               let data = indexedData.first(where: { $0.index == index })
+            {
+                let price = chartType == .candlestick ? data.data.high : data.data.close
+                return (overlay, index, price)
+            }
+            return nil
+        }
+    }
+
+    /// Binary search to find closest index for a given timestamp (static version for testing)
+    static func findClosestIndex(for date: Date, in indexedData: [IndexedPrice]) -> Int? {
+        guard !indexedData.isEmpty else { return nil }
+
+        var low = 0
+        var high = indexedData.count - 1
+
+        while low < high {
+            let mid = (low + high) / 2
+            if indexedData[mid].data.date < date {
+                low = mid + 1
+            } else {
+                high = mid
+            }
+        }
+
+        // Check if the found index or its neighbor is closer
+        if low > 0 {
+            let diffLow = abs(indexedData[low].data.date.timeIntervalSince(date))
+            let diffPrev = abs(indexedData[low - 1].data.date.timeIntervalSince(date))
+            if diffPrev < diffLow {
+                return indexedData[low - 1].index
+            }
+        }
+
+        return indexedData[low].index
     }
 
     /// Binary search to find closest index for a given timestamp
