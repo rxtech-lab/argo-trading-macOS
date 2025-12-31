@@ -1,2 +1,4 @@
 *.dylib
 test-results
+coverage.json
+ArgoTradingSwift.xcodeproj/xcuserdata/qiweili.xcuserdatad/xcdebugger/Breakpoints_v2.xcbkptlist

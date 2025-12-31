@@ -143,6 +143,28 @@ class MockDuckDBService: DuckDBServiceProtocol {
         }
         return mockPriceData.count - 1
     }
+
+    func fetchTrades(
+        filePath: URL,
+        startTime: Date,
+        endTime: Date
+    ) async throws -> [Trade] {
+        if shouldThrowError {
+            throw DuckDBError.connectionError
+        }
+        return []
+    }
+
+    func fetchMarks(
+        filePath: URL,
+        startTime: Date,
+        endTime: Date
+    ) async throws -> [Mark] {
+        if shouldThrowError {
+            throw DuckDBError.connectionError
+        }
+        return []
+    }
 }
 
 // MARK: - Test Helpers
