@@ -430,7 +430,7 @@ struct PriceChartView: View {
 
     @ViewBuilder
     private func markSymbol(for mark: Mark) -> some View {
-        let color = Color(hex: mark.color) ?? .blue
+        let color = mark.color.toColor()
 
         switch mark.shape {
         case .circle:
@@ -535,16 +535,14 @@ private struct MarkTooltipView: View {
                     .font(.caption2)
             }
 
-            if let signal = mark.signal {
-                Divider()
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Signal: \(signal.type.rawValue)")
+            Divider()
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Signal: \(mark.signal.type.rawValue)")
+                    .font(.caption2)
+                if !mark.signal.reason.isEmpty {
+                    Text(mark.signal.reason)
                         .font(.caption2)
-                    if !signal.reason.isEmpty {
-                        Text(signal.reason)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
+                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -556,7 +554,7 @@ private struct MarkTooltipView: View {
 
     @ViewBuilder
     private var markIcon: some View {
-        let color = Color(hex: mark.color) ?? .blue
+        let color = mark.color.toColor()
 
         switch mark.shape {
         case .circle:

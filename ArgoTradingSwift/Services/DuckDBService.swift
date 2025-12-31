@@ -667,8 +667,14 @@ class DuckDBService: DuckDBServiceProtocol {
         )
     }
 
-    /// Fetch all mark data from a parquet file
-    func fetchMarkData(filePath: URL) async throws -> [Mark] {
+    /// Fetch mark data from a parquet file with pagination
+    func fetchMarkData(
+        filePath: URL,
+        page: Int = 1,
+        pageSize: Int = 100,
+        sortColumn: String = "id",
+        sortDirection: String = "ASC"
+    ) async throws -> PaginationResult<Mark> {
         guard let connection = connection else {
             throw DuckDBError.connectionError
         }
@@ -679,7 +685,29 @@ class DuckDBService: DuckDBServiceProtocol {
             throw DuckDBError.missingDataset
         }
 
-        // Query all marks - columns: id, market_data_id, signal_type, signal_name, signal_time, signal_symbol, color, shape, title, message, category
+        // Validate sortColumn to prevent SQL injection
+        let validColumns = [
+            "id", "market_data_id", "signal_type", "signal_name", "signal_time",
+            "signal_symbol", "color", "shape", "title", "message", "category",
+        ]
+        let column = validColumns.contains(sortColumn) ? sortColumn : "id"
+
+        // Validate sortDirection to prevent SQL injection
+        let direction = (sortDirection == "ASC" || sortDirection == "DESC") ? sortDirection : "ASC"
+
+        // First get the total count
+        let countQuery = """
+        SELECT COUNT(*) as total
+        FROM read_parquet('\(filePath.path)')
+        """
+
+        let countResult = try connection.query(countQuery)
+        let totalCount = countResult[0].cast(to: Int.self)[0]
+
+        // Calculate offset
+        let offset = (page - 1) * pageSize
+
+        // Main query with pagination and sorting
         let query = """
         SELECT
             id,
@@ -694,7 +722,8 @@ class DuckDBService: DuckDBServiceProtocol {
             message,
             category
         FROM read_parquet('\(filePath.path)')
-        ORDER BY id ASC
+        ORDER BY \(column) \(direction)
+        LIMIT \(pageSize) OFFSET \(offset)
         """
 
         let result = try connection.query(query)
@@ -725,36 +754,29 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(categoryColumn).eraseToAnyColumn(),
         ])
 
-        // ISO8601 date formatter for signal_time (format: 2022-12-31T15:30:00.000Z)
+        // ISO8601 date formatter for signal_time
         let iso8601Formatter = ISO8601DateFormatter()
         iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-        return dataFrame.rows.compactMap { row in
+        let marks = dataFrame.rows.compactMap { row -> Mark? in
             let shapeStr = row[7, String.self] ?? "circle"
             let shape = MarkShape(rawValue: shapeStr) ?? .circle
 
-            // Build signal from flattened columns
-            var signal: Signal?
-            if let signalTypeStr = row[2, String.self],
-               let signalType = SignalType(rawValue: signalTypeStr)
-            {
-                let signalTimeStr = row[4, String.self] ?? ""
-                let signalTime = iso8601Formatter.date(from: signalTimeStr) ?? Date()
+            // Parse signal time separately (always available in parquet)
+            let signalTypeStr = row[2, String.self] ?? ""
+            let signalNameStr = row[3, String.self] ?? ""
+            let signalTimeStr = row[4, String.self] ?? ""
+            let signalSymbolStr = row[5, String.self] ?? ""
+            let signalTime = Self.utcDateFormatter.date(from: signalTimeStr) ?? Date()
+            let signalType = SignalType(rawValue: signalTypeStr) ?? .noAction
 
-                signal = Signal(
-                    time: signalTime,
-                    type: signalType,
-                    name: row[3, String.self] ?? "",
-                    reason: "",
-                    rawValue: nil,
-                    symbol: row[5, String.self] ?? "",
-                    indicator: ""
-                )
-            }
+            let signal = Signal(time: signalTime, type: signalType, name: signalNameStr, reason: "", rawValue: "", symbol: signalSymbolStr, indicator: "")
+            let markColorStr = row[6, String.self] ?? "#FFFFFF"
+            let markColor = MarkColor(string: markColorStr)
 
             return Mark(
                 marketDataId: row[1, String.self] ?? "",
-                color: row[6, String.self] ?? "#FFFFFF",
+                color: markColor,
                 shape: shape,
                 title: row[8, String.self] ?? "",
                 message: row[9, String.self] ?? "",
@@ -762,6 +784,13 @@ class DuckDBService: DuckDBServiceProtocol {
                 signal: signal
             )
         }
+
+        return PaginationResult(
+            items: marks,
+            total: totalCount ?? 0,
+            page: page,
+            pageSize: pageSize
+        )
     }
 
     /// Fetch price data centered around a specific timestamp
@@ -848,8 +877,12 @@ class DuckDBService: DuckDBServiceProtocol {
         }
     }
 
-    /// Fetch all trades from a parquet file (non-paginated for chart overlay)
-    func fetchAllTrades(filePath: URL) async throws -> [Trade] {
+    /// Fetch trades within a time range for chart overlay
+    func fetchTrades(
+        filePath: URL,
+        startTime: FoundationDate,
+        endTime: FoundationDate
+    ) async throws -> [Trade] {
         guard let connection = connection else {
             throw DuckDBError.connectionError
         }
@@ -860,7 +893,10 @@ class DuckDBService: DuckDBServiceProtocol {
             throw DuckDBError.missingDataset
         }
 
-        // Fetch all trades ordered by timestamp
+        let startTimeStr = Self.utcDateFormatter.string(from: startTime)
+        let endTimeStr = Self.utcDateFormatter.string(from: endTime)
+
+        // Fetch trades within time range ordered by timestamp
         let query = """
         SELECT
             order_id,
@@ -880,6 +916,7 @@ class DuckDBService: DuckDBServiceProtocol {
             pnl,
             position_type
         FROM read_parquet('\(filePath.path)')
+        WHERE timestamp >= '\(startTimeStr)' AND timestamp <= '\(endTimeStr)'
         ORDER BY timestamp ASC
         """
 
@@ -947,6 +984,104 @@ class DuckDBService: DuckDBServiceProtocol {
                 commission: row[13, Double.self] ?? 0.0,
                 pnl: row[14, Double.self] ?? 0.0,
                 positionType: row[15, String.self] ?? ""
+            )
+        }
+    }
+
+    /// Fetch marks within a time range for chart overlay
+    func fetchMarks(
+        filePath: URL,
+        startTime: FoundationDate,
+        endTime: FoundationDate
+    ) async throws -> [Mark] {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+
+        // Check if file exists
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: filePath.path) else {
+            throw DuckDBError.missingDataset
+        }
+
+        // ISO8601 date formatter for signal_time (format: 2022-12-31T15:30:00.000Z)
+        let iso8601Formatter = ISO8601DateFormatter()
+        iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let startTimeStr = iso8601Formatter.string(from: startTime)
+        let endTimeStr = iso8601Formatter.string(from: endTime)
+
+        // Query marks within time range
+        let query = """
+        SELECT
+            id,
+            market_data_id,
+            signal_type,
+            signal_name,
+            CAST(signal_time AS VARCHAR),
+            signal_symbol,
+            color,
+            shape,
+            title,
+            message,
+            category
+        FROM read_parquet('\(filePath.path)')
+        WHERE signal_time >= '\(startTimeStr)' AND signal_time <= '\(endTimeStr)'
+        ORDER BY signal_time ASC
+        """
+
+        let result = try connection.query(query)
+
+        let idColumn = result[0].cast(to: Int64.self)
+        let marketDataIdColumn = result[1].cast(to: String.self)
+        let signalTypeColumn = result[2].cast(to: String.self)
+        let signalNameColumn = result[3].cast(to: String.self)
+        let signalTimeColumn = result[4].cast(to: String.self)
+        let signalSymbolColumn = result[5].cast(to: String.self)
+        let colorColumn = result[6].cast(to: String.self)
+        let shapeColumn = result[7].cast(to: String.self)
+        let titleColumn = result[8].cast(to: String.self)
+        let messageColumn = result[9].cast(to: String.self)
+        let categoryColumn = result[10].cast(to: String.self)
+
+        let dataFrame = DataFrame(columns: [
+            TabularData.Column(idColumn).eraseToAnyColumn(),
+            TabularData.Column(marketDataIdColumn).eraseToAnyColumn(),
+            TabularData.Column(signalTypeColumn).eraseToAnyColumn(),
+            TabularData.Column(signalNameColumn).eraseToAnyColumn(),
+            TabularData.Column(signalTimeColumn).eraseToAnyColumn(),
+            TabularData.Column(signalSymbolColumn).eraseToAnyColumn(),
+            TabularData.Column(colorColumn).eraseToAnyColumn(),
+            TabularData.Column(shapeColumn).eraseToAnyColumn(),
+            TabularData.Column(titleColumn).eraseToAnyColumn(),
+            TabularData.Column(messageColumn).eraseToAnyColumn(),
+            TabularData.Column(categoryColumn).eraseToAnyColumn(),
+        ])
+
+        return dataFrame.rows.compactMap { row in
+            let shapeStr = row[7, String.self] ?? "circle"
+            let shape = MarkShape(rawValue: shapeStr) ?? .circle
+
+            // Parse signal time separately (always available in parquet)
+            let signalTypeStr = row[2, String.self] ?? ""
+            let signalNameStr = row[3, String.self] ?? ""
+            let signalTimeStr = row[4, String.self] ?? ""
+            let signalSymbolStr = row[5, String.self] ?? ""
+            let signalTime = Self.utcDateFormatter.date(from: signalTimeStr) ?? Date()
+            let signalType = SignalType(rawValue: signalTypeStr) ?? .noAction
+
+            let signal = Signal(time: signalTime, type: signalType, name: signalNameStr, reason: "", rawValue: "", symbol: signalSymbolStr, indicator: "")
+            let markColorStr = row[6, String.self] ?? "#FFFFFF"
+            let markColor = MarkColor(string: markColorStr)
+
+            return Mark(
+                marketDataId: row[1, String.self] ?? "",
+                color: markColor,
+                shape: shape,
+                title: row[8, String.self] ?? "",
+                message: row[9, String.self] ?? "",
+                category: row[10, String.self] ?? "",
+                signal: signal
             )
         }
     }

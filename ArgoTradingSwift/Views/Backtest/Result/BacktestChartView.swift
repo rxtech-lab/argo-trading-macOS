@@ -29,6 +29,8 @@ struct BacktestChartView: View {
     @State private var marks: [Mark] = []
     @State private var tradeOverlays: [TradeOverlay] = []
     @State private var markOverlays: [MarkOverlay] = []
+    @State private var loadedOverlayRange: ClosedRange<Date>?
+    @State private var isLoadingOverlays: Bool = false
 
     // Zoom configuration
     private let baseVisibleCount = 100
@@ -98,14 +100,13 @@ struct BacktestChartView: View {
         .padding()
         .task {
             await initializeViewModel()
-            await loadOverlayData()
+            await loadVisibleOverlays()
         }
         .onChange(of: viewModel?.scrollPositionIndex) { _, newValue in
             if let newValue, newValue != scrollPosition {
                 scrollPosition = newValue
             }
         }
-        // Note: Removed onChange(of: sortedData) - overlays now compute indices lazily
         .onChange(of: dataFilePath) { _, _ in
             // Reset all state and reload when data file changes
             viewModel = nil
@@ -113,11 +114,12 @@ struct BacktestChartView: View {
             marks = []
             tradeOverlays = []
             markOverlays = []
+            loadedOverlayRange = nil
             scrollPosition = 0
             print("Data file changed, reloading chart and overlays")
             Task {
                 await initializeViewModel()
-                await loadOverlayData()
+                await loadVisibleOverlays()
             }
         }
         .onChange(of: backtestResultService.chartScrollRequest) { _, newRequest in
@@ -160,21 +162,55 @@ struct BacktestChartView: View {
         scrollPosition = vm.scrollPositionIndex
     }
 
-    private func loadOverlayData() async {
+    /// Get the visible time range with buffer for overlay loading
+    private func getVisibleTimeRange() -> ClosedRange<Date>? {
+        guard let vm = viewModel, !vm.sortedData.isEmpty else { return nil }
+        let buffer = 50 // Load extra on each side for smooth scrolling
+        let startIdx = max(0, scrollPosition - buffer)
+        let endIdx = min(vm.sortedData.count - 1, scrollPosition + visibleCount + buffer)
+        return vm.sortedData[startIdx].date...vm.sortedData[endIdx].date
+    }
+
+    /// Load overlays for the visible time range
+    private func loadVisibleOverlays() async {
+        guard let range = getVisibleTimeRange() else { return }
+
+        // Skip if range is fully covered by already-loaded range
+        if let loaded = loadedOverlayRange,
+           loaded.lowerBound <= range.lowerBound,
+           loaded.upperBound >= range.upperBound
+        {
+            return
+        }
+
+        // Skip if already loading
+        guard !isLoadingOverlays else { return }
+        isLoadingOverlays = true
+        defer { isLoadingOverlays = false }
+
         do {
             try dbService.initDatabase()
 
-            // Load trades
+            // Load trades within time range
             if FileManager.default.fileExists(atPath: tradesFilePath) {
-                trades = try await dbService.fetchAllTrades(filePath: tradesURL)
+                trades = try await dbService.fetchTrades(
+                    filePath: tradesURL,
+                    startTime: range.lowerBound,
+                    endTime: range.upperBound
+                )
             }
 
-            // Load marks
+            // Load marks within time range
             if FileManager.default.fileExists(atPath: marksFilePath) {
-                marks = try await dbService.fetchMarkData(filePath: marksURL)
+                marks = try await dbService.fetchMarks(
+                    filePath: marksURL,
+                    startTime: range.lowerBound,
+                    endTime: range.upperBound
+                )
             }
 
             buildOverlays()
+            loadedOverlayRange = range
         } catch {
             alertManager.showAlert(message: "Failed to load overlay data: \(error.localizedDescription)")
         }
@@ -252,6 +288,11 @@ struct BacktestChartView: View {
                             await vm.loadMoreAtEnd()
                         }
                     }
+
+                    // Load overlays for the new visible range
+                    Task {
+                        await loadVisibleOverlays()
+                    }
                 },
                 onSelectionChange: { newIndex in
                     selectedIndex = newIndex
@@ -320,8 +361,11 @@ struct BacktestChartView: View {
             isLoading: viewModel?.isLoading ?? false,
             onIntervalChange: { newInterval in
                 guard let vm = viewModel else { return }
+                // Reset overlay range when interval changes
+                loadedOverlayRange = nil
                 Task {
                     await vm.setTimeInterval(newInterval, visibleCount: visibleCount)
+                    await loadVisibleOverlays()
                 }
             }
         )

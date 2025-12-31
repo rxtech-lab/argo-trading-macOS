@@ -41,4 +41,18 @@ protocol DuckDBServiceProtocol {
         timestamp: Date,
         interval: ChartTimeInterval
     ) async throws -> Int
+
+    /// Fetch trades within a time range
+    func fetchTrades(
+        filePath: URL,
+        startTime: Date,
+        endTime: Date
+    ) async throws -> [Trade]
+
+    /// Fetch marks within a time range
+    func fetchMarks(
+        filePath: URL,
+        startTime: Date,
+        endTime: Date
+    ) async throws -> [Mark]
 }
