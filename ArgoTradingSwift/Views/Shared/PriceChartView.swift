@@ -45,8 +45,6 @@ struct TradeOverlay: Identifiable {
 /// Mark overlay data for chart visualization
 struct MarkOverlay: Identifiable {
     let id: String
-    let marketDataId: String
-    let price: Double
     let mark: Mark
 }
 
@@ -64,6 +62,10 @@ struct PriceChartView: View {
     var tradeOverlays: [TradeOverlay] = []
     var markOverlays: [MarkOverlay] = []
 
+    /// Visibility flags for overlay toggle controls
+    var showTrades: Bool = true
+    var showMarks: Bool = true
+
     /// Callback when scroll position changes
     var onScrollChange: ((VisibleLogicalRange) -> Void)?
     /// Callback when selection changes (for legend updates)
@@ -78,89 +80,13 @@ struct PriceChartView: View {
     @State private var scrollSubject = PassthroughSubject<Int, Never>()
     @State private var scrollCancellable: AnyCancellable?
 
-    // MARK: - Computed Overlay Indices (lazy computation)
-
-    /// Get the timestamp range of loaded data for filtering overlays
-    private var dataTimestampRange: ClosedRange<Date>? {
-        guard let first = indexedData.first?.data.date,
-              let last = indexedData.last?.data.date
-        else {
-            return nil
-        }
-        return first ... last
-    }
+    // MARK: - Computed Overlay Indices
 
     /// Compute trade overlay indices and prices on-demand using binary search
     private var visibleTradeOverlays: [(overlay: TradeOverlay, index: Int, price: Double)] {
-        Self.filterVisibleTradeOverlays(
-            tradeOverlays: tradeOverlays,
-            indexedData: indexedData,
-            chartType: chartType
-        )
-    }
-
-    /// Compute mark overlay indices on-demand by matching marketDataId
-    private var visibleMarkOverlays: [(overlay: MarkOverlay, index: Int, price: Double)] {
-        Self.filterVisibleMarkOverlays(
-            markOverlays: markOverlays,
-            indexedData: indexedData,
-            chartType: chartType
-        )
-    }
-
-    // MARK: - Static Filter Methods (for testing)
-
-    /// Filter mark overlays to only include those with matching market data IDs
-    /// - Parameters:
-    ///   - markOverlays: The mark overlays to filter
-    ///   - indexedData: The loaded price data with indices
-    ///   - chartType: The chart type (affects which price is used)
-    /// - Returns: Visible overlays with their index and price
-    static func filterVisibleMarkOverlays(
-        markOverlays: [MarkOverlay],
-        indexedData: [IndexedPrice],
-        chartType: ChartType
-    ) -> [(overlay: MarkOverlay, index: Int, price: Double)] {
         guard !indexedData.isEmpty else { return [] }
-        // Create lookup dictionary for O(1) access - use high price for candlestick, close for line
-        let dataById = Dictionary(
-            indexedData.map { item in
-                let price = chartType == .candlestick ? item.data.high : item.data.close
-                return (item.data.id, (item.index, price))
-            },
-            uniquingKeysWith: { first, _ in first }
-        )
-        return markOverlays.compactMap { overlay in
-            if let (index, price) = dataById[overlay.marketDataId] {
-                return (overlay, index, price)
-            }
-            return nil
-        }
-    }
-
-    /// Filter trade overlays to only include those within the data timestamp range
-    /// - Parameters:
-    ///   - tradeOverlays: The trade overlays to filter
-    ///   - indexedData: The loaded price data with indices
-    ///   - chartType: The chart type (affects which price is used)
-    /// - Returns: Visible overlays with their index and price
-    static func filterVisibleTradeOverlays(
-        tradeOverlays: [TradeOverlay],
-        indexedData: [IndexedPrice],
-        chartType: ChartType
-    ) -> [(overlay: TradeOverlay, index: Int, price: Double)] {
-        guard !indexedData.isEmpty,
-              let first = indexedData.first?.data.date,
-              let last = indexedData.last?.data.date
-        else { return [] }
-
-        let timestampRange = first ... last
-
         return tradeOverlays.compactMap { overlay in
-            // Skip trades outside the data timestamp range
-            guard timestampRange.contains(overlay.timestamp) else { return nil }
-
-            if let index = findClosestIndex(for: overlay.timestamp, in: indexedData),
+            if let index = findClosestIndex(for: overlay.timestamp),
                let data = indexedData.first(where: { $0.index == index })
             {
                 let price = chartType == .candlestick ? data.data.high : data.data.close
@@ -170,32 +96,19 @@ struct PriceChartView: View {
         }
     }
 
-    /// Binary search to find closest index for a given timestamp (static version for testing)
-    static func findClosestIndex(for date: Date, in indexedData: [IndexedPrice]) -> Int? {
-        guard !indexedData.isEmpty else { return nil }
-
-        var low = 0
-        var high = indexedData.count - 1
-
-        while low < high {
-            let mid = (low + high) / 2
-            if indexedData[mid].data.date < date {
-                low = mid + 1
-            } else {
-                high = mid
+    /// Compute mark overlay indices using signal timestamp to find closest data point
+    private var visibleMarkOverlays: [(overlay: MarkOverlay, index: Int, price: Double)] {
+        guard !indexedData.isEmpty else { return [] }
+        return markOverlays.compactMap { overlay in
+            if let index = findClosestIndex(for: overlay.mark.signal.time),
+               let data = indexedData.first(where: { $0.index == index })
+            {
+                let basePrice = chartType == .candlestick ? data.data.low : data.data.close
+                let price = basePrice + markVerticalOffset()
+                return (overlay, index, price)
             }
+            return nil
         }
-
-        // Check if the found index or its neighbor is closer
-        if low > 0 {
-            let diffLow = abs(indexedData[low].data.date.timeIntervalSince(date))
-            let diffPrev = abs(indexedData[low - 1].data.date.timeIntervalSince(date))
-            if diffPrev < diffLow {
-                return indexedData[low - 1].index
-            }
-        }
-
-        return indexedData[low].index
     }
 
     /// Binary search to find closest index for a given timestamp
@@ -239,6 +152,15 @@ struct PriceChartView: View {
         return index
     }
 
+    /// Calculate vertical offset for marks to avoid overlap with trades on line charts
+    /// Returns negative offset (moves marks below the close price)
+    private func markVerticalOffset() -> Double {
+        // Only apply offset on line charts when both trades and marks are visible
+        guard chartType == .line && showTrades && showMarks && !tradeOverlays.isEmpty else { return 0 }
+        let range = yAxisDomain.upperBound - yAxisDomain.lowerBound
+        return -range * 0.03 // 3% of visible range, negative to go below
+    }
+
     var body: some View {
         Chart {
             // Price data
@@ -270,42 +192,46 @@ struct PriceChartView: View {
             }
 
             // Trade overlays (label + line + arrow) - computed lazily
-            ForEach(visibleTradeOverlays, id: \.overlay.id) { item in
-                let overlay = item.overlay
-                let displayIndex = adjustedIndexForDisplay(item.index)
+            if showTrades {
+                ForEach(visibleTradeOverlays, id: \.overlay.id) { item in
+                    let overlay = item.overlay
+                    let displayIndex = adjustedIndexForDisplay(item.index)
 
-                // Label above the line
-                PointMark(
-                    x: .value("Index", displayIndex),
-                    y: .value("Price", item.price)
-                )
-                .symbolSize(10)
-                .foregroundStyle(.red)
-                .interpolationMethod(.catmullRom)
-                .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
-                .annotation(position: overlay.isBuy ? .top : .bottom) {
-                    Text(overlay.isBuy ? "B" : "S")
-                        .font(.caption2.bold())
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 2)
-                        .background(
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(overlay.isBuy ? .green : .red)
-                        )
+                    // Label above the line
+                    PointMark(
+                        x: .value("Index", displayIndex),
+                        y: .value("Price", item.price)
+                    )
+                    .symbolSize(10)
+                    .foregroundStyle(.red)
+                    .interpolationMethod(.catmullRom)
+                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .annotation(position: overlay.isBuy ? .top : .bottom) {
+                        Text(overlay.isBuy ? "B" : "S")
+                            .font(.caption2.bold())
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(overlay.isBuy ? .green : .red)
+                            )
+                    }
                 }
             }
 
             // Mark overlays (shapes) - computed lazily
-            ForEach(visibleMarkOverlays, id: \.overlay.id) { item in
-                PointMark(
-                    x: .value("Index", adjustedIndexForDisplay(item.index)),
-                    y: .value("Price", item.price)
-                )
-                .symbol {
-                    markSymbol(for: item.overlay.mark)
+            if showMarks {
+                ForEach(visibleMarkOverlays, id: \.overlay.id) { item in
+                    PointMark(
+                        x: .value("Index", adjustedIndexForDisplay(item.index)),
+                        y: .value("Price", item.price)
+                    )
+                    .symbol {
+                        markSymbol(for: item.overlay.mark)
+                    }
+                    .symbolSize(200)
                 }
-                .symbolSize(100)
             }
 
             // Selection indicator
@@ -431,20 +357,38 @@ struct PriceChartView: View {
     @ViewBuilder
     private func markSymbol(for mark: Mark) -> some View {
         let color = mark.color.toColor()
+        let letter = String(mark.title.prefix(1))
+        let size: CGFloat = 16
 
         switch mark.shape {
         case .circle:
-            Circle()
-                .fill(color)
-                .frame(width: 8, height: 8)
+            ZStack {
+                Circle()
+                    .fill(color)
+                Text(letter)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            .frame(width: size, height: size)
         case .square:
-            Rectangle()
-                .fill(color)
-                .frame(width: 8, height: 8)
+            ZStack {
+                Rectangle()
+                    .fill(color)
+                Text(letter)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            .frame(width: size, height: size)
         case .triangle:
-            Image(systemName: "triangle.fill")
-                .font(.system(size: 8))
-                .foregroundColor(color)
+            ZStack {
+                Image(systemName: "triangle.fill")
+                    .font(.system(size: size))
+                    .foregroundColor(color)
+                Text(letter)
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(.white)
+                    .offset(y: 2)
+            }
         }
     }
 
@@ -452,6 +396,15 @@ struct PriceChartView: View {
         let range = yAxisDomain.upperBound - yAxisDomain.lowerBound
         let offset = range * 0.10 // 10% of visible range
         return isBuy ? offset : -offset
+    }
+
+    /// Determine annotation position for marks based on trade visibility
+    /// Places marks below when trades are visible on line charts to avoid overlap
+    private func markAnnotationPosition() -> AnnotationPosition {
+        if chartType == .line && showTrades && !tradeOverlays.isEmpty {
+            return .bottom
+        }
+        return .top
     }
 
     @ViewBuilder
@@ -531,6 +484,9 @@ private struct MarkTooltipView: View {
 
             if !mark.message.isEmpty {
                 Divider()
+                Text("Message:")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.secondary)
                 Text(mark.message)
                     .font(.caption2)
             }
@@ -570,37 +526,5 @@ private struct MarkTooltipView: View {
                 .font(.system(size: 10))
                 .foregroundColor(color)
         }
-    }
-}
-
-// MARK: - Color Extension
-
-extension Color {
-    init?(hex: String) {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
-
-        var rgb: UInt64 = 0
-        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else {
-            return nil
-        }
-
-        let r, g, b, a: Double
-        switch hexSanitized.count {
-        case 6:
-            r = Double((rgb & 0xFF0000) >> 16) / 255.0
-            g = Double((rgb & 0x00FF00) >> 8) / 255.0
-            b = Double(rgb & 0x0000FF) / 255.0
-            a = 1.0
-        case 8:
-            r = Double((rgb & 0xFF000000) >> 24) / 255.0
-            g = Double((rgb & 0x00FF0000) >> 16) / 255.0
-            b = Double((rgb & 0x0000FF00) >> 8) / 255.0
-            a = Double(rgb & 0x000000FF) / 255.0
-        default:
-            return nil
-        }
-
-        self.init(red: r, green: g, blue: b, opacity: a)
     }
 }

@@ -14,12 +14,47 @@ struct ChartHeaderView: View {
     let minZoom: CGFloat
     let maxZoom: CGFloat
 
+    // Overlay visibility toggles (optional - only needed when chart has overlays)
+    var showTrades: Binding<Bool>?
+    var showMarks: Binding<Bool>?
+    var hasTradeOverlays: Bool = false
+    var hasMarkOverlays: Bool = false
+
     var body: some View {
         HStack {
             Text(title)
                 .font(.headline)
 
             Spacer()
+
+            // Overlay visibility toggles
+            if hasTradeOverlays || hasMarkOverlays {
+                HStack(spacing: 8) {
+                    if hasTradeOverlays, let showTrades = showTrades {
+                        Toggle(isOn: showTrades) {
+                            Image(systemName: "arrow.up.arrow.down")
+                        }
+                        .toggleStyle(.button)
+                        .buttonStyle(.bordered)
+                        .tint(showTrades.wrappedValue ? .accentColor : .secondary)
+                        .help("Show/Hide Trades")
+                    }
+
+                    if hasMarkOverlays, let showMarks = showMarks {
+                        Toggle(isOn: showMarks) {
+                            Image(systemName: "mappin")
+                        }
+                        .toggleStyle(.button)
+                        .buttonStyle(.bordered)
+                        .tint(showMarks.wrappedValue ? .accentColor : .secondary)
+                        .help("Show/Hide Marks")
+                    }
+                }
+
+                Divider()
+                    .frame(height: 20)
+                    .padding(.horizontal, 8)
+            }
 
             // Zoom controls
             HStack(spacing: 8) {

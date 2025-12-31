@@ -32,6 +32,10 @@ struct BacktestChartView: View {
     @State private var loadedOverlayRange: ClosedRange<Date>?
     @State private var isLoadingOverlays: Bool = false
 
+    // Overlay visibility toggles
+    @State private var showTrades: Bool = true
+    @State private var showMarks: Bool = true
+
     // Zoom configuration
     private let baseVisibleCount = 100
     private let minZoom: CGFloat = 0.1
@@ -168,7 +172,7 @@ struct BacktestChartView: View {
         let buffer = 50 // Load extra on each side for smooth scrolling
         let startIdx = max(0, scrollPosition - buffer)
         let endIdx = min(vm.sortedData.count - 1, scrollPosition + visibleCount + buffer)
-        return vm.sortedData[startIdx].date...vm.sortedData[endIdx].date
+        return vm.sortedData[startIdx].date ... vm.sortedData[endIdx].date
     }
 
     /// Load overlays for the visible time range
@@ -229,14 +233,9 @@ struct BacktestChartView: View {
             )
         }
 
-        // Build mark overlays with marketDataId (indices computed lazily in PriceChartView)
+        // Build mark overlays (indices computed lazily in PriceChartView via marketDataId)
         markOverlays = marks.map { mark in
-            MarkOverlay(
-                id: mark.marketDataId,
-                marketDataId: mark.marketDataId,
-                price: 0, // Price will be looked up in PriceChartView
-                mark: mark
-            )
+            MarkOverlay(id: mark.id, mark: mark)
         }
     }
 
@@ -247,7 +246,11 @@ struct BacktestChartView: View {
             title: "Price Chart",
             zoomScale: $zoomScale,
             minZoom: minZoom,
-            maxZoom: maxZoom
+            maxZoom: maxZoom,
+            showTrades: .init(get: { showTrades }, set: { showTrades = $0 }),
+            showMarks: .init(get: { showMarks }, set: { showMarks = $0 }),
+            hasTradeOverlays: !tradeOverlays.isEmpty,
+            hasMarkOverlays: !markOverlays.isEmpty
         )
     }
 
@@ -274,6 +277,8 @@ struct BacktestChartView: View {
                 scrollPosition: $scrollPosition,
                 tradeOverlays: tradeOverlays,
                 markOverlays: markOverlays,
+                showTrades: showTrades,
+                showMarks: showMarks,
                 onScrollChange: { range in
                     vm.scrollPositionIndex = range.from
                     if range.isNearStart(threshold: 50) {
