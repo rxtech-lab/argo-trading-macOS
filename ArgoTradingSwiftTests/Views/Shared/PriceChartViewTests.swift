@@ -13,6 +13,7 @@ import Testing
 // MARK: - Test Data Helpers
 
 private func createTestPriceData(
+    globalIndex: Int = 0,
     id: String,
     date: Date,
     close: Double = 100.0,
@@ -21,6 +22,7 @@ private func createTestPriceData(
     open: Double = 98.0
 ) -> PriceData {
     PriceData(
+        globalIndex: globalIndex,
         date: date,
         id: id,
         ticker: "BTCUSDT",
@@ -32,8 +34,8 @@ private func createTestPriceData(
     )
 }
 
-private func createTestIndexedPrice(index: Int, data: PriceData) -> IndexedPrice {
-    IndexedPrice(index: index, data: data)
+private func createTestIndexedPrice(data: PriceData) -> IndexedPrice {
+    IndexedPrice(data: data)
 }
 
 private func createTestSignal(time: Date) -> Signal {
@@ -164,8 +166,8 @@ struct PriceChartViewVisibilityTests {
 
     @Test func defaultVisibilityIsTrue() {
         // When: Creating indexed data
-        let data = createTestPriceData(id: "ID_0", date: baseDate)
-        let indexedData = [createTestIndexedPrice(index: 0, data: data)]
+        let data = createTestPriceData(globalIndex: 0, id: "ID_0", date: baseDate)
+        let indexedData = [createTestIndexedPrice(data: data)]
 
         // Then: PriceChartView can be created with default visibility (true)
         // Note: We can't test the view directly without ViewInspector,
@@ -180,24 +182,24 @@ struct IndexedPriceTests {
     let baseDate = Date(timeIntervalSince1970: 1_704_067_200)
 
     @Test func indexedPriceStoresIndexAndData() {
-        // Given: Price data
-        let data = createTestPriceData(id: "test_id", date: baseDate, close: 150.0)
+        // Given: Price data with globalIndex
+        let data = createTestPriceData(globalIndex: 42, id: "test_id", date: baseDate, close: 150.0)
 
         // When: Creating indexed price
-        let indexed = createTestIndexedPrice(index: 42, data: data)
+        let indexed = createTestIndexedPrice(data: data)
 
-        // Then: Both index and data are stored
+        // Then: Index is derived from globalIndex and data is stored
         #expect(indexed.index == 42)
         #expect(indexed.data.close == 150.0)
         #expect(indexed.data.id == "test_id")
     }
 
     @Test func indexedPriceIsIdentifiable() {
-        // Given: Indexed price
-        let data = createTestPriceData(id: "test_id", date: baseDate)
-        let indexed = createTestIndexedPrice(index: 5, data: data)
+        // Given: Indexed price with globalIndex
+        let data = createTestPriceData(globalIndex: 5, id: "test_id", date: baseDate)
+        let indexed = createTestIndexedPrice(data: data)
 
-        // Then: ID matches index
+        // Then: ID matches globalIndex
         #expect(indexed.id == 5)
     }
 }

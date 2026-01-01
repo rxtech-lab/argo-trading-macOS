@@ -21,7 +21,6 @@ struct BacktestChartView: View {
     @State private var chartType: ChartType = .candlestick
     @State private var selectedIndex: Int?
     @State private var zoomScale: CGFloat = 1.0
-    @State private var scrollPosition: Int = 0
     @GestureState private var magnifyBy: CGFloat = 1.0
 
     // Overlay data
@@ -106,11 +105,6 @@ struct BacktestChartView: View {
             await initializeViewModel()
             await loadVisibleOverlays()
         }
-        .onChange(of: viewModel?.scrollPositionIndex) { _, newValue in
-            if let newValue, newValue != scrollPosition {
-                scrollPosition = newValue
-            }
-        }
         .onChange(of: dataFilePath) { _, _ in
             // Reset all state and reload when data file changes
             viewModel = nil
@@ -119,7 +113,7 @@ struct BacktestChartView: View {
             tradeOverlays = []
             markOverlays = []
             loadedOverlayRange = nil
-            scrollPosition = 0
+            viewModel?.initialScrollPosition = 0
             print("Data file changed, reloading chart and overlays")
             Task {
                 await initializeViewModel()
@@ -163,16 +157,19 @@ struct BacktestChartView: View {
         }
 
         await vm.loadInitialData(visibleCount: visibleCount)
-        scrollPosition = vm.scrollPositionIndex
     }
 
     /// Get the visible time range with buffer for overlay loading
     private func getVisibleTimeRange() -> ClosedRange<Date>? {
         guard let vm = viewModel, !vm.sortedData.isEmpty else { return nil }
-        let buffer = 50 // Load extra on each side for smooth scrolling
-        let startIdx = max(0, scrollPosition - buffer)
-        let endIdx = min(vm.sortedData.count - 1, scrollPosition + visibleCount + buffer)
-        return vm.sortedData[startIdx].date ... vm.sortedData[endIdx].date
+        guard let first = vm.sortedData.first else {
+            return nil
+        }
+
+        guard let last = vm.sortedData.last else {
+            return nil
+        }
+        return first.date ... last.date
     }
 
     /// Load overlays for the visible time range
@@ -274,17 +271,17 @@ struct BacktestChartView: View {
                 yAxisDomain: vm.yAxisDomain,
                 visibleCount: visibleCount,
                 isLoading: vm.isLoading,
-                scrollPosition: $scrollPosition,
+                initialScrollPosition: vm.initialScrollPosition,
                 tradeOverlays: tradeOverlays,
                 markOverlays: markOverlays,
                 showTrades: showTrades,
                 showMarks: showMarks,
                 onScrollChange: { range in
-                    vm.scrollPositionIndex = range.from
                     if range.isNearStart(threshold: 50) {
                         print("Load more at beginning triggered, \(vm.isLoading)")
                         Task {
-                            await vm.loadMoreAtBeginning()
+                            await vm.loadMoreAtBeginning(at: range.from)
+                            await loadVisibleOverlays()
                         }
                     }
 
@@ -292,11 +289,6 @@ struct BacktestChartView: View {
                         Task {
                             await vm.loadMoreAtEnd()
                         }
-                    }
-
-                    // Load overlays for the new visible range
-                    Task {
-                        await loadVisibleOverlays()
                     }
                 },
                 onSelectionChange: { newIndex in

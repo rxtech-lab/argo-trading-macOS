@@ -85,7 +85,7 @@ struct ChartContentView: View {
                 await initializeViewModel(for: newUrl)
             }
         }
-        .onChange(of: viewModel?.scrollPositionIndex) { _, newValue in
+        .onChange(of: viewModel?.initialScrollPosition) { _, newValue in
             // Sync scroll position from view model (e.g., after loading more data)
             if let newValue, newValue != scrollPosition {
                 scrollPosition = newValue
@@ -121,7 +121,7 @@ struct ChartContentView: View {
 
         await vm.loadInitialData(visibleCount: visibleCount)
         // Sync initial scroll position from view model
-        scrollPosition = vm.scrollPositionIndex
+        scrollPosition = vm.initialScrollPosition
     }
 
     // MARK: - Header
@@ -155,15 +155,13 @@ struct ChartContentView: View {
                 yAxisDomain: vm.yAxisDomain,
                 visibleCount: visibleCount,
                 isLoading: vm.isLoading,
-                scrollPosition: $scrollPosition,
+                initialScrollPosition: scrollPosition,
                 onScrollChange: { range in
-                    vm.scrollPositionIndex = range.from
                     if range.isNearStart(threshold: 50) {
                         loadDataTask?.cancel()
                         loadDataTask = Task {
-                            try? await Task.sleep(for: .milliseconds(50))
-                            guard !Task.isCancelled else { return }
-                            await vm.loadMoreAtBeginning()
+                            print("Loading more data at beginning...")
+                            await vm.loadMoreAtBeginning(at: range.from)
                         }
                     }
 

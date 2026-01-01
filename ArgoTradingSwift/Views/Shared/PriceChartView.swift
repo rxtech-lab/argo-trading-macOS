@@ -13,7 +13,6 @@ import SwiftUI
 struct VisibleLogicalRange {
     let from: Int // Start index of visible range (scroll position)
     let to: Int // End index of visible range (from + visibleCount)
-    let visibleCount: Int // Number of visible bars
     let totalCount: Int // Total data points in chart
 
     /// Distance from the beginning (negative if scrolled past start)
@@ -48,6 +47,16 @@ struct MarkOverlay: Identifiable {
     let mark: Mark
 }
 
+private struct ScrollChangeEvent: Equatable {
+    let currentScrollIndex: Int
+    let totalCount: Int
+    let firstGlobalIndex: Int
+
+    var localIndex: Int {
+        currentScrollIndex - firstGlobalIndex
+    }
+}
+
 /// Reusable price chart component that renders candlestick/line charts with optional overlays
 struct PriceChartView: View {
     let indexedData: [IndexedPrice]
@@ -56,8 +65,7 @@ struct PriceChartView: View {
     let yAxisDomain: ClosedRange<Double>
     let visibleCount: Int
     let isLoading: Bool
-
-    @Binding var scrollPosition: Int
+    let initialScrollPosition: Int
 
     var tradeOverlays: [TradeOverlay] = []
     var markOverlays: [MarkOverlay] = []
@@ -77,8 +85,9 @@ struct PriceChartView: View {
     @State private var hoveredTrade: TradeOverlay?
     @State private var hoveredMark: MarkOverlay?
     // Debounce scroll changes
-    @State private var scrollSubject = PassthroughSubject<Int, Never>()
+    @State private var scrollSubject = PassthroughSubject<ScrollChangeEvent, Never>()
     @State private var scrollCancellable: AnyCancellable?
+    @State private var scrollPositionInternal: Int = 0
 
     // MARK: - Computed Overlay Indices
 
@@ -161,167 +170,202 @@ struct PriceChartView: View {
         return -range * 0.03 // 3% of visible range, negative to go below
     }
 
+    // MARK: - Chart Content Components
+
+    @ChartContentBuilder
+    private var priceDataMarks: some ChartContent {
+        ForEach(indexedData) { item in
+            if chartType == .line {
+                LineMark(
+                    x: .value("Index", item.index),
+                    y: .value("Close", item.data.close)
+                )
+                .foregroundStyle(.blue)
+            } else {
+                candlestickMarks(for: item)
+            }
+        }
+    }
+
+    @ChartContentBuilder
+    private func candlestickMarks(for item: IndexedPrice) -> some ChartContent {
+        let isGreen = item.data.close >= item.data.open
+
+        RectangleMark(
+            x: .value("Index", item.index),
+            yStart: .value("Open", item.data.open),
+            yEnd: .value("Close", item.data.close),
+            width: .fixed(candlestickWidth)
+        )
+        .foregroundStyle(isGreen ? .green : .red)
+
+        RuleMark(
+            x: .value("Index", item.index),
+            yStart: .value("Low", item.data.low),
+            yEnd: .value("High", item.data.high)
+        )
+        .foregroundStyle(isGreen ? .green : .red)
+        .lineStyle(StrokeStyle(lineWidth: max(1, candlestickWidth / 6)))
+    }
+
+    @ChartContentBuilder
+    private var tradeOverlayMarks: some ChartContent {
+        if showTrades {
+            ForEach(visibleTradeOverlays, id: \.overlay.id) { item in
+                tradePointMark(for: item)
+            }
+        }
+    }
+
+    @ChartContentBuilder
+    private func tradePointMark(
+        for item: (overlay: TradeOverlay, index: Int, price: Double)
+    ) -> some ChartContent {
+        let overlay = item.overlay
+        let displayIndex = adjustedIndexForDisplay(item.index)
+
+        PointMark(
+            x: .value("Index", displayIndex),
+            y: .value("Price", item.price)
+        )
+        .symbolSize(10)
+        .foregroundStyle(.red)
+        .annotation(position: overlay.isBuy ? .top : .bottom) {
+            tradeLabel(isBuy: overlay.isBuy)
+        }
+    }
+
+    @ViewBuilder
+    private func tradeLabel(isBuy: Bool) -> some View {
+        Text(isBuy ? "B" : "S")
+            .font(.caption2.bold())
+            .foregroundColor(.white)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .background(
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(isBuy ? .green : .red)
+            )
+    }
+
+    @ChartContentBuilder
+    private var markOverlayMarks: some ChartContent {
+        if showMarks {
+            ForEach(visibleMarkOverlays, id: \.overlay.id) { item in
+                PointMark(
+                    x: .value("Index", adjustedIndexForDisplay(item.index)),
+                    y: .value("Price", item.price)
+                )
+                .symbol {
+                    markSymbol(for: item.overlay.mark)
+                }
+                .symbolSize(200)
+            }
+        }
+    }
+
+    @ChartContentBuilder
+    private var selectionIndicatorMark: some ChartContent {
+        if let idx = selectedIndex, idx >= scrollPositionInternal {
+            RuleMark(x: .value("Selected", idx))
+                .foregroundStyle(.gray.opacity(0.5))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
+                .annotation(position: .top, alignment: .center) {
+                    selectionAnnotation(for: idx)
+                }
+        }
+    }
+
+    @ViewBuilder
+    private func selectionAnnotation(for idx: Int) -> some View {
+        if let item = indexedData.first(where: { $0.index == idx }) {
+            Text(item.data.close, format: .number.precision(.fractionLength(2)))
+                .font(.caption2)
+                .padding(4)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 4))
+        }
+    }
+
+    private var xAxisDomain: ClosedRange<Int> {
+        guard let first = indexedData.first, let last = indexedData.last else {
+            return 0...1
+        }
+        return first.index...last.index
+    }
+
+    // MARK: - Body
+
     var body: some View {
+        chart
+            .overlay(alignment: .topTrailing) {
+                tooltipView
+            }
+    }
+
+    private var chart: some View {
         Chart {
-            // Price data
-            ForEach(indexedData) { item in
-                switch chartType {
-                case .line:
-                    LineMark(
-                        x: .value("Index", item.index),
-                        y: .value("Close", item.data.close)
-                    )
-                    .foregroundStyle(.blue)
-                case .candlestick:
-                    RectangleMark(
-                        x: .value("Index", item.index),
-                        yStart: .value("Open", item.data.open),
-                        yEnd: .value("Close", item.data.close),
-                        width: .fixed(candlestickWidth)
-                    )
-                    .foregroundStyle(item.data.close >= item.data.open ? .green : .red)
-
-                    RuleMark(
-                        x: .value("Index", item.index),
-                        yStart: .value("Low", item.data.low),
-                        yEnd: .value("High", item.data.high)
-                    )
-                    .foregroundStyle(item.data.close >= item.data.open ? .green : .red)
-                    .lineStyle(StrokeStyle(lineWidth: max(1, candlestickWidth / 6)))
-                }
-            }
-
-            // Trade overlays (label + line + arrow) - computed lazily
-            if showTrades {
-                ForEach(visibleTradeOverlays, id: \.overlay.id) { item in
-                    let overlay = item.overlay
-                    let displayIndex = adjustedIndexForDisplay(item.index)
-
-                    // Label above the line
-                    PointMark(
-                        x: .value("Index", displayIndex),
-                        y: .value("Price", item.price)
-                    )
-                    .symbolSize(10)
-                    .foregroundStyle(.red)
-                    .interpolationMethod(.catmullRom)
-                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
-                    .annotation(position: overlay.isBuy ? .top : .bottom) {
-                        Text(overlay.isBuy ? "B" : "S")
-                            .font(.caption2.bold())
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 2)
-                            .background(
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(overlay.isBuy ? .green : .red)
-                            )
-                    }
-                }
-            }
-
-            // Mark overlays (shapes) - computed lazily
-            if showMarks {
-                ForEach(visibleMarkOverlays, id: \.overlay.id) { item in
-                    PointMark(
-                        x: .value("Index", adjustedIndexForDisplay(item.index)),
-                        y: .value("Price", item.price)
-                    )
-                    .symbol {
-                        markSymbol(for: item.overlay.mark)
-                    }
-                    .symbolSize(200)
-                }
-            }
-
-            // Selection indicator
-            if let idx = selectedIndex, idx >= scrollPosition {
-                RuleMark(x: .value("Selected", idx))
-                    .foregroundStyle(.gray.opacity(0.5))
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
-                    .annotation(position: .top, alignment: .center) {
-                        if let item = indexedData.first(where: { $0.index == idx }) {
-                            Text(item.data.close, format: .number.precision(.fractionLength(2)))
-                                .font(.caption2)
-                                .padding(4)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 4))
-                        }
-                    }
-            }
+            priceDataMarks
+            tradeOverlayMarks
+            markOverlayMarks
+            selectionIndicatorMark
         }
         .chartYScale(domain: yAxisDomain)
-        .chartXScale(domain: 0 ... (max(1, indexedData.count) - 1))
-        .chartXAxis {
-            AxisMarks(values: .automatic) { value in
-                AxisGridLine()
-                AxisValueLabel {
-                    if let idx = value.as(Int.self),
-                       let item = indexedData.first(where: { $0.index == idx })
-                    {
-                        Text(item.data.date, format: .dateTime.year().month().day().hour().minute())
-                    }
-                }
-            }
-        }
-        .chartYAxis {
-            AxisMarks(position: .leading) { value in
-                AxisGridLine()
-                AxisValueLabel {
-                    if let doubleValue = value.as(Double.self) {
-                        Text(doubleValue, format: .number.precision(.fractionLength(2)))
-                    }
-                }
-            }
-        }
+        .chartXScale(domain: xAxisDomain)
+        .chartXAxis { xAxisContent }
+        .chartYAxis { yAxisContent }
         .chartScrollableAxes([.horizontal])
         .chartXVisibleDomain(length: visibleCount)
-        .chartScrollPosition(x: Binding(get: {
-            scrollPosition
-        }, set: { newValue in
-            if newValue >= 0 {
-                scrollPosition = newValue
+        .chartScrollPosition(x: $scrollPositionInternal)
+        .chartXSelection(value: $selectedIndex)
+        .onAppear(perform: setupScrollSubscription)
+        .onChange(of: scrollPositionInternal) { oldValue, newValue in
+            print("Scrolling from \(oldValue) to \(newValue) and first global index: \(indexedData.first?.index ?? 0)")
+            if newValue != initialScrollPosition {
+                scrollSubject.send(ScrollChangeEvent(currentScrollIndex: newValue, totalCount: indexedData.count, firstGlobalIndex: indexedData.first?.index ?? 0))
             }
-        }))
-        .chartXSelection(value: Binding(get: {
-            selectedIndex
-        }, set: { newValue in
-            if let newValue = newValue {
-                if newValue >= 0 {
-                    selectedIndex = newValue
-                }
-            } else {
-                selectedIndex = nil
-            }
-        }))
-        .onChange(of: scrollPosition) { oldIndex, newIndex in
-            if newIndex != oldIndex && newIndex >= 0 && !isLoading {
-                scrollSubject.send(newIndex)
-            }
-        }
-        .onAppear {
-            scrollCancellable = scrollSubject
-                .removeDuplicates()
-                .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
-                .sink { newIndex in
-                    print("New index: \(newIndex)")
-                    let range = VisibleLogicalRange(
-                        from: newIndex,
-                        to: newIndex + visibleCount,
-                        visibleCount: visibleCount,
-                        totalCount: indexedData.count
-                    )
-                    onScrollChange?(range)
-                }
         }
         .onChange(of: selectedIndex) { _, newIndex in
-            // Update hovered trade/mark based on selection
             updateHoveredOverlays(at: newIndex)
-            // Notify parent for legend updates
             onSelectionChange?(newIndex)
         }
-        .overlay(alignment: .topTrailing) {
-            tooltipView
+        .onChange(of: initialScrollPosition) { _, newValue in
+            scrollPositionInternal = newValue
         }
+    }
+
+    private var xAxisContent: some AxisContent {
+        AxisMarks(values: .automatic) { value in
+            AxisGridLine()
+            AxisValueLabel {
+                if let idx = value.as(Int.self),
+                   let item = indexedData.first(where: { $0.index == idx })
+                {
+                    Text(item.data.date, format: .dateTime.year().month().day().hour().minute())
+                }
+            }
+        }
+    }
+
+    private var yAxisContent: some AxisContent {
+        AxisMarks(position: .leading) { value in
+            AxisGridLine()
+            AxisValueLabel {
+                if let doubleValue = value.as(Double.self) {
+                    Text(doubleValue, format: .number.precision(.fractionLength(2)))
+                }
+            }
+        }
+    }
+
+    private func setupScrollSubscription() {
+        scrollCancellable = scrollSubject
+            .removeDuplicates()
+            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+            .sink { event in
+                let visableRange = VisibleLogicalRange(from: event.localIndex, to: event.localIndex + visibleCount, totalCount: event.totalCount)
+                print("Event scroll to index: \(event.currentScrollIndex), isClostToBegining: \(visableRange.isNearStart()), isCloseToEnd: \(visableRange.isNearEnd())")
+                onScrollChange?(visableRange)
+            }
     }
 
     // MARK: - Hover/Selection Handling

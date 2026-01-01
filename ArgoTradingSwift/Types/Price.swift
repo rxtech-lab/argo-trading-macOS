@@ -7,6 +7,7 @@
 import Foundation
 
 struct PriceData: Codable, Hashable, Identifiable {
+    let globalIndex: Int
     let date: Date
     let id: String
     let ticker: String

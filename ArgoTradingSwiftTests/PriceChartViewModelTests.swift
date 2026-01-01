@@ -102,6 +102,7 @@ class MockDuckDBService: DuckDBServiceProtocol {
             guard let first = slice.first, let last = slice.last else { break }
 
             aggregated.append(PriceData(
+                globalIndex: aggregated.count,
                 date: first.date,
                 id: "agg-\(aggregated.count)",
                 ticker: first.ticker,
@@ -169,10 +170,11 @@ class MockDuckDBService: DuckDBServiceProtocol {
 
 // MARK: - Test Helpers
 
-func createMockPriceData(count: Int, basePrice: Double = 100.0) -> [PriceData] {
+func createMockPriceData(count: Int, basePrice: Double = 100.0, startOffset: Int = 0) -> [PriceData] {
     (0..<count).map { i in
         let price = basePrice + Double(i)
         return PriceData(
+            globalIndex: startOffset + i,
             date: Date().addingTimeInterval(Double(i) * 60),
             id: "id-\(i)",
             ticker: "TEST",
@@ -291,8 +293,8 @@ struct PriceChartViewModelTests {
         await viewModel.loadInitialData(visibleCount: 100)
 
         // Assert - scroll position should be set to show end of data
-        #expect(viewModel.scrollPositionIndex >= 0)
-        #expect(viewModel.scrollPositionIndex == max(0, viewModel.sortedData.count - 100))
+        #expect(viewModel.initialScrollPosition >= 0)
+        #expect(viewModel.initialScrollPosition == max(0, viewModel.sortedData.count - 100))
     }
 
     @Test func testScrollPositionAdjustedWhenLoadingMoreAtBeginning() async throws {
@@ -306,13 +308,13 @@ struct PriceChartViewModelTests {
 
         // Act
         await viewModel.loadInitialData(visibleCount: 100)
-        let initialScrollPosition = viewModel.scrollPositionIndex
+        let initialScrollPosition = viewModel.initialScrollPosition
 
         // Trigger load more at beginning
         await viewModel.checkAndLoadMoreData(at: 0, visibleCount: 100)
 
         // Assert - scroll position should be adjusted to maintain visual position
-        #expect(viewModel.scrollPositionIndex > initialScrollPosition)
+        #expect(viewModel.initialScrollPosition > initialScrollPosition)
     }
 
     // MARK: - Tests with Configurable Parameters
@@ -340,9 +342,9 @@ struct PriceChartViewModelTests {
         #expect(viewModel.loadedData.count == 300)
         #expect(viewModel.sortedData.count == 300)
         // Scroll position should be 300 - 100 = 200 (to show end of data)
-        #expect(viewModel.scrollPositionIndex == 200)
+        #expect(viewModel.initialScrollPosition == 200)
         // Global index = currentOffset + scrollPositionIndex = 700 + 200 = 900
-        let globalIndex = viewModel.currentOffset + viewModel.scrollPositionIndex
+        let globalIndex = viewModel.currentOffset + viewModel.initialScrollPosition
         #expect(globalIndex == 900)
     }
 
@@ -377,7 +379,7 @@ struct PriceChartViewModelTests {
 
         // Simulate user scrolling to the beginning (local index 0)
         // Set scroll position to 0 to simulate being at the start
-        viewModel.scrollPositionIndex = 0
+        viewModel.initialScrollPosition = 0
 
         // Trigger load more at beginning
         await viewModel.checkAndLoadMoreData(at: 0, visibleCount: 100)
@@ -389,9 +391,9 @@ struct PriceChartViewModelTests {
         // (300 original + 300 new - 200 trimmed = 400)
         #expect(viewModel.loadedData.count == 400)
         // Scroll position should be adjusted: 0 + 300 (loaded) = 300
-        #expect(viewModel.scrollPositionIndex == 300)
+        #expect(viewModel.initialScrollPosition == 300)
         // Global index should still be 700 (maintaining visual position)
-        let globalIndex = viewModel.currentOffset + viewModel.scrollPositionIndex
+        let globalIndex = viewModel.currentOffset + viewModel.initialScrollPosition
         #expect(globalIndex == 700)
     }
 
@@ -417,7 +419,7 @@ struct PriceChartViewModelTests {
         let lastItemBeforeLoad = viewModel.sortedData.last
 
         // Scroll to beginning and load more
-        viewModel.scrollPositionIndex = 0
+        viewModel.initialScrollPosition = 0
         await viewModel.checkAndLoadMoreData(at: 0, visibleCount: 100)
 
         // The last item should be different (trimmed from end)
@@ -528,7 +530,7 @@ struct PriceChartViewModelTests {
         await viewModel.loadInitialData(visibleCount: 100)
 
         // Scroll to beginning to load more data at start
-        viewModel.scrollPositionIndex = 0
+        viewModel.initialScrollPosition = 0
         await viewModel.checkAndLoadMoreData(at: 0, visibleCount: 100)
 
         // Now we should be at offset 400 with 400 items (400-799)
@@ -542,7 +544,7 @@ struct PriceChartViewModelTests {
         // Now scroll to end to trigger load more at end
         // Set scroll position to trigger end loading
         let endPosition = viewModel.sortedData.count - 100
-        viewModel.scrollPositionIndex = endPosition
+        viewModel.initialScrollPosition = endPosition
         await viewModel.checkAndLoadMoreData(at: endPosition, visibleCount: 100)
 
         // After loading at end, first item should be different (trimmed from beginning)
@@ -576,7 +578,7 @@ struct PriceChartViewModelTests {
         // Load at beginning multiple times
         for _ in 0..<5 {
             if viewModel.currentOffset > 0 {
-                viewModel.scrollPositionIndex = 0
+                viewModel.initialScrollPosition = 0
                 await viewModel.checkAndLoadMoreData(at: 0, visibleCount: 100)
                 // Count should never exceed maxBufferSize after trim
                 #expect(viewModel.loadedData.count <= viewModel.maxBufferSize)
@@ -587,7 +589,7 @@ struct PriceChartViewModelTests {
         for _ in 0..<5 {
             let endIndex = viewModel.sortedData.count - 1
             if viewModel.currentOffset + viewModel.loadedData.count < viewModel.totalCount {
-                viewModel.scrollPositionIndex = endIndex
+                viewModel.initialScrollPosition = endIndex
                 await viewModel.checkAndLoadMoreData(at: endIndex, visibleCount: 100)
                 // Count should never exceed maxBufferSize after trim
                 #expect(viewModel.loadedData.count <= viewModel.maxBufferSize)
@@ -615,20 +617,20 @@ struct PriceChartViewModelTests {
         await viewModel.loadInitialData(visibleCount: 100)
 
         // First, load at beginning to get to a position where we can load at end
-        viewModel.scrollPositionIndex = 0
+        viewModel.initialScrollPosition = 0
         await viewModel.checkAndLoadMoreData(at: 0, visibleCount: 100)
 
         let offsetBeforeEndLoad = viewModel.currentOffset
-        let scrollPositionBeforeEndLoad = viewModel.scrollPositionIndex
+        let scrollPositionBeforeEndLoad = viewModel.initialScrollPosition
         let globalIndexBefore = offsetBeforeEndLoad + scrollPositionBeforeEndLoad
 
         // Now trigger load at end
         let endPosition = viewModel.sortedData.count - 1
-        viewModel.scrollPositionIndex = endPosition
+        viewModel.initialScrollPosition = endPosition
         await viewModel.checkAndLoadMoreData(at: endPosition, visibleCount: 100)
 
         let offsetAfterEndLoad = viewModel.currentOffset
-        let scrollPositionAfterEndLoad = viewModel.scrollPositionIndex
+        let scrollPositionAfterEndLoad = viewModel.initialScrollPosition
         let globalIndexAfter = offsetAfterEndLoad + scrollPositionAfterEndLoad
 
         // If trimming happened, scroll position should be adjusted to maintain global position
@@ -663,19 +665,19 @@ struct PriceChartViewModelTests {
         await viewModel.loadInitialData(visibleCount: 100)
 
         // Load at beginning to move offset back
-        viewModel.scrollPositionIndex = 0
+        viewModel.initialScrollPosition = 0
         await viewModel.checkAndLoadMoreData(at: 0, visibleCount: 100)
         // Now at offset 1400, items 1400-1799 (400 items after trim)
 
         // Set a specific scroll position and record global index
-        viewModel.scrollPositionIndex = 200
-        let globalIndexBefore = viewModel.currentOffset + viewModel.scrollPositionIndex
+        viewModel.initialScrollPosition = 200
+        let globalIndexBefore = viewModel.currentOffset + viewModel.initialScrollPosition
 
         // Trigger load at end (near index 399)
         await viewModel.checkAndLoadMoreData(at: 399, visibleCount: 100)
 
         // If trim happened, global index should be preserved via scroll adjustment
-        let globalIndexAfter = viewModel.currentOffset + viewModel.scrollPositionIndex
+        let globalIndexAfter = viewModel.currentOffset + viewModel.initialScrollPosition
 
         // The global position should be maintained or very close
         // (might differ slightly due to rounding or edge cases)
@@ -704,7 +706,7 @@ struct PriceChartViewModelTests {
         #expect(viewModel.loadedData.count == 300)
 
         // First scroll to beginning - triggers load and trim
-        viewModel.scrollPositionIndex = 0
+        viewModel.initialScrollPosition = 0
         await viewModel.checkAndLoadMoreData(at: 0, visibleCount: 100)
 
         // After first load+trim, should be exactly maxBufferSize
@@ -716,7 +718,7 @@ struct PriceChartViewModelTests {
             if i % 2 == 0 {
                 // Scroll to beginning
                 if viewModel.currentOffset > 0 {
-                    viewModel.scrollPositionIndex = 0
+                    viewModel.initialScrollPosition = 0
                     await viewModel.checkAndLoadMoreData(at: 0, visibleCount: 100)
                     #expect(
                         viewModel.loadedData.count == expectedSize,
@@ -727,7 +729,7 @@ struct PriceChartViewModelTests {
                 // Scroll to end
                 let endIndex = viewModel.sortedData.count - 1
                 if viewModel.currentOffset + viewModel.loadedData.count < viewModel.totalCount {
-                    viewModel.scrollPositionIndex = endIndex
+                    viewModel.initialScrollPosition = endIndex
                     await viewModel.checkAndLoadMoreData(at: endIndex, visibleCount: 100)
                     #expect(
                         viewModel.loadedData.count == expectedSize,
@@ -764,7 +766,7 @@ struct PriceChartViewModelTests {
         // Keep scrolling to beginning until we reach offset 0
         var iterations = 0
         while viewModel.currentOffset > 0 && iterations < 10 {
-            viewModel.scrollPositionIndex = 0
+            viewModel.initialScrollPosition = 0
             await viewModel.checkAndLoadMoreData(at: 0, visibleCount: 100)
             iterations += 1
             // Size should always be maxBufferSize after trim
@@ -778,7 +780,7 @@ struct PriceChartViewModelTests {
         iterations = 0
         while viewModel.currentOffset + viewModel.loadedData.count < viewModel.totalCount && iterations < 10 {
             let endIndex = viewModel.sortedData.count - 1
-            viewModel.scrollPositionIndex = endIndex
+            viewModel.initialScrollPosition = endIndex
             await viewModel.checkAndLoadMoreData(at: endIndex, visibleCount: 100)
             iterations += 1
             // Size should always be maxBufferSize after trim
@@ -1034,7 +1036,7 @@ struct PriceChartViewModelTests {
         // Offset should not change (data is already loaded)
         #expect(viewModel.currentOffset == initialOffset)
         // Scroll position should be centered: localIndex - visibleCount/2 = (350-200) - 50 = 100
-        #expect(viewModel.scrollPositionIndex == 100)
+        #expect(viewModel.initialScrollPosition == 100)
     }
 
     @Test func testScrollToTimestamp_dataNeedsLoading_loadsAndScrolls() async throws {
@@ -1096,7 +1098,7 @@ struct PriceChartViewModelTests {
         // Assert: scroll position should center the target
         // localIndex = 300 - 200 = 100
         // scrollPosition = 100 - 50 = 50
-        #expect(viewModel.scrollPositionIndex == 50)
+        #expect(viewModel.initialScrollPosition == 50)
     }
 
     @Test func testScrollToTimestamp_whileLoading_doesNothing() async throws {
@@ -1201,7 +1203,7 @@ struct PriceChartViewModelTests {
         // Scroll position should be properly calculated
         // localIndex = 10 - 0 = 10
         // scrollPosition = max(0, 10 - 50) = 0
-        #expect(viewModel.scrollPositionIndex >= 0)
+        #expect(viewModel.initialScrollPosition >= 0)
     }
 
     @Test func testScrollToTimestamp_atEndOfDataset_scrollsCorrectly() async throws {
@@ -1228,6 +1230,6 @@ struct PriceChartViewModelTests {
         // Assert: should scroll within existing data
         // localIndex = 950 - 700 = 250
         // scrollPosition = max(0, min(250 - 50, 300 - 100)) = 200
-        #expect(viewModel.scrollPositionIndex <= viewModel.sortedData.count - 100)
+        #expect(viewModel.initialScrollPosition <= viewModel.sortedData.count - 100)
     }
 }

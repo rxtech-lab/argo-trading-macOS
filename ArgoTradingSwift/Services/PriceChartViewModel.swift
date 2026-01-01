@@ -9,9 +9,9 @@ import Foundation
 import SwiftUI
 
 struct IndexedPrice: Identifiable {
-    let index: Int
     let data: PriceData
-    var id: Int { index }
+    var index: Int { data.globalIndex }
+    var id: Int { data.globalIndex }
 }
 
 @Observable
@@ -37,7 +37,7 @@ class PriceChartViewModel {
     private(set) var totalCount: Int = 0
     private(set) var currentOffset: Int = 0
     private(set) var isLoading = false
-    var scrollPositionIndex: Int = 0
+    var initialScrollPosition: Int = 0
 
     /// Current time interval for chart aggregation
     private(set) var timeInterval: ChartTimeInterval = .oneSecond
@@ -96,7 +96,7 @@ class PriceChartViewModel {
         indexedData = []
         stableYAxisDomain = nil
         currentOffset = 0
-        scrollPositionIndex = 0
+        initialScrollPosition = 0
 
         do {
             // Get new total count for the interval
@@ -114,7 +114,6 @@ class PriceChartViewModel {
 
             updateCachedProperties(from: fetchedData)
             loadedData = fetchedData
-            scrollPositionIndex = max(0, sortedData.count - visibleCount)
         } catch {
             onError?(error.localizedDescription)
         }
@@ -146,29 +145,13 @@ class PriceChartViewModel {
             updateCachedProperties(from: fetchedData)
             loadedData = fetchedData
 
-            // Set initial scroll position to show recent data (end of local array)
-            scrollPositionIndex = max(0, sortedData.count - visibleCount)
+            // Set initial scroll position to show recent data (use global index)
+            initialScrollPosition = currentOffset + sortedData.count
         } catch {
             onError?(error.localizedDescription)
         }
 
         isLoading = false
-    }
-
-    func checkAndLoadMoreData(at index: Int, visibleCount: Int) async {
-        guard !isLoading, !sortedData.isEmpty else { return }
-
-        let dataCount = sortedData.count
-
-        if index <= 0, currentOffset > 0 {
-            print("Loading more at beginning...")
-            await loadMoreAtBeginning()
-        }
-
-        if index + visibleCount >= dataCount, currentOffset + loadedData.count < totalCount {
-            print("Loading more at end...")
-            await loadMoreAtEnd()
-        }
     }
 
     /// Scroll to a specific timestamp, loading data if necessary
@@ -190,10 +173,9 @@ class PriceChartViewModel {
             let loadedStart = currentOffset
             let loadedEnd = currentOffset + loadedData.count
 
-            if targetOffset >= loadedStart && targetOffset < loadedEnd {
-                // Data is already loaded - just scroll to it
-                let localIndex = targetOffset - currentOffset
-                scrollPositionIndex = max(0, localIndex - visibleCount / 2)
+            if targetOffset >= loadedStart, targetOffset < loadedEnd {
+                // Data is already loaded - just scroll to it (use global index)
+                initialScrollPosition = max(currentOffset, targetOffset - visibleCount / 2)
             } else {
                 // Need to load data around the target timestamp
                 await loadDataAroundOffset(targetOffset, visibleCount: visibleCount)
@@ -230,9 +212,9 @@ class PriceChartViewModel {
             updateCachedProperties(from: fetchedData)
             loadedData = fetchedData
 
-            // Set scroll position to center on target
-            let localIndex = targetOffset - startOffset
-            scrollPositionIndex = max(0, min(localIndex - visibleCount / 2, sortedData.count - visibleCount))
+            // Set scroll position to center on target (use global index)
+            let maxScrollPosition = currentOffset + sortedData.count - visibleCount
+            initialScrollPosition = max(currentOffset, min(targetOffset - visibleCount / 2, maxScrollPosition))
         } catch {
             onError?(error.localizedDescription)
         }
@@ -271,14 +253,12 @@ class PriceChartViewModel {
     }
 
     private func rebuildIndexedData() {
-        indexedData = sortedData.enumerated().map { IndexedPrice(index: $0.offset, data: $0.element) }
+        indexedData = sortedData.map { IndexedPrice(data: $0) }
     }
 
-    func loadMoreAtBeginning() async {
+    func loadMoreAtBeginning(at index: Int) async {
         guard !isLoading else { return }
         isLoading = true
-
-        let previousScrollIndex = scrollPositionIndex
 
         do {
             let loadCount = min(loadChunkSize, currentOffset)
@@ -293,6 +273,7 @@ class PriceChartViewModel {
             )
 
             var combinedData = newData + loadedData
+            print("Loaded complete, new global first index is \(combinedData.first!.globalIndex)")
             currentOffset = newOffset
 
             // Trim from the end if exceeds max buffer size
@@ -304,9 +285,6 @@ class PriceChartViewModel {
             updateCachedProperties(from: combinedData)
 
             loadedData = combinedData
-
-            // Adjust scroll position by prepended count to maintain visual position
-            scrollPositionIndex = previousScrollIndex + newData.count
         } catch {
             print("Error loading more data: \(error)")
         }
@@ -317,8 +295,6 @@ class PriceChartViewModel {
     func loadMoreAtEnd() async {
         guard !isLoading else { return }
         isLoading = true
-
-        let previousScrollIndex = scrollPositionIndex
 
         do {
             let currentEnd = currentOffset + loadedData.count
@@ -345,10 +321,8 @@ class PriceChartViewModel {
             updateCachedProperties(from: combinedData)
             loadedData = combinedData
 
-            // Adjust scroll position by trimmed count to maintain visual position
-            if actualTrimCount > 0 {
-                scrollPositionIndex = max(0, previousScrollIndex - actualTrimCount)
-            }
+            // Scroll position is already a global index, no adjustment needed
+            // The visual position is maintained because the global index doesn't change
         } catch {
             print("Error loading more data: \(error)")
         }
