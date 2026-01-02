@@ -419,10 +419,10 @@ final class LightweightChartService {
         for trade in trades {
             var marker = MarkerDataJS(
                 time: trade.timestamp.timeIntervalSince1970,
-                position: trade.isBuy ? "belowBar" : "aboveBar",
+                position: "aboveBar",
                 color: trade.isBuy ? "#26a69a" : "#ef5350",
-                shape: trade.isBuy ? "arrowUp" : "arrowDown",
-                text: trade.isBuy ? "B" : "S",
+                shape: "arrowDown",
+                text : trade.isBuy ? "B" : "S",
                 id: trade.id,
                 markerType: "trade"
             )
