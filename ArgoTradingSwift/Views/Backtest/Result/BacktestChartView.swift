@@ -268,7 +268,6 @@ struct BacktestChartView: View {
                 data: vm.loadedData,
                 chartType: chartType,
                 candlestickWidth: candlestickWidth,
-                yAxisDomain: vm.yAxisDomain,
                 visibleCount: visibleCount,
                 isLoading: vm.isLoading,
                 initialScrollPosition: vm.initialScrollPosition,

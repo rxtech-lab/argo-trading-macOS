@@ -18,14 +18,6 @@ class PriceChartViewModel {
     // MARK: - State
 
     private(set) var loadedData: [PriceData] = []
-    private var currentDataYAxisDomain: ClosedRange<Double> = 0 ... 100
-    private var stableYAxisDomain: ClosedRange<Double>?
-
-    /// Public Y-axis domain that remains stable during scrolling
-    var yAxisDomain: ClosedRange<Double> {
-        stableYAxisDomain ?? currentDataYAxisDomain
-    }
-
     private(set) var totalCount: Int = 0
     private(set) var currentOffset: Int = 0
     private(set) var isLoading = false
@@ -84,7 +76,6 @@ class PriceChartViewModel {
 
         // Reset state
         loadedData = []
-        stableYAxisDomain = nil
         currentOffset = 0
         initialScrollPosition = 0
 
@@ -178,7 +169,6 @@ class PriceChartViewModel {
 
         // Reset state for new data chunk
         loadedData = []
-        stableYAxisDomain = nil
 
         do {
             // Calculate start offset to center the target

@@ -209,31 +209,6 @@ struct PriceChartViewModelTests {
         #expect(!viewModel.isLoading)
     }
 
-    @Test func testYAxisDomainCalculation() async throws {
-        // Arrange
-        let mockService = MockDuckDBService()
-        mockService.mockTotalCount = 10
-        // Create data with known min/max: low=99, high=112
-        mockService.mockPriceData = createMockPriceData(count: 10, basePrice: 100.0)
-
-        let url = URL(fileURLWithPath: "/tmp/test.parquet")
-        let viewModel = PriceChartViewModel(url: url, dbService: mockService)
-
-        // Act
-        await viewModel.loadInitialData(visibleCount: 100)
-
-        // Assert
-        // Low values: 99, 100, 101, ... 108 -> min = 99
-        // High values: 102, 103, 104, ... 111 -> max = 111
-        let minY = viewModel.yAxisDomain.lowerBound
-        let maxY = viewModel.yAxisDomain.upperBound
-
-        // Range = 111 - 99 = 12, padding = 12 * 0.05 = 0.6
-        // Expected: (99 - 0.6)...(111 + 0.6) = 98.4...111.6
-        #expect(minY < 99.0)
-        #expect(maxY > 111.0)
-    }
-
     @Test func testLoadMoreAtBeginning() async throws {
         // Arrange
         let mockService = MockDuckDBService()
