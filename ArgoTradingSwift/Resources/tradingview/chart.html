@@ -155,6 +155,7 @@
                 layout: {
                     background: { type: 'solid', color: 'transparent' },
                     textColor: '#888888',
+                    attributionLogo: false,
                 },
                 grid: {
                     vertLines: { color: 'rgba(42, 46, 57, 0.5)' },
@@ -183,6 +184,8 @@
                     borderColor: 'rgba(197, 203, 206, 0.3)',
                     timeVisible: true,
                     secondsVisible: false,
+                    minBarSpacing: 10,
+                    maxBarSpacing: 13,
                 },
                 handleScale: {
                     mouseWheel: true,
@@ -439,19 +442,6 @@
             tooltip.style.left = left + 'px';
             tooltip.style.top = top + 'px';
         }
-
-        // Format date
-        function formatDate(timestamp) {
-            const date = new Date(timestamp * 1000);
-            return date.toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-
         // Format number
         function formatNumber(value, decimals) {
             if (value === undefined || value === null) return '-';

@@ -23,17 +23,8 @@ struct BacktestChartView: View {
     @State private var zoomScale: CGFloat = 1.0
     @GestureState private var magnifyBy: CGFloat = 1.0
 
-    // Overlay data
-    @State private var trades: [Trade] = []
-    @State private var marks: [Mark] = []
-    @State private var tradeOverlays: [TradeOverlay] = []
-    @State private var markOverlays: [MarkOverlay] = []
-    @State private var loadedOverlayRange: ClosedRange<Date>?
-    @State private var isLoadingOverlays: Bool = false
-
-    // Overlay visibility toggles
+    // Overlay visibility toggle (UI state only)
     @State private var showTrades: Bool = true
-    @State private var showMarks: Bool = true
 
     // Zoom configuration
     private let baseVisibleCount = 100
@@ -71,18 +62,12 @@ struct BacktestChartView: View {
     }
 
     private func loadPriceData() async {
-        // Reset all state when data file changes
+        // Reset view model when data file changes
         viewModel = nil
-        trades = []
-        marks = []
-        tradeOverlays = []
-        markOverlays = []
-        loadedOverlayRange = nil
 
         // Initialize and load data
         logger.info("Loading backtest chart for data file: \(dataFilePath)")
         await initializeViewModel()
-        await loadVisibleOverlays()
     }
 
     var body: some View {
@@ -126,8 +111,8 @@ struct BacktestChartView: View {
             Task {
                 await viewModel?.scrollToTimestamp(request.timestamp, visibleCount: visibleCount)
                 // Reset loaded range to force overlay reload for the new visible area
-                loadedOverlayRange = nil
-                await loadVisibleOverlays()
+                viewModel?.resetOverlayRange()
+                await viewModel?.loadVisibleOverlays()
                 backtestResultService.clearScrollRequest()
             }
         }
@@ -137,7 +122,12 @@ struct BacktestChartView: View {
     // MARK: - Initialization
 
     private func initializeViewModel() async {
-        let vm = PriceChartViewModel(url: dataURL, dbService: dbService)
+        let vm = PriceChartViewModel(
+            url: dataURL,
+            dbService: dbService,
+            tradesURL: tradesURL,
+            marksURL: marksURL
+        )
         vm.onError = { message in
             alertManager.showAlert(message: message)
         }
@@ -159,83 +149,7 @@ struct BacktestChartView: View {
         }
 
         await vm.loadInitialData(visibleCount: visibleCount)
-    }
-
-    /// Get the visible time range with buffer for overlay loading
-    private func getVisibleTimeRange() -> ClosedRange<Date>? {
-        guard let vm = viewModel, !vm.loadedData.isEmpty else { return nil }
-        guard let first = vm.loadedData.first else {
-            return nil
-        }
-
-        guard let last = vm.loadedData.last else {
-            return nil
-        }
-        return first.date ... last.date
-    }
-
-    /// Load overlays for the visible time range
-    private func loadVisibleOverlays() async {
-        guard let range = getVisibleTimeRange() else { return }
-
-        // Skip if range is fully covered by already-loaded range
-        if let loaded = loadedOverlayRange,
-           loaded.lowerBound <= range.lowerBound,
-           loaded.upperBound >= range.upperBound
-        {
-            return
-        }
-
-        // Skip if already loading
-        guard !isLoadingOverlays else { return }
-        isLoadingOverlays = true
-        defer { isLoadingOverlays = false }
-
-        do {
-            try dbService.initDatabase()
-
-            // Load trades within time range
-            if FileManager.default.fileExists(atPath: tradesFilePath) {
-                trades = try await dbService.fetchTrades(
-                    filePath: tradesURL,
-                    startTime: range.lowerBound,
-                    endTime: range.upperBound
-                )
-            }
-
-            // Load marks within time range
-            if FileManager.default.fileExists(atPath: marksFilePath) {
-                marks = try await dbService.fetchMarks(
-                    filePath: marksURL,
-                    startTime: range.lowerBound,
-                    endTime: range.upperBound
-                )
-            }
-
-            buildOverlays()
-            loadedOverlayRange = range
-        } catch {
-            alertManager.showAlert(message: "Failed to load overlay data: \(error.localizedDescription)")
-        }
-    }
-
-    private func buildOverlays() {
-        // Build trade overlays with timestamps (indices computed lazily in PriceChartView)
-        tradeOverlays = trades.compactMap { trade in
-            let isBuy = trade.side == .buy
-            return TradeOverlay(
-                id: trade.orderId,
-                timestamp: trade.timestamp,
-                price: trade.executedPrice,
-                isBuy: isBuy,
-                trade: trade
-            )
-        }
-
-        // Build mark overlays (indices computed lazily in PriceChartView via marketDataId)
-        markOverlays = marks.map { mark in
-            MarkOverlay(id: mark.id, mark: mark)
-        }
+        await vm.loadVisibleOverlays()
     }
 
     // MARK: - Header
@@ -247,9 +161,7 @@ struct BacktestChartView: View {
             minZoom: minZoom,
             maxZoom: maxZoom,
             showTrades: .init(get: { showTrades }, set: { showTrades = $0 }),
-            showMarks: .init(get: { showMarks }, set: { showMarks = $0 }),
-            hasTradeOverlays: !tradeOverlays.isEmpty,
-            hasMarkOverlays: !markOverlays.isEmpty
+            hasTradeOverlays: !(viewModel?.tradeOverlays.isEmpty ?? true)
         )
     }
 
@@ -274,26 +186,11 @@ struct BacktestChartView: View {
                 isLoading: vm.isLoading,
                 initialScrollPosition: vm.initialScrollPosition,
                 totalDataCount: vm.totalCount,
-                tradeOverlays: tradeOverlays,
-                markOverlays: markOverlays,
+                tradeOverlays: vm.tradeOverlays,
+                markOverlays: vm.markOverlays,
                 showTrades: showTrades,
-                showMarks: showMarks,
                 onScrollChange: { range in
-                    if range.isNearStart(threshold: 50) {
-                        if range.globalToIndex > vm.loadedData.count || range.globalToIndex < 0 {
-                            logger.error("[BacktestChartView] Invalid from index \(range.globalFromIndex) > loaded count \(vm.loadedData.count)")
-                            return
-                        }
-                        logger.debug("[BacktestChartView] Loading more data at beginning...")
-                        let foundData = vm.loadedData[range.globalToIndex]
-                        await vm.loadMoreAtBeginning(at: foundData.globalIndex)
-                        await loadVisibleOverlays()
-                        return
-                    }
-
-                    if range.isNearEnd(threshold: 50) {
-                        await vm.loadMoreAtEnd()
-                    }
+                    await vm.handleScrollChange(range)
                 },
                 onSelectionChange: { newIndex in
                     selectedIndex = newIndex
@@ -322,13 +219,13 @@ struct BacktestChartView: View {
         HStack {
             // Overlay info
             HStack(spacing: 12) {
-                if !tradeOverlays.isEmpty {
-                    Label("\(tradeOverlays.count) trades", systemImage: "arrow.up.arrow.down")
+                if let vm = viewModel, !vm.tradeOverlays.isEmpty {
+                    Label("\(vm.tradeOverlays.count) trades", systemImage: "arrow.up.arrow.down")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                if !markOverlays.isEmpty {
-                    Label("\(markOverlays.count) marks", systemImage: "mappin")
+                if let vm = viewModel, !vm.markOverlays.isEmpty {
+                    Label("\(vm.markOverlays.count) marks", systemImage: "mappin")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -363,10 +260,10 @@ struct BacktestChartView: View {
             onIntervalChange: { newInterval in
                 guard let vm = viewModel else { return }
                 // Reset overlay range when interval changes
-                loadedOverlayRange = nil
+                vm.resetOverlayRange()
                 Task {
                     await vm.setTimeInterval(newInterval, visibleCount: visibleCount)
-                    await loadVisibleOverlays()
+                    await vm.loadVisibleOverlays()
                 }
             }
         )

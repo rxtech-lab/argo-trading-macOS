@@ -14,11 +14,9 @@ struct ChartHeaderView: View {
     let minZoom: CGFloat
     let maxZoom: CGFloat
 
-    // Overlay visibility toggles (optional - only needed when chart has overlays)
+    // Overlay visibility toggle (optional - only needed when chart has trade overlays)
     var showTrades: Binding<Bool>?
-    var showMarks: Binding<Bool>?
     var hasTradeOverlays: Bool = false
-    var hasMarkOverlays: Bool = false
 
     var body: some View {
         HStack {
@@ -27,29 +25,15 @@ struct ChartHeaderView: View {
 
             Spacer()
 
-            // Overlay visibility toggles
-            if hasTradeOverlays || hasMarkOverlays {
-                HStack(spacing: 8) {
-                    if hasTradeOverlays, let showTrades = showTrades {
-                        Toggle(isOn: showTrades) {
-                            Image(systemName: "arrow.up.arrow.down")
-                        }
-                        .toggleStyle(.button)
-                        .buttonStyle(.bordered)
-                        .tint(showTrades.wrappedValue ? .accentColor : .secondary)
-                        .help("Show/Hide Trades")
-                    }
-
-                    if hasMarkOverlays, let showMarks = showMarks {
-                        Toggle(isOn: showMarks) {
-                            Image(systemName: "mappin")
-                        }
-                        .toggleStyle(.button)
-                        .buttonStyle(.bordered)
-                        .tint(showMarks.wrappedValue ? .accentColor : .secondary)
-                        .help("Show/Hide Marks")
-                    }
+            // Trade visibility toggle
+            if hasTradeOverlays, let showTrades = showTrades {
+                Toggle(isOn: showTrades) {
+                    Image(systemName: "arrow.up.arrow.down")
                 }
+                .toggleStyle(.button)
+                .buttonStyle(.bordered)
+                .tint(showTrades.wrappedValue ? .accentColor : .secondary)
+                .help("Show/Hide Trades")
 
                 Divider()
                     .frame(height: 20)

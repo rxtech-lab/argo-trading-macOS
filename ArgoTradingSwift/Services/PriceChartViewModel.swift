@@ -14,6 +14,8 @@ class PriceChartViewModel {
 
     private let dbService: DuckDBServiceProtocol
     private let url: URL
+    private let tradesURL: URL?
+    private let marksURL: URL?
 
     // MARK: - State
 
@@ -25,6 +27,15 @@ class PriceChartViewModel {
 
     /// Current time interval for chart aggregation
     private(set) var timeInterval: ChartTimeInterval = .oneSecond
+
+    // MARK: - Overlay State
+
+    private(set) var trades: [Trade] = []
+    private(set) var marks: [Mark] = []
+    private(set) var tradeOverlays: [TradeOverlay] = []
+    private(set) var markOverlays: [MarkOverlay] = []
+    private(set) var loadedOverlayRange: ClosedRange<Date>?
+    private(set) var isLoadingOverlays: Bool = false
 
     // Error handling callback
     var onError: ((String) -> Void)?
@@ -41,13 +52,17 @@ class PriceChartViewModel {
     init(
         url: URL,
         dbService: DuckDBServiceProtocol,
-        bufferSize: Int = 200,
+        tradesURL: URL? = nil,
+        marksURL: URL? = nil,
+        bufferSize: Int = 500,
         loadChunkSize: Int? = nil,
         maxBufferSize: Int? = nil,
         trimSize: Int? = nil
     ) {
         self.url = url
         self.dbService = dbService
+        self.tradesURL = tradesURL
+        self.marksURL = marksURL
         self.bufferSize = bufferSize
         self.loadChunkSize = loadChunkSize ?? bufferSize
         self.maxBufferSize = maxBufferSize ?? bufferSize * 2
@@ -201,9 +216,17 @@ class PriceChartViewModel {
     // MARK: - Private Methods
 
     @MainActor
-    func loadMoreAtBeginning(at globalIndex: Int) async {
+    func loadMoreAtBeginning() async {
         guard !isLoading else { return }
-        guard let firstLoadedIndex = loadedData.first?.globalIndex else { return }
+        guard let firstData = loadedData.first else {
+            return
+        }
+        let firstLoadedIndex = firstData.globalIndex
+        if firstLoadedIndex == 0 {
+            // Already at the beginning
+            return
+        }
+
         isLoading = true
 
         do {
@@ -220,13 +243,12 @@ class PriceChartViewModel {
 
             var combinedData = newData + loadedData
             logger.info("Loaded complete, new global first index is \(combinedData.first!.globalIndex)")
-            currentOffset = newOffset
 
-            // Trim from the end if exceeds max buffer size
-            if combinedData.count > maxBufferSize {
-                let trimCount = combinedData.count - maxBufferSize
-                combinedData = Array(combinedData.dropLast(trimCount))
-            }
+//            // Trim from the end if exceeds max buffer size
+//            if combinedData.count > maxBufferSize {
+//                let trimCount = combinedData.count - maxBufferSize
+//                combinedData = Array(combinedData.dropLast(trimCount))
+//            }
 
             loadedData = combinedData
 
@@ -272,5 +294,125 @@ class PriceChartViewModel {
         }
 
         isLoading = false
+    }
+
+    // MARK: - Scroll Handling
+
+    /// Handle scroll range change - loads more data and overlays as needed
+    func handleScrollChange(_ range: VisibleLogicalRange) async {
+        if range.isNearStart(threshold: 200) {
+            let firstData = loadedData.first!
+            let lastData = loadedData.last!
+            logger.debug("[PriceChartViewModel] Loading more data at beginning \(range.localFromIndex) - \(range.localToIndex), firstData=\(firstData.date), lastData=\(lastData.date)")
+            await loadMoreAtBeginning()
+            await loadVisibleOverlays()
+            return
+        }
+//
+//        if range.isNearEnd(threshold: 50) {
+//            await loadMoreAtEnd()
+//            await loadVisibleOverlays()
+//        }
+    }
+
+    // MARK: - Overlay Methods
+
+    /// Get the visible time range from currently loaded data
+    func getVisibleTimeRange() -> ClosedRange<Date>? {
+        guard !loadedData.isEmpty,
+              let first = loadedData.first,
+              let last = loadedData.last
+        else {
+            return nil
+        }
+        return first.date ... last.date
+    }
+
+    /// Reset loaded overlay range to force reload on next call
+    func resetOverlayRange() {
+        loadedOverlayRange = nil
+    }
+
+    /// Load overlays for the visible time range
+    func loadVisibleOverlays() async {
+        // Skip if no overlay URLs configured
+        guard tradesURL != nil || marksURL != nil else { return }
+
+        guard let range = getVisibleTimeRange() else { return }
+
+        // Skip if range is fully covered by already-loaded range
+        if let loaded = loadedOverlayRange,
+           loaded.lowerBound <= range.lowerBound,
+           loaded.upperBound >= range.upperBound
+        {
+            return
+        }
+
+        // Skip if already loading
+        guard !isLoadingOverlays else { return }
+        isLoadingOverlays = true
+        defer { isLoadingOverlays = false }
+
+        do {
+            try dbService.initDatabase()
+
+            // Load trades within time range
+            if let tradesURL = tradesURL,
+               FileManager.default.fileExists(atPath: tradesURL.path)
+            {
+                trades = try await dbService.fetchTrades(
+                    filePath: tradesURL,
+                    startTime: range.lowerBound,
+                    endTime: range.upperBound
+                )
+            }
+
+            // Load marks within time range
+            if let marksURL = marksURL,
+               FileManager.default.fileExists(atPath: marksURL.path)
+            {
+                marks = try await dbService.fetchMarks(
+                    filePath: marksURL,
+                    startTime: range.lowerBound,
+                    endTime: range.upperBound
+                )
+            }
+
+            buildOverlays()
+            loadedOverlayRange = range
+        } catch {
+            onError?("Failed to load overlay data: \(error.localizedDescription)")
+        }
+    }
+
+    /// Build overlay objects from loaded trades and marks
+    private func buildOverlays() {
+        tradeOverlays = trades.compactMap { trade in
+            let isBuy = trade.side == .buy
+            return TradeOverlay(
+                id: trade.orderId,
+                timestamp: trade.timestamp,
+                price: trade.executedPrice,
+                isBuy: isBuy,
+                trade: trade
+            )
+        }
+
+        markOverlays = marks.map { mark in
+            MarkOverlay(
+                id: mark.id,
+                mark: mark,
+                alignedTime: alignToInterval(mark.signal.time, interval: timeInterval)
+            )
+        }
+    }
+
+    /// Align timestamp to interval boundary (floor to interval start)
+    /// This ensures markers match exactly with chart data points for proper rendering
+    private func alignToInterval(_ date: Date, interval: ChartTimeInterval) -> Date {
+        let seconds = interval.seconds
+        let timestamp = date.timeIntervalSince1970
+        let aligned = floor(timestamp / Double(seconds)) * Double(seconds)
+        return Date(timeIntervalSince1970: aligned)
     }
 }

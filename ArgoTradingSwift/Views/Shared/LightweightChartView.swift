@@ -24,7 +24,6 @@ struct LightweightChartView: View {
     var tradeOverlays: [TradeOverlay] = []
     var markOverlays: [MarkOverlay] = []
     var showTrades: Bool = true
-    var showMarks: Bool = true
 
     var onScrollChange: ((VisibleLogicalRange) async -> Void)?
     var onSelectionChange: ((Int?) -> Void)?
@@ -33,13 +32,12 @@ struct LightweightChartView: View {
 
     @Environment(LightweightChartService.self) private var chartService
     @State private var isChartReady = false
-    @State private var lastDataHash: Int = 0
-    @State private var lastMarkersHash: Int = 0
     @State private var scrollSubject = PassthroughSubject<JSVisibleRange, Never>()
     @State private var scrollCancellable: AnyCancellable?
 
     var body: some View {
         WebView(chartService.webpage)
+            .webViewContentBackground(.hidden)
             .task {
                 // Setup callbacks before initialization
                 setupCallbacks()
@@ -62,24 +60,21 @@ struct LightweightChartView: View {
                 logger.info("onChange(data) triggered - newData.count: \(newData.count)")
                 Task { await updateChartData() }
             }
-//        .onChange(of: chartType) { _, newType in
-//            Task {
-//                try? await chartService.switchChartType(newType)
-//                await updateChartData()
-//            }
-//        }
-//        .onChange(of: tradeOverlays) { _, _ in
-//            Task { await updateMarkers() }
-//        }
-//        .onChange(of: markOverlays) { _, _ in
-//            Task { await updateMarkers() }
-//        }
-//        .onChange(of: showTrades) { _, visible in
-//            Task { try? await chartService.setMarkersVisible(visible, type: "trade") }
-//        }
-//        .onChange(of: showMarks) { _, visible in
-//            Task { try? await chartService.setMarkersVisible(visible, type: "mark") }
-//        }
+            .onChange(of: chartType) { _, newType in
+                Task {
+                    try? await chartService.switchChartType(newType)
+                    await updateChartData()
+                }
+            }
+            .onChange(of: tradeOverlays) { _, _ in
+                Task { await updateMarkers() }
+            }
+            .onChange(of: markOverlays) { _, _ in
+                Task { await updateMarkers() }
+            }
+            .onChange(of: showTrades) { _, visible in
+                Task { try? await chartService.setMarkersVisible(visible, type: "trade") }
+            }
     }
 
     // MARK: - Private Methods
@@ -87,7 +82,8 @@ struct LightweightChartView: View {
     private func setupCallbacks() {
         // Setup scroll subscription with debouncing
         scrollCancellable = scrollSubject
-            .debounce(for: .milliseconds(100), scheduler: RunLoop.main)
+            .debounce(for: .milliseconds(40), scheduler: RunLoop.main)
+            .removeDuplicates()
             .sink { range in
                 Task {
                     await handleVisibleRangeChange(range)
@@ -99,8 +95,8 @@ struct LightweightChartView: View {
             scrollSubject.send(range)
         }
 
-        chartService.onCrosshairMove = { _ in
-//            onSelectionChange?(data.globalIndex)
+        chartService.onCrosshairMove = { data in
+            onSelectionChange?(data.globalIndex)
         }
     }
 
@@ -111,30 +107,21 @@ struct LightweightChartView: View {
         let to = Int(range.to)
 
         let visibleRange = VisibleLogicalRange(
-            globalFromIndex: from,
             localFromIndex: from,
-            globalToIndex: to,
             localToIndex: to,
             totalCount: visibleCount
         )
+        logger.debug("Visible range changed: \(range.from) - \(range.to)")
 
         await onScrollChange?(visibleRange)
     }
 
+    @MainActor
     private func updateChartData() async {
-        logger.info("updateChartData - isChartReady: \(isChartReady), data.count: \(data.count)")
         guard isChartReady, !data.isEmpty else {
             logger.warning("updateChartData SKIPPED - isChartReady: \(isChartReady), data.isEmpty: \(data.isEmpty)")
             return
         }
-
-        // Check if data actually changed
-        let newHash = data.hashValue
-        guard newHash != lastDataHash else {
-            logger.debug("updateChartData SKIPPED - data unchanged")
-            return
-        }
-        lastDataHash = newHash
 
         logger.info("SENDING \(data.count) items to chart, type: \(chartType)")
         do {
@@ -152,17 +139,10 @@ struct LightweightChartView: View {
     private func updateMarkers() async {
         guard isChartReady else { return }
 
-        // Only include visible markers
+        // Trades can be toggled, marks are always shown
         let visibleTrades = showTrades ? tradeOverlays : []
-        let visibleMarks = showMarks ? markOverlays : []
-
-        // Check if markers actually changed
-        let newHash = visibleTrades.hashValue ^ visibleMarks.hashValue
-        guard newHash != lastMarkersHash else { return }
-        lastMarkersHash = newHash
-
         do {
-            try await chartService.setMarkers(trades: visibleTrades, marks: visibleMarks)
+            try await chartService.setMarkers(trades: visibleTrades, marks: markOverlays)
         } catch {
             logger.error("Failed to update markers: \(error.localizedDescription)")
         }
@@ -186,10 +166,11 @@ extension TradeOverlay: Hashable {
 
 extension MarkOverlay: Hashable {
     static func == (lhs: MarkOverlay, rhs: MarkOverlay) -> Bool {
-        lhs.id == rhs.id
+        lhs.id == rhs.id && lhs.alignedTime == rhs.alignedTime
     }
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+        hasher.combine(alignedTime)
     }
 }

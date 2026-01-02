@@ -18,7 +18,6 @@ struct ChartContentView: View {
     @State private var selectedIndex: Int?
     @State private var zoomScale: CGFloat = 1.0
     @State private var scrollPosition: Int = 0
-    @State private var loadDataTask: Task<Void, Never>?
     @GestureState private var magnifyBy: CGFloat = 1.0
 
     // Zoom configuration
@@ -157,22 +156,7 @@ struct ChartContentView: View {
                 initialScrollPosition: scrollPosition,
                 totalDataCount: vm.totalCount,
                 onScrollChange: { range in
-                    if range.isNearStart(threshold: 50) {
-                        loadDataTask?.cancel()
-                        loadDataTask = Task {
-                            print("Loading more data at beginning...")
-                            await vm.loadMoreAtBeginning(at: range.globalFromIndex)
-                        }
-                    }
-
-                    if range.isNearEnd(threshold: 50) {
-                        loadDataTask?.cancel()
-                        loadDataTask = Task {
-                            try? await Task.sleep(for: .milliseconds(50))
-                            guard !Task.isCancelled else { return }
-                            await vm.loadMoreAtEnd()
-                        }
-                    }
+                    await vm.handleScrollChange(range)
                 },
                 onSelectionChange: { newIndex in
                     selectedIndex = newIndex

@@ -22,7 +22,7 @@ enum ChartMessageType: String, CaseIterable {
 // MARK: - JS Data Structures
 
 /// Visible range from JavaScript
-struct JSVisibleRange: Codable {
+struct JSVisibleRange: Codable, Equatable {
     let from: Double
     let to: Double
 }
@@ -443,8 +443,8 @@ final class LightweightChartService {
         for markOverlay in marks {
             let mark = markOverlay.mark
             var marker = MarkerDataJS(
-                time: mark.signal.time.timeIntervalSince1970,
-                position: "aboveBar",
+                time: markOverlay.alignedTime.timeIntervalSince1970,
+                position: "belowBar",
                 color: mark.color.toHexString(),
                 shape: mark.shape.toJSShape(),
                 text: String(mark.title.prefix(1)),

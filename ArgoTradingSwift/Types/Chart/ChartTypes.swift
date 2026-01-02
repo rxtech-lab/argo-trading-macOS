@@ -9,9 +9,7 @@ import Foundation
 
 /// Represents the visible logical range of the chart (similar to lightweight-charts)
 struct VisibleLogicalRange {
-    let globalFromIndex: Int
     let localFromIndex: Int
-    let globalToIndex: Int
     let localToIndex: Int
     let totalCount: Int
 
@@ -23,7 +21,7 @@ struct VisibleLogicalRange {
 
     /// Whether near the start (within threshold)
     func isNearStart(threshold: Int = 10) -> Bool {
-        localToIndex < threshold
+        localFromIndex < threshold
     }
 
     /// Whether near the end (within threshold)
@@ -45,6 +43,7 @@ struct TradeOverlay: Identifiable {
 struct MarkOverlay: Identifiable {
     let id: String
     let mark: Mark
+    let alignedTime: Date  // Timestamp aligned to chart interval for TradingView rendering
 }
 
 /// Internal scroll change event for debouncing
