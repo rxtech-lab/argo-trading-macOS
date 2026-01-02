@@ -64,7 +64,6 @@ struct PriceChartView: View {
     let data: [PriceData]
     let chartType: ChartType
     let candlestickWidth: CGFloat
-    let yAxisDomain: ClosedRange<Double>
     let visibleCount: Int
     let isLoading: Bool
     let initialScrollPosition: Int
@@ -170,7 +169,9 @@ struct PriceChartView: View {
     private func markVerticalOffset() -> Double {
         // Only apply offset on line charts when both trades and marks are visible
         guard chartType == .line && showTrades && showMarks && !tradeOverlays.isEmpty else { return 0 }
-        let range = yAxisDomain.upperBound - yAxisDomain.lowerBound
+        guard let minPrice = data.map(\.low).min(),
+              let maxPrice = data.map(\.high).max() else { return 0 }
+        let range = maxPrice - minPrice
         return -range * 0.03 // 3% of visible range, negative to go below
     }
 
@@ -453,7 +454,9 @@ struct PriceChartView: View {
     }
 
     private func tradeLineOffset(isBuy: Bool) -> Double {
-        let range = yAxisDomain.upperBound - yAxisDomain.lowerBound
+        guard let minPrice = data.map(\.low).min(),
+              let maxPrice = data.map(\.high).max() else { return 0 }
+        let range = maxPrice - minPrice
         let offset = range * 0.10 // 10% of visible range
         return isBuy ? offset : -offset
     }
