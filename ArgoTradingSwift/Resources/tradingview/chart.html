@@ -132,8 +132,6 @@
         let tradeMarkers = [];
         let markMarkers = [];
         let dataMap = new Map(); // Map time -> { globalIndex, data }
-        let showTrades = true;
-        let showMarks = true;
         let isInitialized = false;
 
         // Throttle state for scroll events
@@ -552,32 +550,15 @@
             updateVisibleMarkers();
         }
 
-        // Update which markers are visible
+        // Update markers on the chart
         function updateVisibleMarkers() {
             if (!series) return;
 
-            let visibleMarkers = [];
-            if (showTrades) {
-                visibleMarkers = visibleMarkers.concat(tradeMarkers);
-            }
-            if (showMarks) {
-                visibleMarkers = visibleMarkers.concat(markMarkers);
-            }
+            // Combine all markers and sort by time
+            const allMarkers = [...tradeMarkers, ...markMarkers];
+            allMarkers.sort((a, b) => a.time - b.time);
 
-            // Sort by time
-            visibleMarkers.sort((a, b) => a.time - b.time);
-
-            series.setMarkers(visibleMarkers);
-        }
-
-        // Toggle marker visibility
-        function setMarkersVisible(visible, type) {
-            if (type === 'trade') {
-                showTrades = visible;
-            } else if (type === 'mark') {
-                showMarks = visible;
-            }
-            updateVisibleMarkers();
+            series.setMarkers(allMarkers);
         }
 
         // Scroll to specific time
