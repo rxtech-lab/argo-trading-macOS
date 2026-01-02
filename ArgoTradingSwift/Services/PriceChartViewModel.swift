@@ -153,6 +153,9 @@ class PriceChartViewModel {
             let loadedEnd = currentOffset + loadedData.count
 
             if targetOffset >= loadedStart, targetOffset < loadedEnd {
+                // Data already loaded - just update scroll position to center on target
+                let maxScrollPosition = currentOffset + loadedData.count - visibleCount
+                initialScrollPosition = max(currentOffset, min(targetOffset - visibleCount / 2, maxScrollPosition))
             } else {
                 // Need to load data around the target timestamp
                 await loadDataAroundOffset(targetOffset, visibleCount: visibleCount)

@@ -70,6 +70,21 @@ struct BacktestChartView: View {
         return max(2, min(baseWidth * scale, 20))
     }
 
+    private func loadPriceData() async {
+        // Reset all state when data file changes
+        viewModel = nil
+        trades = []
+        marks = []
+        tradeOverlays = []
+        markOverlays = []
+        loadedOverlayRange = nil
+
+        // Initialize and load data
+        logger.info("Loading backtest chart for data file: \(dataFilePath)")
+        await initializeViewModel()
+        await loadVisibleOverlays()
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             headerView
@@ -101,24 +116,8 @@ struct BacktestChartView: View {
             chartControlsView
         }
         .padding()
-        .task {
-            await initializeViewModel()
-            await loadVisibleOverlays()
-        }
-        .onChange(of: dataFilePath) { _, _ in
-            // Reset all state and reload when data file changes
-            viewModel = nil
-            trades = []
-            marks = []
-            tradeOverlays = []
-            markOverlays = []
-            loadedOverlayRange = nil
-            viewModel?.initialScrollPosition = 0
-            print("Data file changed, reloading chart and overlays")
-            Task {
-                await initializeViewModel()
-                await loadVisibleOverlays()
-            }
+        .task(id: dataFilePath) {
+            await loadPriceData()
         }
         .onChange(of: backtestResultService.chartScrollRequest) { _, newRequest in
             guard let request = newRequest,
@@ -126,6 +125,9 @@ struct BacktestChartView: View {
 
             Task {
                 await viewModel?.scrollToTimestamp(request.timestamp, visibleCount: visibleCount)
+                // Reset loaded range to force overlay reload for the new visible area
+                loadedOverlayRange = nil
+                await loadVisibleOverlays()
                 backtestResultService.clearScrollRequest()
             }
         }
