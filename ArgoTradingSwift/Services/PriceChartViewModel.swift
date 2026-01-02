@@ -41,7 +41,7 @@ class PriceChartViewModel {
     init(
         url: URL,
         dbService: DuckDBServiceProtocol,
-        bufferSize: Int = 300,
+        bufferSize: Int = 200,
         loadChunkSize: Int? = nil,
         maxBufferSize: Int? = nil,
         trimSize: Int? = nil
@@ -58,8 +58,8 @@ class PriceChartViewModel {
 
     func priceData(at index: Int) -> PriceData? {
         guard !loadedData.isEmpty else { return nil }
-        let clampedIndex = max(0, min(index, loadedData.count - 1))
-        return loadedData[clampedIndex]
+        let priceData = loadedData.first { $0.globalIndex == index }
+        return priceData
     }
 
     /// Set the time interval and reload data

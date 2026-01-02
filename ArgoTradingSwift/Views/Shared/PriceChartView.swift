@@ -91,6 +91,10 @@ struct PriceChartView: View {
     @State private var scrollSubject = PassthroughSubject<ScrollChangeEvent, Never>()
     @State private var scrollCancellable: AnyCancellable?
     @State private var scrollPositionInternal: Int = 0
+    @State private var yAxisDomain: ClosedRange<Double> = 0...1
+    // Debounce Y-axis domain updates
+    @State private var yAxisSubject = PassthroughSubject<[PriceData], Never>()
+    @State private var yAxisCancellable: AnyCancellable?
 
     // MARK: - Computed Overlay Indices
 
@@ -298,6 +302,27 @@ struct PriceChartView: View {
         return 0...(totalDataCount - 1)
     }
 
+    private func updateYAxisDomain(data: [PriceData]) {
+        guard !data.isEmpty else {
+            yAxisDomain = 0...1
+            return
+        }
+
+        let minY: Double
+        let maxY: Double
+
+        if chartType == .candlestick {
+            minY = data.map(\.low).min() ?? 0
+            maxY = data.map(\.high).max() ?? 1
+        } else {
+            minY = data.map(\.close).min() ?? 0
+            maxY = data.map(\.close).max() ?? 1
+        }
+
+        let padding = (maxY - minY) * 0.05
+        yAxisDomain = (minY - padding)...(maxY + padding)
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -315,13 +340,21 @@ struct PriceChartView: View {
             selectionIndicatorMark
         }
         .chartXScale(domain: xAxisDomain)
-//        .chartXAxis { xAxisContent }
+        .chartYScale(domain: yAxisDomain)
+        .chartXAxis { xAxisContent }
         .chartYAxis { yAxisContent }
         .chartScrollableAxes([.horizontal])
         .chartXVisibleDomain(length: visibleCount)
         .chartScrollPosition(x: $scrollPositionInternal)
         .chartXSelection(value: $selectedIndex)
-        .onAppear(perform: setupScrollSubscription)
+        .onAppear {
+            setupScrollSubscription()
+            setupYAxisSubscription()
+            updateYAxisDomain(data: data)
+        }
+        .onChange(of: data) { _, newData in
+            yAxisSubject.send(newData)
+        }
         .onChange(of: scrollPositionInternal) { _, newValue in
             let firstIndex = data.first?.globalIndex ?? 0
             logger.debug("Scroll position changed to \(newValue), firstGlobalIndex: \(firstIndex)")
@@ -375,12 +408,22 @@ struct PriceChartView: View {
     private func setupScrollSubscription() {
         scrollCancellable = scrollSubject
             .removeDuplicates()
-            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+            .debounce(for: .milliseconds(100), scheduler: RunLoop.main)
             .sink { event in
                 Task {
                     let visableRange = VisibleLogicalRange(globalFromIndex: event.currentScrollIndex, localFromIndex: event.localIndex, globalToIndex: event.currentScrollIndex + visibleCount, localToIndex: event.localIndex + visibleCount, totalCount: event.totalCount)
                     logger.debug("Event scroll to index: \(event.currentScrollIndex), isClostToBegining: \(visableRange.isNearStart()), isCloseToEnd: \(visableRange.isNearEnd())")
                     await onScrollChange?(visableRange)
+                }
+            }
+    }
+
+    private func setupYAxisSubscription() {
+        yAxisCancellable = yAxisSubject
+            .debounce(for: .milliseconds(50), scheduler: RunLoop.main)
+            .sink { data in
+                withAnimation {
+                    updateYAxisDomain(data: data)
                 }
             }
     }
