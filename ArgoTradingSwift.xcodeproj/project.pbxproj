@@ -83,6 +83,9 @@
 			exceptions = (
 				DFEAD01F2DB68F7C0099025F /* Exceptions for "ArgoTradingSwift" folder in "ArgoTradingSwift" target */,
 			);
+			explicitFolders = (
+				Resources/tradingview,
+			);
 			path = ArgoTradingSwift;
 			sourceTree = "<group>";
 		};

@@ -266,7 +266,7 @@ struct BacktestChartView: View {
     @ViewBuilder
     private var chartContent: some View {
         if let vm = viewModel {
-            PriceChartView(
+            LightweightChartView(
                 data: vm.loadedData,
                 chartType: chartType,
                 candlestickWidth: candlestickWidth,
@@ -288,7 +288,6 @@ struct BacktestChartView: View {
                     if range.isNearEnd(threshold: 50) {
                         await vm.loadMoreAtEnd()
                     }
-
                 },
                 onSelectionChange: { newIndex in
                     selectedIndex = newIndex

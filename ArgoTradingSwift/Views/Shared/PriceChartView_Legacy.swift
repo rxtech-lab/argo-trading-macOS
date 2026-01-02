@@ -1,6 +1,9 @@
 //
-//  PriceChartView.swift
+//  PriceChartView_Legacy.swift
 //  ArgoTradingSwift
+//
+//  Legacy Swift Charts implementation - kept as fallback.
+//  The new implementation uses TradingView Lightweight Charts via LightweightChartView.
 //
 //  Created by Claude on 12/27/25.
 //
@@ -9,58 +12,12 @@ import Charts
 import Combine
 import SwiftUI
 
-/// Represents the visible logical range of the chart (similar to lightweight-charts)
-struct VisibleLogicalRange {
-    let globalFromIndex: Int
-    let localFromIndex: Int
-    let globalToIndex: Int
-    let localToIndex: Int
-    let totalCount: Int
+// Note: VisibleLogicalRange, TradeOverlay, MarkOverlay, ScrollChangeEvent
+// are now defined in Types/Chart/ChartTypes.swift
 
-    /// Distance from the beginning (negative if scrolled past start)
-    var distanceFromStart: Int { localFromIndex }
-
-    /// Distance from the end
-    var distanceFromEnd: Int { totalCount - localToIndex }
-
-    /// Whether near the start (within threshold)
-    func isNearStart(threshold: Int = 10) -> Bool {
-        localFromIndex < threshold
-    }
-
-    /// Whether near the end (within threshold)
-    func isNearEnd(threshold: Int = 10) -> Bool {
-        distanceFromEnd < threshold
-    }
-}
-
-/// Trade overlay data for chart visualization
-struct TradeOverlay: Identifiable {
-    let id: String
-    let timestamp: Date
-    let price: Double
-    let isBuy: Bool
-    let trade: Trade
-}
-
-/// Mark overlay data for chart visualization
-struct MarkOverlay: Identifiable {
-    let id: String
-    let mark: Mark
-}
-
-private struct ScrollChangeEvent: Equatable {
-    let currentScrollIndex: Int
-    let totalCount: Int
-    let firstGlobalIndex: Int
-
-    var localIndex: Int {
-        currentScrollIndex - firstGlobalIndex
-    }
-}
-
-/// Reusable price chart component that renders candlestick/line charts with optional overlays
-struct PriceChartView: View {
+/// Legacy price chart component using native Swift Charts
+/// Kept as fallback - prefer LightweightChartView for new code
+struct PriceChartView_Legacy: View {
     let data: [PriceData]
     let chartType: ChartType
     let candlestickWidth: CGFloat
@@ -525,112 +482,5 @@ struct PriceChartView: View {
     }
 }
 
-// MARK: - Tooltip Views
-
-private struct TradeTooltipView: View {
-    let trade: Trade
-
-    private var isBuy: Bool {
-        trade.side == .buy
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Image(systemName: isBuy ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
-                    .foregroundColor(isBuy ? .green : .red)
-                Text(trade.side.rawValue.uppercased())
-                    .font(.caption.bold())
-            }
-
-            Divider()
-
-            LabeledContent("Symbol", value: trade.symbol)
-            LabeledContent("Position", value: trade.positionType)
-            if let date = trade.executedAt {
-                LabeledContent("Date", value: date.formatted(date: .abbreviated, time: .standard))
-            }
-            LabeledContent("Qty", value: String(format: "%.4f", trade.executedQty))
-            LabeledContent("Price", value: String(format: "%.2f", trade.executedPrice))
-            if trade.side == .sell {
-                LabeledContent("PnL", value: String(format: "%.2f", trade.pnl))
-                    .foregroundColor(trade.pnl >= 0 ? .green : .red)
-            }
-
-            if !trade.reason.isEmpty {
-                Divider()
-                Text(trade.reason)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .font(.caption)
-        .padding(8)
-        .glassEffect(in: .rect(cornerRadius: 12))
-        .frame(maxWidth: 200)
-    }
-}
-
-private struct MarkTooltipView: View {
-    let mark: Mark
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                markIcon
-                Text(mark.title)
-                    .font(.caption.bold())
-            }
-
-            if !mark.category.isEmpty {
-                Text(mark.category)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-
-            if !mark.message.isEmpty {
-                Divider()
-                Text("Message:")
-                    .font(.caption2.bold())
-                    .foregroundStyle(.secondary)
-                Text(mark.message)
-                    .font(.caption2)
-            }
-
-            Divider()
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Signal: \(mark.signal.type.rawValue)")
-                    .font(.caption2)
-                if !mark.signal.reason.isEmpty {
-                    Text(mark.signal.reason)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .font(.caption)
-        .padding(8)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
-        .frame(maxWidth: 200)
-    }
-
-    @ViewBuilder
-    private var markIcon: some View {
-        let color = mark.color.toColor()
-
-        switch mark.shape {
-        case .circle:
-            Circle()
-                .fill(color)
-                .frame(width: 10, height: 10)
-        case .square:
-            Rectangle()
-                .fill(color)
-                .frame(width: 10, height: 10)
-        case .triangle:
-            Image(systemName: "triangle.fill")
-                .font(.system(size: 10))
-                .foregroundColor(color)
-        }
-    }
-}
+// Note: TradeTooltipView and MarkTooltipView are now defined in
+// Types/Chart/ChartTooltipViews.swift
