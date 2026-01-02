@@ -12,7 +12,8 @@ import WebKit
 
 /// Message types sent from JavaScript to Swift
 enum ChartMessageType: String, CaseIterable {
-    case ready
+    case pageLoaded // JS functions are available (page finished loading)
+    case ready // Chart initialized and ready for data
     case visibleRangeChange
     case crosshairMove
     case consoleLog
@@ -142,6 +143,7 @@ struct DataViewDataSchemeHandler: URLSchemeHandler {
             let filename = url.host ?? ""
             let fileExtension = (filename as NSString).pathExtension
             let resourceName = (filename as NSString).deletingPathExtension
+            logger.debug("[DataSchemeHandler] Loading resource: \(resourceName).\(fileExtension)")
 
             // Load from tradingview subdirectory in bundle
             guard
@@ -182,13 +184,111 @@ struct DataViewDataSchemeHandler: URLSchemeHandler {
     }
 }
 
+// MARK: - ChartMessageHandler
+
+/// Handles JavaScript messages from the WebView
+/// Must be a class conforming to NSObject for WKScriptMessageHandler (incompatible with @Observable)
+final class ChartMessageHandler: NSObject, WKScriptMessageHandler {
+    // Callbacks for different message types
+    var onPageLoaded: (() -> Void)?
+    var onReady: (() -> Void)?
+    var onVisibleRangeChange: ((JSVisibleRange) -> Void)?
+    var onCrosshairMove: ((JSCrosshairData) -> Void)?
+    var onConsoleLog: ((String, String) -> Void)?
+
+    func userContentController(
+        _ userContentController: WKUserContentController,
+        didReceive message: WKScriptMessage
+    ) {
+        guard let messageType = ChartMessageType(rawValue: message.name) else {
+            return
+        }
+
+        // Parse message body on current thread before dispatching
+        // (message.body may not be safe to access across threads)
+        let body = message.body
+
+        // Dispatch all callbacks to main thread - WKScriptMessageHandler runs on background thread
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+
+            switch messageType {
+            case .pageLoaded:
+                self.onPageLoaded?()
+
+            case .ready:
+                self.onReady?()
+
+            case .visibleRangeChange:
+                guard let dict = body as? [String: Any],
+                      let from = dict["from"] as? Double,
+                      let to = dict["to"] as? Double else { return }
+                self.onVisibleRangeChange?(JSVisibleRange(from: from, to: to))
+
+            case .crosshairMove:
+                let data = self.parseCrosshairData(from: body)
+                self.onCrosshairMove?(data)
+
+            case .consoleLog:
+                guard let dict = body as? [String: Any],
+                      let level = dict["level"] as? String,
+                      let msg = dict["message"] as? String else { return }
+                self.onConsoleLog?(level, msg)
+            }
+        }
+    }
+
+    private func parseCrosshairData(from body: Any) -> JSCrosshairData {
+        guard let dict = body as? [String: Any] else {
+            return JSCrosshairData(time: nil, price: nil, globalIndex: nil, ohlcv: nil)
+        }
+
+        let time = dict["time"] as? Double
+        let price = dict["price"] as? Double
+        let globalIndex = dict["globalIndex"] as? Int
+
+        var ohlcv: JSOHLCV?
+        if let ohlcvDict = dict["ohlcv"] as? [String: Any] {
+            ohlcv = JSOHLCV(
+                open: ohlcvDict["open"] as? Double ?? 0,
+                high: ohlcvDict["high"] as? Double ?? 0,
+                low: ohlcvDict["low"] as? Double ?? 0,
+                close: ohlcvDict["close"] as? Double ?? 0,
+                volume: ohlcvDict["volume"] as? Double ?? 0
+            )
+        }
+
+        return JSCrosshairData(time: time, price: price, globalIndex: globalIndex, ohlcv: ohlcv)
+    }
+
+    /// Creates a WKUserContentController with all message handlers registered
+    func createUserContentController() -> WKUserContentController {
+        let controller = WKUserContentController()
+        for messageType in ChartMessageType.allCases {
+            controller.add(self, name: messageType.rawValue)
+        }
+        return controller
+    }
+}
+
 // MARK: - LightweightChartService
 
 @Observable
 final class LightweightChartService {
     var webpage: WebPage
 
-    // MARK: - JavaScript API
+    // Message handler (must be retained)
+    private let messageHandler = ChartMessageHandler()
+
+    // Page-loaded state management
+    private var isPageLoaded = false
+    private var pageLoadedContinuation: CheckedContinuation<Void, Never>?
+
+    // Public callbacks for view layer
+    var onVisibleRangeChange: ((JSVisibleRange) -> Void)?
+    var onCrosshairMove: ((JSCrosshairData) -> Void)?
+
+    // MARK: - Initialization
 
     @MainActor
     init() {
@@ -198,12 +298,75 @@ final class LightweightChartService {
         var configuration = WebPage.Configuration()
         configuration.urlSchemeHandlers[scheme] = handler
 
+        // Add user content controller with message handlers
+        configuration.userContentController = messageHandler.createUserContentController()
+
         self.webpage = WebPage(configuration: configuration)
+
+        // Setup message handler callbacks
+        setupMessageHandlerCallbacks()
+
         webpage.load(URL(string: "trading://chart.html")!)
     }
 
+    private func setupMessageHandlerCallbacks() {
+        messageHandler.onPageLoaded = { [weak self] in
+            self?.handlePageLoaded()
+        }
+
+        messageHandler.onReady = { [weak self] in
+            logger.info("[Chart] Chart initialized and ready")
+            _ = self // Keep reference
+        }
+
+        messageHandler.onVisibleRangeChange = { [weak self] range in
+            self?.onVisibleRangeChange?(range)
+        }
+
+        messageHandler.onCrosshairMove = { [weak self] data in
+            self?.onCrosshairMove?(data)
+        }
+
+        messageHandler.onConsoleLog = { level, message in
+            switch level {
+            case "error":
+                logger.error("[JS] \(message)")
+            case "warn":
+                logger.warning("[JS] \(message)")
+            default:
+                logger.info("[JS] \(message)")
+            }
+        }
+    }
+
+    private func handlePageLoaded() {
+        logger.info("[Chart] Page loaded - JS functions available")
+        isPageLoaded = true
+        pageLoadedContinuation?.resume()
+        pageLoadedContinuation = nil
+    }
+
+    /// Wait for the page to finish loading (JS functions become available)
+    func waitForPageLoaded() async {
+        if isPageLoaded { return }
+
+        await withCheckedContinuation { continuation in
+            // Check again in case loaded happened between check and continuation setup
+            if isPageLoaded {
+                continuation.resume()
+            } else {
+                pageLoadedContinuation = continuation
+            }
+        }
+    }
+
+    // MARK: - JavaScript API
+
     /// Initialize the chart with a specific type
     func initializeChart(chartType: ChartType) async throws {
+        // Wait for page to load before calling JS functions
+        await waitForPageLoaded()
+
         let chartTypeJS = chartType == .candlestick ? "Candlestick" : "Line"
         try await callJavaScript("initializeChart('\(chartTypeJS)')")
     }
@@ -349,7 +512,6 @@ final class LightweightChartService {
     @discardableResult
     private func callJavaScript(_ js: String) async throws -> Any? {
         do {
-            w
             return try await webpage.callJavaScript(js)
         } catch let error as NSError {
             // Log detailed error info for debugging

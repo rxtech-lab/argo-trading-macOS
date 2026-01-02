@@ -23,7 +23,7 @@ struct VisibleLogicalRange {
 
     /// Whether near the start (within threshold)
     func isNearStart(threshold: Int = 10) -> Bool {
-        localFromIndex < threshold
+        localToIndex < threshold
     }
 
     /// Whether near the end (within threshold)

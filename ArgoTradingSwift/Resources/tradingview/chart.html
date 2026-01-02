@@ -79,7 +79,7 @@
             font-size: 14px;
         }
     </style>
-    <script src="lightweight-charts.standalone.production.js"></script>
+    <script src="trading://lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
     <div id="chart-container">
@@ -135,6 +135,11 @@
         let showTrades = true;
         let showMarks = true;
         let isInitialized = false;
+
+        // Throttle state for scroll events
+        let lastScrollEventTime = 0;
+        let pendingScrollEvent = null;
+        let scrollThrottleMs = 200; // Only send scroll events at most every 200ms
 
         // Store original marker data for tooltips
         let markerDataMap = new Map(); // Map markerId -> full marker data
@@ -212,13 +217,28 @@
                 });
             }
 
-            // Subscribe to visible range changes for infinite scroll
+            // Subscribe to visible range changes for infinite scroll (throttled)
             chart.timeScale().subscribeVisibleLogicalRangeChange(logicalRange => {
-                if (logicalRange !== null) {
-                    postMessage('visibleRangeChange', {
-                        from: logicalRange.from,
-                        to: logicalRange.to
-                    });
+                if (logicalRange === null) return;
+
+                const now = Date.now();
+                const eventData = { from: logicalRange.from, to: logicalRange.to };
+
+                // Throttle: only send events at most every scrollThrottleMs
+                if (now - lastScrollEventTime >= scrollThrottleMs) {
+                    lastScrollEventTime = now;
+                    pendingScrollEvent = null;
+                    postMessage('visibleRangeChange', eventData);
+                } else {
+                    // Store pending event to send after throttle period
+                    pendingScrollEvent = eventData;
+                    setTimeout(() => {
+                        if (pendingScrollEvent) {
+                            lastScrollEventTime = Date.now();
+                            postMessage('visibleRangeChange', pendingScrollEvent);
+                            pendingScrollEvent = null;
+                        }
+                    }, scrollThrottleMs - (now - lastScrollEventTime));
                 }
             });
 
@@ -643,6 +663,9 @@
             // Restore markers
             updateVisibleMarkers();
         }
+
+        // Signal to Swift that JavaScript is ready (all functions are defined)
+        postMessage('pageLoaded', { success: true });
     </script>
 </body>
 </html>

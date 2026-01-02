@@ -280,7 +280,13 @@ struct BacktestChartView: View {
                 showMarks: showMarks,
                 onScrollChange: { range in
                     if range.isNearStart(threshold: 50) {
-                        await vm.loadMoreAtBeginning(at: range.globalFromIndex)
+                        if range.globalToIndex > vm.loadedData.count || range.globalToIndex < 0 {
+                            logger.error("[BacktestChartView] Invalid from index \(range.globalFromIndex) > loaded count \(vm.loadedData.count)")
+                            return
+                        }
+                        logger.debug("[BacktestChartView] Loading more data at beginning...")
+                        let foundData = vm.loadedData[range.globalToIndex]
+                        await vm.loadMoreAtBeginning(at: foundData.globalIndex)
                         await loadVisibleOverlays()
                         return
                     }

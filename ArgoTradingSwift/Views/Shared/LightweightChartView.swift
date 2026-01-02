@@ -31,7 +31,7 @@ struct LightweightChartView: View {
 
     // MARK: - State
 
-    @State private var chartService = LightweightChartService()
+    @Environment(LightweightChartService.self) private var chartService
     @State private var isChartReady = false
     @State private var lastDataHash: Int = 0
     @State private var lastMarkersHash: Int = 0
@@ -41,8 +41,19 @@ struct LightweightChartView: View {
     var body: some View {
         WebView(chartService.webpage)
             .task {
+                // Setup callbacks before initialization
+                setupCallbacks()
+
                 do {
+                    // This now waits for HTML to load first
                     try await chartService.initializeChart(chartType: chartType)
+
+                    // Mark as ready - this enables data updates
+                    isChartReady = true
+                    logger.info("Chart initialized, isChartReady = true")
+
+                    // Now safe to send initial data
+                    await updateChartData()
                 } catch {
                     logger.error("Failed to initialize chart: \(error.localizedDescription)")
                 }
@@ -78,36 +89,36 @@ struct LightweightChartView: View {
         scrollCancellable = scrollSubject
             .debounce(for: .milliseconds(100), scheduler: RunLoop.main)
             .sink { range in
-                handleVisibleRangeChange(range)
+                Task {
+                    await handleVisibleRangeChange(range)
+                }
             }
-//
-//        // Wire up service callbacks
-//        chartService.onVisibleRangeChange = { range in
-//            scrollSubject.send(range)
-//        }
-//
-//        chartService.onCrosshairMove = { data in
+
+        // Wire up service callbacks
+        chartService.onVisibleRangeChange = { range in
+            scrollSubject.send(range)
+        }
+
+        chartService.onCrosshairMove = { _ in
 //            onSelectionChange?(data.globalIndex)
-//        }
+        }
     }
 
-    private func handleVisibleRangeChange(_ range: JSVisibleRange) {
+    @MainActor
+    private func handleVisibleRangeChange(_ range: JSVisibleRange) async {
         // Convert JS range to VisibleLogicalRange
         let from = Int(range.from)
         let to = Int(range.to)
+
         let visibleRange = VisibleLogicalRange(
             globalFromIndex: from,
             localFromIndex: from,
             globalToIndex: to,
             localToIndex: to,
-            totalCount: totalDataCount
+            totalCount: visibleCount
         )
 
-        logger.debug("Visible range changed: from=\(from), to=\(to), isNearStart=\(visibleRange.isNearStart()), isNearEnd=\(visibleRange.isNearEnd())")
-
-        Task {
-            await onScrollChange?(visibleRange)
-        }
+        await onScrollChange?(visibleRange)
     }
 
     private func updateChartData() async {

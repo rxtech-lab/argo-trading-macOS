@@ -200,6 +200,7 @@ class PriceChartViewModel {
 
     // MARK: - Private Methods
 
+    @MainActor
     func loadMoreAtBeginning(at globalIndex: Int) async {
         guard !isLoading else { return }
         guard let firstLoadedIndex = loadedData.first?.globalIndex else { return }
