@@ -161,12 +161,12 @@ struct BacktestChartView: View {
 
     /// Get the visible time range with buffer for overlay loading
     private func getVisibleTimeRange() -> ClosedRange<Date>? {
-        guard let vm = viewModel, !vm.sortedData.isEmpty else { return nil }
-        guard let first = vm.sortedData.first else {
+        guard let vm = viewModel, !vm.loadedData.isEmpty else { return nil }
+        guard let first = vm.loadedData.first else {
             return nil
         }
 
-        guard let last = vm.sortedData.last else {
+        guard let last = vm.loadedData.last else {
             return nil
         }
         return first.date ... last.date
@@ -265,31 +265,29 @@ struct BacktestChartView: View {
     private var chartContent: some View {
         if let vm = viewModel {
             PriceChartView(
-                indexedData: vm.indexedData,
+                data: vm.loadedData,
                 chartType: chartType,
                 candlestickWidth: candlestickWidth,
                 yAxisDomain: vm.yAxisDomain,
                 visibleCount: visibleCount,
                 isLoading: vm.isLoading,
                 initialScrollPosition: vm.initialScrollPosition,
+                totalDataCount: vm.totalCount,
                 tradeOverlays: tradeOverlays,
                 markOverlays: markOverlays,
                 showTrades: showTrades,
                 showMarks: showMarks,
                 onScrollChange: { range in
                     if range.isNearStart(threshold: 50) {
-                        print("Load more at beginning triggered, \(vm.isLoading)")
-                        Task {
-                            await vm.loadMoreAtBeginning(at: range.from)
-                            await loadVisibleOverlays()
-                        }
+                        await vm.loadMoreAtBeginning(at: range.globalFromIndex)
+                        await loadVisibleOverlays()
+                        return
                     }
 
                     if range.isNearEnd(threshold: 50) {
-                        Task {
-                            await vm.loadMoreAtEnd()
-                        }
+                        await vm.loadMoreAtEnd()
                     }
+
                 },
                 onSelectionChange: { newIndex in
                     selectedIndex = newIndex

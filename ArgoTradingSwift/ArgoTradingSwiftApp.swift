@@ -78,6 +78,7 @@ struct ArgoTradingSwiftApp: App {
                 .onAppear {
                     // Dismiss welcome window when document opens
                     dismissWindow(id: "welcome")
+                    logger.logLevel = .debug
                 }
                 .toolbar(removing: .title)
         }

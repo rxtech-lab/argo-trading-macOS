@@ -11,19 +11,21 @@ import SwiftUI
 
 /// Represents the visible logical range of the chart (similar to lightweight-charts)
 struct VisibleLogicalRange {
-    let from: Int // Start index of visible range (scroll position)
-    let to: Int // End index of visible range (from + visibleCount)
-    let totalCount: Int // Total data points in chart
+    let globalFromIndex: Int
+    let localFromIndex: Int
+    let globalToIndex: Int
+    let localToIndex: Int
+    let totalCount: Int
 
     /// Distance from the beginning (negative if scrolled past start)
-    var distanceFromStart: Int { from }
+    var distanceFromStart: Int { localFromIndex }
 
     /// Distance from the end
-    var distanceFromEnd: Int { totalCount - to }
+    var distanceFromEnd: Int { totalCount - localToIndex }
 
     /// Whether near the start (within threshold)
     func isNearStart(threshold: Int = 10) -> Bool {
-        from < threshold
+        localFromIndex < threshold
     }
 
     /// Whether near the end (within threshold)
@@ -59,13 +61,14 @@ private struct ScrollChangeEvent: Equatable {
 
 /// Reusable price chart component that renders candlestick/line charts with optional overlays
 struct PriceChartView: View {
-    let indexedData: [IndexedPrice]
+    let data: [PriceData]
     let chartType: ChartType
     let candlestickWidth: CGFloat
     let yAxisDomain: ClosedRange<Double>
     let visibleCount: Int
     let isLoading: Bool
     let initialScrollPosition: Int
+    let totalDataCount: Int
 
     var tradeOverlays: [TradeOverlay] = []
     var markOverlays: [MarkOverlay] = []
@@ -75,7 +78,8 @@ struct PriceChartView: View {
     var showMarks: Bool = true
 
     /// Callback when scroll position changes
-    var onScrollChange: ((VisibleLogicalRange) -> Void)?
+    /// Return a new index
+    var onScrollChange: ((VisibleLogicalRange) async -> Void)?
     /// Callback when selection changes (for legend updates)
     var onSelectionChange: ((Int?) -> Void)?
 
@@ -93,12 +97,12 @@ struct PriceChartView: View {
 
     /// Compute trade overlay indices and prices on-demand using binary search
     private var visibleTradeOverlays: [(overlay: TradeOverlay, index: Int, price: Double)] {
-        guard !indexedData.isEmpty else { return [] }
+        guard !data.isEmpty else { return [] }
         return tradeOverlays.compactMap { overlay in
             if let index = findClosestIndex(for: overlay.timestamp),
-               let data = indexedData.first(where: { $0.index == index })
+               let priceData = data.first(where: { $0.globalIndex == index })
             {
-                let price = chartType == .candlestick ? data.data.high : data.data.close
+                let price = chartType == .candlestick ? priceData.high : priceData.close
                 return (overlay, index, price)
             }
             return nil
@@ -107,12 +111,12 @@ struct PriceChartView: View {
 
     /// Compute mark overlay indices using signal timestamp to find closest data point
     private var visibleMarkOverlays: [(overlay: MarkOverlay, index: Int, price: Double)] {
-        guard !indexedData.isEmpty else { return [] }
+        guard !data.isEmpty else { return [] }
         return markOverlays.compactMap { overlay in
             if let index = findClosestIndex(for: overlay.mark.signal.time),
-               let data = indexedData.first(where: { $0.index == index })
+               let priceData = data.first(where: { $0.globalIndex == index })
             {
-                let basePrice = chartType == .candlestick ? data.data.low : data.data.close
+                let basePrice = chartType == .candlestick ? priceData.low : priceData.close
                 let price = basePrice + markVerticalOffset()
                 return (overlay, index, price)
             }
@@ -122,14 +126,14 @@ struct PriceChartView: View {
 
     /// Binary search to find closest index for a given timestamp
     private func findClosestIndex(for date: Date) -> Int? {
-        guard !indexedData.isEmpty else { return nil }
+        guard !data.isEmpty else { return nil }
 
         var low = 0
-        var high = indexedData.count - 1
+        var high = data.count - 1
 
         while low < high {
             let mid = (low + high) / 2
-            if indexedData[mid].data.date < date {
+            if data[mid].date < date {
                 low = mid + 1
             } else {
                 high = mid
@@ -138,21 +142,21 @@ struct PriceChartView: View {
 
         // Check if the found index or its neighbor is closer
         if low > 0 {
-            let diffLow = abs(indexedData[low].data.date.timeIntervalSince(date))
-            let diffPrev = abs(indexedData[low - 1].data.date.timeIntervalSince(date))
+            let diffLow = abs(data[low].date.timeIntervalSince(date))
+            let diffPrev = abs(data[low - 1].date.timeIntervalSince(date))
             if diffPrev < diffLow {
-                return indexedData[low - 1].index
+                return data[low - 1].globalIndex
             }
         }
 
-        return indexedData[low].index
+        return data[low].globalIndex
     }
 
     /// Adjust overlay index to avoid edge clipping
     /// Shifts index inward if at boundaries so overlays remain visible
     private func adjustedIndexForDisplay(_ index: Int) -> Int {
-        guard indexedData.count > 2 else { return index }
-        let maxIndex = indexedData.count - 1
+        guard data.count > 2 else { return index }
+        let maxIndex = data.count - 1
         if index < 1 {
             return 1
         } else if index >= maxIndex {
@@ -174,11 +178,11 @@ struct PriceChartView: View {
 
     @ChartContentBuilder
     private var priceDataMarks: some ChartContent {
-        ForEach(indexedData) { item in
+        ForEach(data) { item in
             if chartType == .line {
                 LineMark(
-                    x: .value("Index", item.index),
-                    y: .value("Close", item.data.close)
+                    x: .value("Index", item.globalIndex),
+                    y: .value("Close", item.close)
                 )
                 .foregroundStyle(.blue)
             } else {
@@ -188,21 +192,21 @@ struct PriceChartView: View {
     }
 
     @ChartContentBuilder
-    private func candlestickMarks(for item: IndexedPrice) -> some ChartContent {
-        let isGreen = item.data.close >= item.data.open
+    private func candlestickMarks(for item: PriceData) -> some ChartContent {
+        let isGreen = item.close >= item.open
 
         RectangleMark(
-            x: .value("Index", item.index),
-            yStart: .value("Open", item.data.open),
-            yEnd: .value("Close", item.data.close),
+            x: .value("Index", item.globalIndex),
+            yStart: .value("Open", item.open),
+            yEnd: .value("Close", item.close),
             width: .fixed(candlestickWidth)
         )
         .foregroundStyle(isGreen ? .green : .red)
 
         RuleMark(
-            x: .value("Index", item.index),
-            yStart: .value("Low", item.data.low),
-            yEnd: .value("High", item.data.high)
+            x: .value("Index", item.globalIndex),
+            yStart: .value("Low", item.low),
+            yEnd: .value("High", item.high)
         )
         .foregroundStyle(isGreen ? .green : .red)
         .lineStyle(StrokeStyle(lineWidth: max(1, candlestickWidth / 6)))
@@ -278,8 +282,8 @@ struct PriceChartView: View {
 
     @ViewBuilder
     private func selectionAnnotation(for idx: Int) -> some View {
-        if let item = indexedData.first(where: { $0.index == idx }) {
-            Text(item.data.close, format: .number.precision(.fractionLength(2)))
+        if let item = data.first(where: { $0.globalIndex == idx }) {
+            Text(item.close, format: .number.precision(.fractionLength(2)))
                 .font(.caption2)
                 .padding(4)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 4))
@@ -287,10 +291,10 @@ struct PriceChartView: View {
     }
 
     private var xAxisDomain: ClosedRange<Int> {
-        guard let first = indexedData.first, let last = indexedData.last else {
+        guard totalDataCount > 0 else {
             return 0...1
         }
-        return first.index...last.index
+        return 0...(totalDataCount - 1)
     }
 
     // MARK: - Body
@@ -309,19 +313,19 @@ struct PriceChartView: View {
             markOverlayMarks
             selectionIndicatorMark
         }
-        .chartYScale(domain: yAxisDomain)
         .chartXScale(domain: xAxisDomain)
-        .chartXAxis { xAxisContent }
+//        .chartXAxis { xAxisContent }
         .chartYAxis { yAxisContent }
         .chartScrollableAxes([.horizontal])
         .chartXVisibleDomain(length: visibleCount)
         .chartScrollPosition(x: $scrollPositionInternal)
         .chartXSelection(value: $selectedIndex)
         .onAppear(perform: setupScrollSubscription)
-        .onChange(of: scrollPositionInternal) { oldValue, newValue in
-            print("Scrolling from \(oldValue) to \(newValue) and first global index: \(indexedData.first?.index ?? 0)")
-            if newValue != initialScrollPosition {
-                scrollSubject.send(ScrollChangeEvent(currentScrollIndex: newValue, totalCount: indexedData.count, firstGlobalIndex: indexedData.first?.index ?? 0))
+        .onChange(of: scrollPositionInternal) { _, newValue in
+            let firstIndex = data.first?.globalIndex ?? 0
+            logger.debug("Scroll position changed to \(newValue), firstGlobalIndex: \(firstIndex)")
+            if newValue != initialScrollPosition && newValue > 0 {
+                scrollSubject.send(ScrollChangeEvent(currentScrollIndex: newValue, totalCount: data.count, firstGlobalIndex: firstIndex))
             }
         }
         .onChange(of: selectedIndex) { _, newIndex in
@@ -329,8 +333,18 @@ struct PriceChartView: View {
             onSelectionChange?(newIndex)
         }
         .onChange(of: initialScrollPosition) { _, newValue in
-            scrollPositionInternal = newValue
+            let firstIndex = data.first?.globalIndex ?? 0
+            logger.debug("Initial scroll position changed to \(newValue), globalNewIndex: \(firstIndex), scrolling chart...")
+            withAnimation {
+                scrollPositionInternal = newValue
+            }
         }
+        .chartScrollTargetBehavior(
+            .valueAligned(
+                unit: 1,
+                majorAlignment: .page
+            )
+        )
     }
 
     private var xAxisContent: some AxisContent {
@@ -338,9 +352,9 @@ struct PriceChartView: View {
             AxisGridLine()
             AxisValueLabel {
                 if let idx = value.as(Int.self),
-                   let item = indexedData.first(where: { $0.index == idx })
+                   let item = data.first(where: { $0.globalIndex == idx })
                 {
-                    Text(item.data.date, format: .dateTime.year().month().day().hour().minute())
+                    Text(item.date, format: .dateTime.year().month().day().hour().minute())
                 }
             }
         }
@@ -362,9 +376,11 @@ struct PriceChartView: View {
             .removeDuplicates()
             .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
             .sink { event in
-                let visableRange = VisibleLogicalRange(from: event.localIndex, to: event.localIndex + visibleCount, totalCount: event.totalCount)
-                print("Event scroll to index: \(event.currentScrollIndex), isClostToBegining: \(visableRange.isNearStart()), isCloseToEnd: \(visableRange.isNearEnd())")
-                onScrollChange?(visableRange)
+                Task {
+                    let visableRange = VisibleLogicalRange(globalFromIndex: event.currentScrollIndex, localFromIndex: event.localIndex, globalToIndex: event.currentScrollIndex + visibleCount, localToIndex: event.localIndex + visibleCount, totalCount: event.totalCount)
+                    logger.debug("Event scroll to index: \(event.currentScrollIndex), isClostToBegining: \(visableRange.isNearStart()), isCloseToEnd: \(visableRange.isNearEnd())")
+                    await onScrollChange?(visableRange)
+                }
             }
     }
 

@@ -14,7 +14,7 @@ struct DataView: View {
     @Environment(DuckDBService.self) private var dbService
     @Environment(AlertManager.self) private var alertManager
     @State private var data: PaginationResult<PriceData> = PaginationResult(items: [], total: 0, page: 0, pageSize: 0)
-    @State private var selectedRows: Set<String> = []
+    @State private var selectedRows: Set<Int> = []
     @State private var showChart: Bool = false
     @State private var showInfo = false
     @State private var sortOrder: [KeyPathComparator<PriceData>] = [KeyPathComparator(\.date, order: .reverse)]

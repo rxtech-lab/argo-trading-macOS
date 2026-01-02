@@ -155,7 +155,6 @@ class DuckDBService: DuckDBServiceProtocol {
             return PriceData(
                 globalIndex: offset + index,
                 date: utcDate,
-                id: row[0, String.self] ?? "",
                 ticker: row[2, String.self] ?? "",
                 open: row[3, Double.self] ?? 0.0,
                 high: row[4, Double.self] ?? 0.0,
@@ -234,7 +233,6 @@ class DuckDBService: DuckDBServiceProtocol {
             return PriceData(
                 globalIndex: startOffset + index,
                 date: utcDate,
-                id: row[0, String.self] ?? "",
                 ticker: row[2, String.self] ?? "",
                 open: row[3, Double.self] ?? 0.0,
                 high: row[4, Double.self] ?? 0.0,
@@ -359,7 +357,6 @@ class DuckDBService: DuckDBServiceProtocol {
             return PriceData(
                 globalIndex: startOffset + index,
                 date: utcDate,
-                id: "agg-\(startOffset + index)", // Generate unique ID for aggregated rows
                 ticker: row[1, String.self] ?? "",
                 open: row[2, Double.self] ?? 0.0,
                 high: row[3, Double.self] ?? 0.0,
@@ -870,7 +867,6 @@ class DuckDBService: DuckDBServiceProtocol {
             return PriceData(
                 globalIndex: startOffset + index,
                 date: utcDate,
-                id: row[0, String.self] ?? "",
                 ticker: row[2, String.self] ?? "",
                 open: row[3, Double.self] ?? 0.0,
                 high: row[4, Double.self] ?? 0.0,

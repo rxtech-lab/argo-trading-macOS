@@ -8,12 +8,6 @@
 import Foundation
 import SwiftUI
 
-struct IndexedPrice: Identifiable {
-    let data: PriceData
-    var index: Int { data.globalIndex }
-    var id: Int { data.globalIndex }
-}
-
 @Observable
 class PriceChartViewModel {
     // MARK: - Dependencies
@@ -24,9 +18,7 @@ class PriceChartViewModel {
     // MARK: - State
 
     private(set) var loadedData: [PriceData] = []
-    private(set) var sortedData: [PriceData] = []
-    private(set) var indexedData: [IndexedPrice] = []
-    private var currentDataYAxisDomain: ClosedRange<Double> = 0...100
+    private var currentDataYAxisDomain: ClosedRange<Double> = 0 ... 100
     private var stableYAxisDomain: ClosedRange<Double>?
 
     /// Public Y-axis domain that remains stable during scrolling
@@ -73,9 +65,9 @@ class PriceChartViewModel {
     // MARK: - Public Methods
 
     func priceData(at index: Int) -> PriceData? {
-        guard !sortedData.isEmpty else { return nil }
-        let clampedIndex = max(0, min(index, sortedData.count - 1))
-        return sortedData[clampedIndex]
+        guard !loadedData.isEmpty else { return nil }
+        let clampedIndex = max(0, min(index, loadedData.count - 1))
+        return loadedData[clampedIndex]
     }
 
     /// Set the time interval and reload data
@@ -92,8 +84,6 @@ class PriceChartViewModel {
 
         // Reset state
         loadedData = []
-        sortedData = []
-        indexedData = []
         stableYAxisDomain = nil
         currentOffset = 0
         initialScrollPosition = 0
@@ -112,7 +102,6 @@ class PriceChartViewModel {
                 count: bufferSize
             )
 
-            updateCachedProperties(from: fetchedData)
             loadedData = fetchedData
         } catch {
             onError?(error.localizedDescription)
@@ -142,11 +131,10 @@ class PriceChartViewModel {
                 count: bufferSize
             )
 
-            updateCachedProperties(from: fetchedData)
             loadedData = fetchedData
 
             // Set initial scroll position to show recent data (use global index)
-            initialScrollPosition = currentOffset + sortedData.count
+            initialScrollPosition = currentOffset + loadedData.count
         } catch {
             onError?(error.localizedDescription)
         }
@@ -174,8 +162,6 @@ class PriceChartViewModel {
             let loadedEnd = currentOffset + loadedData.count
 
             if targetOffset >= loadedStart, targetOffset < loadedEnd {
-                // Data is already loaded - just scroll to it (use global index)
-                initialScrollPosition = max(currentOffset, targetOffset - visibleCount / 2)
             } else {
                 // Need to load data around the target timestamp
                 await loadDataAroundOffset(targetOffset, visibleCount: visibleCount)
@@ -192,8 +178,6 @@ class PriceChartViewModel {
 
         // Reset state for new data chunk
         loadedData = []
-        sortedData = []
-        indexedData = []
         stableYAxisDomain = nil
 
         do {
@@ -209,11 +193,10 @@ class PriceChartViewModel {
                 count: bufferSize
             )
 
-            updateCachedProperties(from: fetchedData)
             loadedData = fetchedData
 
             // Set scroll position to center on target (use global index)
-            let maxScrollPosition = currentOffset + sortedData.count - visibleCount
+            let maxScrollPosition = currentOffset + loadedData.count - visibleCount
             initialScrollPosition = max(currentOffset, min(targetOffset - visibleCount / 2, maxScrollPosition))
         } catch {
             onError?(error.localizedDescription)
@@ -224,45 +207,14 @@ class PriceChartViewModel {
 
     // MARK: - Private Methods
 
-    private func updateCachedProperties(from data: [PriceData]) {
-        sortedData = data.sorted { $0.date < $1.date }
-        rebuildIndexedData()
-
-        guard !data.isEmpty else {
-            currentDataYAxisDomain = 0...100
-            return
-        }
-
-        let minY = data.map(\.low).min() ?? 0
-        let maxY = data.map(\.high).max() ?? 100
-        let range = maxY - minY
-        let padding = max(range * 0.05, 0.01)
-        withAnimation {
-            currentDataYAxisDomain = (minY - padding)...(maxY + padding)
-
-            // On first load, set the stable domain
-            // On subsequent loads, expand it if new data falls outside current bounds
-            if let existingDomain = stableYAxisDomain {
-                let newLower = min(existingDomain.lowerBound, currentDataYAxisDomain.lowerBound)
-                let newUpper = max(existingDomain.upperBound, currentDataYAxisDomain.upperBound)
-                stableYAxisDomain = newLower...newUpper
-            } else {
-                stableYAxisDomain = currentDataYAxisDomain
-            }
-        }
-    }
-
-    private func rebuildIndexedData() {
-        indexedData = sortedData.map { IndexedPrice(data: $0) }
-    }
-
-    func loadMoreAtBeginning(at index: Int) async {
+    func loadMoreAtBeginning(at globalIndex: Int) async {
         guard !isLoading else { return }
+        guard let firstLoadedIndex = loadedData.first?.globalIndex else { return }
         isLoading = true
 
         do {
-            let loadCount = min(loadChunkSize, currentOffset)
-            let newOffset = currentOffset - loadCount
+            let loadCount = min(loadChunkSize, firstLoadedIndex)
+            let newOffset = firstLoadedIndex - loadCount
 
             // Use interval-aware fetch
             let newData = try await dbService.fetchAggregatedPriceDataRange(
@@ -273,7 +225,7 @@ class PriceChartViewModel {
             )
 
             var combinedData = newData + loadedData
-            print("Loaded complete, new global first index is \(combinedData.first!.globalIndex)")
+            logger.info("Loaded complete, new global first index is \(combinedData.first!.globalIndex)")
             currentOffset = newOffset
 
             // Trim from the end if exceeds max buffer size
@@ -282,9 +234,8 @@ class PriceChartViewModel {
                 combinedData = Array(combinedData.dropLast(trimCount))
             }
 
-            updateCachedProperties(from: combinedData)
-
             loadedData = combinedData
+
         } catch {
             print("Error loading more data: \(error)")
         }
@@ -318,7 +269,6 @@ class PriceChartViewModel {
                 currentOffset += actualTrimCount
             }
 
-            updateCachedProperties(from: combinedData)
             loadedData = combinedData
 
             // Scroll position is already a global index, no adjustment needed

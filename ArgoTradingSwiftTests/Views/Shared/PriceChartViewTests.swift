@@ -14,7 +14,6 @@ import Testing
 
 private func createTestPriceData(
     globalIndex: Int = 0,
-    id: String,
     date: Date,
     close: Double = 100.0,
     high: Double = 105.0,
@@ -24,7 +23,6 @@ private func createTestPriceData(
     PriceData(
         globalIndex: globalIndex,
         date: date,
-        id: id,
         ticker: "BTCUSDT",
         open: open,
         high: high,
@@ -32,10 +30,6 @@ private func createTestPriceData(
         close: close,
         volume: 1000.0
     )
-}
-
-private func createTestIndexedPrice(data: PriceData) -> IndexedPrice {
-    IndexedPrice(data: data)
 }
 
 private func createTestSignal(time: Date) -> Signal {
@@ -165,42 +159,37 @@ struct PriceChartViewVisibilityTests {
     let baseDate = Date(timeIntervalSince1970: 1_704_067_200)
 
     @Test func defaultVisibilityIsTrue() {
-        // When: Creating indexed data
-        let data = createTestPriceData(globalIndex: 0, id: "ID_0", date: baseDate)
-        let indexedData = [createTestIndexedPrice(data: data)]
+        // When: Creating price data
+        let data = createTestPriceData(globalIndex: 0, date: baseDate)
+        let priceData = [data]
 
         // Then: PriceChartView can be created with default visibility (true)
         // Note: We can't test the view directly without ViewInspector,
         // but we can verify the default values are applied via the struct definition
-        #expect(indexedData.count == 1)
+        #expect(priceData.count == 1)
     }
 }
 
-// MARK: - IndexedPrice Tests
+// MARK: - PriceData Identifiable Tests
 
-struct IndexedPriceTests {
+struct PriceDataIdentifiableTests {
     let baseDate = Date(timeIntervalSince1970: 1_704_067_200)
 
-    @Test func indexedPriceStoresIndexAndData() {
+    @Test func priceDataStoresGlobalIndexAndData() {
         // Given: Price data with globalIndex
-        let data = createTestPriceData(globalIndex: 42, id: "test_id", date: baseDate, close: 150.0)
+        let data = createTestPriceData(globalIndex: 42, date: baseDate, close: 150.0)
 
-        // When: Creating indexed price
-        let indexed = createTestIndexedPrice(data: data)
-
-        // Then: Index is derived from globalIndex and data is stored
-        #expect(indexed.index == 42)
-        #expect(indexed.data.close == 150.0)
-        #expect(indexed.data.id == "test_id")
+        // Then: Data is stored correctly
+        #expect(data.globalIndex == 42)
+        #expect(data.close == 150.0)
     }
 
-    @Test func indexedPriceIsIdentifiable() {
-        // Given: Indexed price with globalIndex
-        let data = createTestPriceData(globalIndex: 5, id: "test_id", date: baseDate)
-        let indexed = createTestIndexedPrice(data: data)
+    @Test func priceDataIsIdentifiable() {
+        // Given: Price data with globalIndex
+        let data = createTestPriceData(globalIndex: 5, date: baseDate)
 
-        // Then: ID matches globalIndex
-        #expect(indexed.id == 5)
+        // Then: ID equals globalIndex
+        #expect(data.id == 5)
     }
 }
 
@@ -208,23 +197,23 @@ struct IndexedPriceTests {
 
 struct VisibleLogicalRangeTests {
     @Test func distanceFromStartCalculatesCorrectly() {
-        let range = VisibleLogicalRange(from: 10, to: 20, visibleCount: 10, totalCount: 100)
+        let range = VisibleLogicalRange(globalFromIndex: 10, localFromIndex: 10, globalToIndex: 20, localToIndex: 20, totalCount: 100)
         #expect(range.distanceFromStart == 10)
     }
 
     @Test func distanceFromEndCalculatesCorrectly() {
-        let range = VisibleLogicalRange(from: 10, to: 20, visibleCount: 10, totalCount: 100)
+        let range = VisibleLogicalRange(globalFromIndex: 10, localFromIndex: 10, globalToIndex: 20, localToIndex: 20, totalCount: 100)
         #expect(range.distanceFromEnd == 80)
     }
 
     @Test func isNearStartWithinThreshold() {
-        let range = VisibleLogicalRange(from: 5, to: 15, visibleCount: 10, totalCount: 100)
+        let range = VisibleLogicalRange(globalFromIndex: 5, localFromIndex: 5, globalToIndex: 15, localToIndex: 15, totalCount: 100)
         #expect(range.isNearStart(threshold: 10) == true)
         #expect(range.isNearStart(threshold: 3) == false)
     }
 
     @Test func isNearEndWithinThreshold() {
-        let range = VisibleLogicalRange(from: 85, to: 95, visibleCount: 10, totalCount: 100)
+        let range = VisibleLogicalRange(globalFromIndex: 85, localFromIndex: 85, globalToIndex: 95, localToIndex: 95, totalCount: 100)
         #expect(range.isNearEnd(threshold: 10) == true)
         #expect(range.isNearEnd(threshold: 3) == false)
     }

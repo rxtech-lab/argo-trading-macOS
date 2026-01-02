@@ -149,19 +149,20 @@ struct ChartContentView: View {
     private var chartContent: some View {
         if let vm = viewModel {
             PriceChartView(
-                indexedData: vm.indexedData,
+                data: vm.loadedData,
                 chartType: chartType,
                 candlestickWidth: candlestickWidth,
                 yAxisDomain: vm.yAxisDomain,
                 visibleCount: visibleCount,
                 isLoading: vm.isLoading,
                 initialScrollPosition: scrollPosition,
+                totalDataCount: vm.totalCount,
                 onScrollChange: { range in
                     if range.isNearStart(threshold: 50) {
                         loadDataTask?.cancel()
                         loadDataTask = Task {
                             print("Loading more data at beginning...")
-                            await vm.loadMoreAtBeginning(at: range.from)
+                            await vm.loadMoreAtBeginning(at: range.globalFromIndex)
                         }
                     }
 
@@ -173,6 +174,8 @@ struct ChartContentView: View {
                             await vm.loadMoreAtEnd()
                         }
                     }
+
+                    return
                 },
                 onSelectionChange: { newIndex in
                     selectedIndex = newIndex
