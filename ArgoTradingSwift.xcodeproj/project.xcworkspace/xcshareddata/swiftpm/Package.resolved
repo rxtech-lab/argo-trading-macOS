@@ -1,5 +1,5 @@
 {
-  "originHash" : "73ab44474e48b6812c1b290b22e4216f395c466c4c2cbf5e65a8fc4b7a99baf6",
+  "originHash" : "762a92566c90f0a3f6835d0b609567d9783cb52b767f1321f0632c9cf28d3946",
   "pins" : [
     {
       "identity" : "argo-trading",
@@ -44,6 +44,15 @@
       "state" : {
         "branch" : "main",
         "revision" : "d296a07d23d7690a0f3f33be6e7047ffbd8fab72"
+      }
+    },
+    {
+      "identity" : "swift-log",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-log",
+      "state" : {
+        "revision" : "bc386b95f2a16ccd0150a8235e7c69eab2b866ca",
+        "version" : "1.8.0"
       }
     },
     {

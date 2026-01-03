@@ -18,7 +18,7 @@ struct SurroundingPriceDataSheet: View {
 
     @State private var priceData: [PriceData] = []
     @State private var isLoading: Bool = false
-    @State private var highlightedId: String?
+    @State private var highlightedId: Int?
 
     var body: some View {
         VStack(spacing: 0) {

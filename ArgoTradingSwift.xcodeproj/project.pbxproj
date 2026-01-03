@@ -12,6 +12,8 @@
 		DFA92FBE2EFAA5400002E178 /* ViewInspector in Frameworks */ = {isa = PBXBuildFile; productRef = DFA92FBD2EFAA5400002E178 /* ViewInspector */; };
 		DFA934172F00392C0002E178 /* Yams in Frameworks */ = {isa = PBXBuildFile; productRef = DFA934162F00392C0002E178 /* Yams */; };
 		DFA935692F01723A0002E178 /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DFA935682F01723A0002E178 /* ArgoTrading */; };
+		DFBEFC442F06E6BE00F7CE2D /* InMemoryLogging in Frameworks */ = {isa = PBXBuildFile; productRef = DFBEFC432F06E6BE00F7CE2D /* InMemoryLogging */; };
+		DFBEFC462F06E6BE00F7CE2D /* Logging in Frameworks */ = {isa = PBXBuildFile; productRef = DFBEFC452F06E6BE00F7CE2D /* Logging */; };
 		DFD3A5482EF822EC0020D062 /* DuckDB in Frameworks */ = {isa = PBXBuildFile; productRef = DFD3A5472EF822EC0020D062 /* DuckDB */; };
 /* End PBXBuildFile section */
 
@@ -81,6 +83,9 @@
 			exceptions = (
 				DFEAD01F2DB68F7C0099025F /* Exceptions for "ArgoTradingSwift" folder in "ArgoTradingSwift" target */,
 			);
+			explicitFolders = (
+				Resources/tradingview,
+			);
 			path = ArgoTradingSwift;
 			sourceTree = "<group>";
 		};
@@ -111,7 +116,9 @@
 			files = (
 				DFA935692F01723A0002E178 /* ArgoTrading in Frameworks */,
 				DFD3A5482EF822EC0020D062 /* DuckDB in Frameworks */,
+				DFBEFC462F06E6BE00F7CE2D /* Logging in Frameworks */,
 				DFA934172F00392C0002E178 /* Yams in Frameworks */,
+				DFBEFC442F06E6BE00F7CE2D /* InMemoryLogging in Frameworks */,
 				DFA92FB92EFA9C400002E178 /* JSONSchemaForm in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -182,6 +189,8 @@
 				DFA92FB82EFA9C400002E178 /* JSONSchemaForm */,
 				DFA934162F00392C0002E178 /* Yams */,
 				DFA935682F01723A0002E178 /* ArgoTrading */,
+				DFBEFC432F06E6BE00F7CE2D /* InMemoryLogging */,
+				DFBEFC452F06E6BE00F7CE2D /* Logging */,
 			);
 			productName = ArgoTradingSwift;
 			productReference = DFEACDD02DB4D9150099025F /* ArgoTradingSwift.app */;
@@ -272,6 +281,7 @@
 				DFA92FBC2EFAA5400002E178 /* XCRemoteSwiftPackageReference "ViewInspector" */,
 				DFA934152F00392C0002E178 /* XCRemoteSwiftPackageReference "Yams" */,
 				DFA935672F0172390002E178 /* XCRemoteSwiftPackageReference "argo-trading" */,
+				DFBEFC422F06E6BE00F7CE2D /* XCRemoteSwiftPackageReference "swift-log" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DFEACDD12DB4D9150099025F /* Products */;
@@ -676,6 +686,14 @@
 				version = 1.6.0;
 			};
 		};
+		DFBEFC422F06E6BE00F7CE2D /* XCRemoteSwiftPackageReference "swift-log" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-log";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.8.0;
+			};
+		};
 		DFD3A5462EF822EC0020D062 /* XCRemoteSwiftPackageReference "duckdb-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/duckdb/duckdb-swift";
@@ -706,6 +724,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = DFA935672F0172390002E178 /* XCRemoteSwiftPackageReference "argo-trading" */;
 			productName = ArgoTrading;
+		};
+		DFBEFC432F06E6BE00F7CE2D /* InMemoryLogging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DFBEFC422F06E6BE00F7CE2D /* XCRemoteSwiftPackageReference "swift-log" */;
+			productName = InMemoryLogging;
+		};
+		DFBEFC452F06E6BE00F7CE2D /* Logging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DFBEFC422F06E6BE00F7CE2D /* XCRemoteSwiftPackageReference "swift-log" */;
+			productName = Logging;
 		};
 		DFD3A5472EF822EC0020D062 /* DuckDB */ = {
 			isa = XCSwiftPackageProductDependency;

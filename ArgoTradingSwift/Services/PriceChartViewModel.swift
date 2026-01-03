@@ -8,42 +8,43 @@
 import Foundation
 import SwiftUI
 
-struct IndexedPrice: Identifiable {
-    let index: Int
-    let data: PriceData
-    var id: Int { index }
-}
-
 @Observable
 class PriceChartViewModel {
     // MARK: - Dependencies
 
     private let dbService: DuckDBServiceProtocol
     private let url: URL
+    private let tradesURL: URL?
+    private let marksURL: URL?
 
     // MARK: - State
 
     private(set) var loadedData: [PriceData] = []
-    private(set) var sortedData: [PriceData] = []
-    private(set) var indexedData: [IndexedPrice] = []
-    private var currentDataYAxisDomain: ClosedRange<Double> = 0...100
-    private var stableYAxisDomain: ClosedRange<Double>?
-
-    /// Public Y-axis domain that remains stable during scrolling
-    var yAxisDomain: ClosedRange<Double> {
-        stableYAxisDomain ?? currentDataYAxisDomain
-    }
-
+    // TotalCount stands for the total number of data available for this dataset
     private(set) var totalCount: Int = 0
     private(set) var currentOffset: Int = 0
     private(set) var isLoading = false
-    var scrollPositionIndex: Int = 0
 
     /// Current time interval for chart aggregation
     private(set) var timeInterval: ChartTimeInterval = .oneSecond
 
+    // MARK: - Overlay State
+
+    private(set) var trades: [Trade] = []
+    private(set) var marks: [Mark] = []
+    private(set) var tradeOverlays: [TradeOverlay] = []
+    private(set) var markOverlays: [MarkOverlay] = []
+    private(set) var loadedOverlayRange: ClosedRange<Date>?
+    private(set) var isLoadingOverlays: Bool = false
+
     // Error handling callback
     var onError: ((String) -> Void)?
+
+    // MARK: - Scroll Guard
+
+    /// Timestamp of last programmatic scroll to prevent auto-load cascade
+    private var lastProgrammaticScrollTime: Date?
+    private let scrollGuardDuration: TimeInterval = 0.5  // 500ms guard
 
     // MARK: - Configuration
 
@@ -57,13 +58,17 @@ class PriceChartViewModel {
     init(
         url: URL,
         dbService: DuckDBServiceProtocol,
-        bufferSize: Int = 300,
+        tradesURL: URL? = nil,
+        marksURL: URL? = nil,
+        bufferSize: Int = 500,
         loadChunkSize: Int? = nil,
         maxBufferSize: Int? = nil,
         trimSize: Int? = nil
     ) {
         self.url = url
         self.dbService = dbService
+        self.tradesURL = tradesURL
+        self.marksURL = marksURL
         self.bufferSize = bufferSize
         self.loadChunkSize = loadChunkSize ?? bufferSize
         self.maxBufferSize = maxBufferSize ?? bufferSize * 2
@@ -73,9 +78,9 @@ class PriceChartViewModel {
     // MARK: - Public Methods
 
     func priceData(at index: Int) -> PriceData? {
-        guard !sortedData.isEmpty else { return nil }
-        let clampedIndex = max(0, min(index, sortedData.count - 1))
-        return sortedData[clampedIndex]
+        guard !loadedData.isEmpty else { return nil }
+        let priceData = loadedData.first { $0.globalIndex == index }
+        return priceData
     }
 
     /// Set the time interval and reload data
@@ -92,11 +97,7 @@ class PriceChartViewModel {
 
         // Reset state
         loadedData = []
-        sortedData = []
-        indexedData = []
-        stableYAxisDomain = nil
         currentOffset = 0
-        scrollPositionIndex = 0
 
         do {
             // Get new total count for the interval
@@ -112,9 +113,7 @@ class PriceChartViewModel {
                 count: bufferSize
             )
 
-            updateCachedProperties(from: fetchedData)
             loadedData = fetchedData
-            scrollPositionIndex = max(0, sortedData.count - visibleCount)
         } catch {
             onError?(error.localizedDescription)
         }
@@ -143,32 +142,12 @@ class PriceChartViewModel {
                 count: bufferSize
             )
 
-            updateCachedProperties(from: fetchedData)
             loadedData = fetchedData
-
-            // Set initial scroll position to show recent data (end of local array)
-            scrollPositionIndex = max(0, sortedData.count - visibleCount)
         } catch {
             onError?(error.localizedDescription)
         }
 
         isLoading = false
-    }
-
-    func checkAndLoadMoreData(at index: Int, visibleCount: Int) async {
-        guard !isLoading, !sortedData.isEmpty else { return }
-
-        let dataCount = sortedData.count
-
-        if index <= 0, currentOffset > 0 {
-            print("Loading more at beginning...")
-            await loadMoreAtBeginning()
-        }
-
-        if index + visibleCount >= dataCount, currentOffset + loadedData.count < totalCount {
-            print("Loading more at end...")
-            await loadMoreAtEnd()
-        }
     }
 
     /// Scroll to a specific timestamp, loading data if necessary
@@ -177,6 +156,9 @@ class PriceChartViewModel {
     ///   - visibleCount: Number of visible bars for centering
     func scrollToTimestamp(_ timestamp: Date, visibleCount: Int) async {
         guard !isLoading else { return }
+
+        // Set scroll guard to prevent handleScrollChange from loading data
+        lastProgrammaticScrollTime = Date()
 
         do {
             // Get the database offset for this timestamp
@@ -187,16 +169,19 @@ class PriceChartViewModel {
             )
 
             // Check if the target is within currently loaded data
-            let loadedStart = currentOffset
-            let loadedEnd = currentOffset + loadedData.count
+            guard let firstItem = loadedData.first else {
+                return
+            }
 
-            if targetOffset >= loadedStart && targetOffset < loadedEnd {
-                // Data is already loaded - just scroll to it
-                let localIndex = targetOffset - currentOffset
-                scrollPositionIndex = max(0, localIndex - visibleCount / 2)
-            } else {
-                // Need to load data around the target timestamp
-                await loadDataAroundOffset(targetOffset, visibleCount: visibleCount)
+            guard let lastItem = loadedData.last else {
+                return
+            }
+
+            let loadedStart = firstItem.globalIndex
+            let loadedEnd = lastItem.globalIndex
+
+            if !(targetOffset >= loadedStart && targetOffset < loadedEnd) {
+                await loadDataAroundOffset(targetOffset, visibleCount: bufferSize * 2)
             }
         } catch {
             onError?(error.localizedDescription)
@@ -210,79 +195,50 @@ class PriceChartViewModel {
 
         // Reset state for new data chunk
         loadedData = []
-        sortedData = []
-        indexedData = []
-        stableYAxisDomain = nil
 
         do {
             // Calculate start offset to center the target
-            let halfBuffer = bufferSize / 2
+            let halfBuffer = visibleCount / 2
             let startOffset = max(0, targetOffset - halfBuffer)
             currentOffset = startOffset
+            logger.debug("Loading data around offset \(targetOffset), startOffset=\(startOffset), visibleCount=\(visibleCount)")
 
             let fetchedData = try await dbService.fetchAggregatedPriceDataRange(
                 filePath: url,
                 interval: timeInterval,
                 startOffset: startOffset,
-                count: bufferSize
+                count: visibleCount
             )
 
-            updateCachedProperties(from: fetchedData)
             loadedData = fetchedData
-
-            // Set scroll position to center on target
-            let localIndex = targetOffset - startOffset
-            scrollPositionIndex = max(0, min(localIndex - visibleCount / 2, sortedData.count - visibleCount))
         } catch {
             onError?(error.localizedDescription)
         }
 
+        // sleep to allow UI to update
+        try? await Task.sleep(for: .seconds(0.2))
         isLoading = false
     }
 
     // MARK: - Private Methods
 
-    private func updateCachedProperties(from data: [PriceData]) {
-        sortedData = data.sorted { $0.date < $1.date }
-        rebuildIndexedData()
-
-        guard !data.isEmpty else {
-            currentDataYAxisDomain = 0...100
+    @MainActor
+    func loadMoreAtBeginning() async {
+        guard !isLoading else { return }
+        guard let firstData = loadedData.first else {
+            return
+        }
+        let firstLoadedIndex = firstData.globalIndex
+        if firstLoadedIndex == 0 {
+            // Already at the beginning
             return
         }
 
-        let minY = data.map(\.low).min() ?? 0
-        let maxY = data.map(\.high).max() ?? 100
-        let range = maxY - minY
-        let padding = max(range * 0.05, 0.01)
-        withAnimation {
-            currentDataYAxisDomain = (minY - padding)...(maxY + padding)
-
-            // On first load, set the stable domain
-            // On subsequent loads, expand it if new data falls outside current bounds
-            if let existingDomain = stableYAxisDomain {
-                let newLower = min(existingDomain.lowerBound, currentDataYAxisDomain.lowerBound)
-                let newUpper = max(existingDomain.upperBound, currentDataYAxisDomain.upperBound)
-                stableYAxisDomain = newLower...newUpper
-            } else {
-                stableYAxisDomain = currentDataYAxisDomain
-            }
-        }
-    }
-
-    private func rebuildIndexedData() {
-        indexedData = sortedData.enumerated().map { IndexedPrice(index: $0.offset, data: $0.element) }
-    }
-
-    func loadMoreAtBeginning() async {
-        guard !isLoading else { return }
         isLoading = true
 
-        let previousScrollIndex = scrollPositionIndex
-
         do {
-            let loadCount = min(loadChunkSize, currentOffset)
-            let newOffset = currentOffset - loadCount
+            let loadCount = min(loadChunkSize, firstLoadedIndex)
+            let newOffset = firstLoadedIndex - loadCount
 
             // Use interval-aware fetch
             let newData = try await dbService.fetchAggregatedPriceDataRange(
@@ -292,21 +248,11 @@ class PriceChartViewModel {
                 count: loadCount
             )
 
-            var combinedData = newData + loadedData
-            currentOffset = newOffset
-
-            // Trim from the end if exceeds max buffer size
-            if combinedData.count > maxBufferSize {
-                let trimCount = combinedData.count - maxBufferSize
-                combinedData = Array(combinedData.dropLast(trimCount))
-            }
-
-            updateCachedProperties(from: combinedData)
+            let combinedData = newData + loadedData
+            logger.info("Loaded complete, new global first index is \(combinedData.first!.globalIndex)")
 
             loadedData = combinedData
 
-            // Adjust scroll position by prepended count to maintain visual position
-            scrollPositionIndex = previousScrollIndex + newData.count
         } catch {
             print("Error loading more data: \(error)")
         }
@@ -317,8 +263,6 @@ class PriceChartViewModel {
     func loadMoreAtEnd() async {
         guard !isLoading else { return }
         isLoading = true
-
-        let previousScrollIndex = scrollPositionIndex
 
         do {
             let currentEnd = currentOffset + loadedData.count
@@ -332,27 +276,147 @@ class PriceChartViewModel {
                 count: loadCount
             )
 
-            var combinedData = loadedData + newData
-            var actualTrimCount = 0
-
-            // Trim from the beginning if exceeds max buffer size
-            if combinedData.count > maxBufferSize {
-                actualTrimCount = combinedData.count - maxBufferSize
-                combinedData = Array(combinedData.dropFirst(actualTrimCount))
-                currentOffset += actualTrimCount
-            }
-
-            updateCachedProperties(from: combinedData)
+            let combinedData = loadedData + newData
             loadedData = combinedData
 
-            // Adjust scroll position by trimmed count to maintain visual position
-            if actualTrimCount > 0 {
-                scrollPositionIndex = max(0, previousScrollIndex - actualTrimCount)
-            }
+            // Scroll position is already a global index, no adjustment needed
+            // The visual position is maintained because the global index doesn't change
         } catch {
             print("Error loading more data: \(error)")
         }
 
         isLoading = false
+    }
+
+    // MARK: - Scroll Handling
+
+    /// Handle scroll range change - loads more data and overlays as needed
+    func handleScrollChange(_ range: VisibleLogicalRange) async {
+        // Skip auto-load if within guard period after programmatic scroll
+        if let lastScroll = lastProgrammaticScrollTime,
+           Date().timeIntervalSince(lastScroll) < scrollGuardDuration
+        {
+            return
+        }
+
+        guard let firstData = loadedData.first else {
+            return
+        }
+        guard let lastData = loadedData.last else {
+            return
+        }
+        if range.isNearStart(threshold: 200) {
+            logger.debug("[PriceChartViewModel] Loading more data at beginning \(range.localFromIndex) - \(range.localToIndex), firstData=\(firstData.date), lastData=\(lastData.date)")
+            await loadMoreAtBeginning()
+            await loadVisibleOverlays()
+            return
+        }
+
+        if range.isNearEnd(threshold: 50, totalCount: loadedData.count) {
+            logger.debug("[PriceChartViewModel] Loading more data at end \(range.localFromIndex) - \(range.localToIndex), firstData=\(firstData.date), lastData=\(lastData.date), vmTotalCount=\(loadedData.count)")
+            await loadMoreAtEnd()
+            await loadVisibleOverlays()
+        }
+    }
+
+    // MARK: - Overlay Methods
+
+    /// Get the visible time range from currently loaded data
+    func getVisibleTimeRange() -> ClosedRange<Date>? {
+        guard !loadedData.isEmpty,
+              let first = loadedData.first,
+              let last = loadedData.last
+        else {
+            return nil
+        }
+        return first.date ... last.date
+    }
+
+    /// Reset loaded overlay range to force reload on next call
+    func resetOverlayRange() {
+        loadedOverlayRange = nil
+    }
+
+    /// Load overlays for the visible time range
+    func loadVisibleOverlays() async {
+        // Skip if no overlay URLs configured
+        guard tradesURL != nil || marksURL != nil else { return }
+
+        guard let range = getVisibleTimeRange() else { return }
+
+        // Skip if range is fully covered by already-loaded range
+        if let loaded = loadedOverlayRange,
+           loaded.lowerBound <= range.lowerBound,
+           loaded.upperBound >= range.upperBound
+        {
+            return
+        }
+
+        // Skip if already loading
+        guard !isLoadingOverlays else { return }
+        isLoadingOverlays = true
+        defer { isLoadingOverlays = false }
+
+        do {
+            try dbService.initDatabase()
+
+            // Load trades within time range
+            if let tradesURL = tradesURL,
+               FileManager.default.fileExists(atPath: tradesURL.path)
+            {
+                trades = try await dbService.fetchTrades(
+                    filePath: tradesURL,
+                    startTime: range.lowerBound,
+                    endTime: range.upperBound
+                )
+            }
+
+            // Load marks within time range
+            if let marksURL = marksURL,
+               FileManager.default.fileExists(atPath: marksURL.path)
+            {
+                marks = try await dbService.fetchMarks(
+                    filePath: marksURL,
+                    startTime: range.lowerBound,
+                    endTime: range.upperBound
+                )
+            }
+
+            buildOverlays()
+            loadedOverlayRange = range
+        } catch {
+            onError?("Failed to load overlay data: \(error.localizedDescription)")
+        }
+    }
+
+    /// Build overlay objects from loaded trades and marks
+    private func buildOverlays() {
+        tradeOverlays = trades.compactMap { trade in
+            let isBuy = trade.side == .buy
+            return TradeOverlay(
+                id: trade.orderId,
+                timestamp: trade.timestamp,
+                price: trade.executedPrice,
+                isBuy: isBuy,
+                trade: trade
+            )
+        }
+
+        markOverlays = marks.map { mark in
+            MarkOverlay(
+                id: mark.id,
+                mark: mark,
+                alignedTime: alignToInterval(mark.signal.time, interval: timeInterval)
+            )
+        }
+    }
+
+    /// Align timestamp to interval boundary (floor to interval start)
+    /// This ensures markers match exactly with chart data points for proper rendering
+    private func alignToInterval(_ date: Date, interval: ChartTimeInterval) -> Date {
+        let seconds = interval.seconds
+        let timestamp = date.timeIntervalSince1970
+        let aligned = floor(timestamp / Double(seconds)) * Double(seconds)
+        return Date(timeIntervalSince1970: aligned)
     }
 }

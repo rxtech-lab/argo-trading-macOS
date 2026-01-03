@@ -148,13 +148,13 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(volumeColumn).eraseToAnyColumn(),
         ])
 
-        let priceData = dataFrame.rows.map { row in
+        let priceData = dataFrame.rows.enumerated().map { (index, row) in
             let time = row[1, String.self]
             let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? Date()
 
             return PriceData(
+                globalIndex: offset + index,
                 date: utcDate,
-                id: row[0, String.self] ?? "",
                 ticker: row[2, String.self] ?? "",
                 open: row[3, Double.self] ?? 0.0,
                 high: row[4, Double.self] ?? 0.0,
@@ -226,13 +226,13 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(volumeColumn).eraseToAnyColumn(),
         ])
 
-        return dataFrame.rows.map { row in
+        return dataFrame.rows.enumerated().map { (index, row) in
             let time = row[1, String.self]
             let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? Date()
 
             return PriceData(
+                globalIndex: startOffset + index,
                 date: utcDate,
-                id: row[0, String.self] ?? "",
                 ticker: row[2, String.self] ?? "",
                 open: row[3, Double.self] ?? 0.0,
                 high: row[4, Double.self] ?? 0.0,
@@ -355,8 +355,8 @@ class DuckDBService: DuckDBServiceProtocol {
             let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? Date()
 
             return PriceData(
+                globalIndex: startOffset + index,
                 date: utcDate,
-                id: "agg-\(startOffset + index)", // Generate unique ID for aggregated rows
                 ticker: row[1, String.self] ?? "",
                 open: row[2, Double.self] ?? 0.0,
                 high: row[3, Double.self] ?? 0.0,
@@ -860,13 +860,13 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(volumeColumn).eraseToAnyColumn(),
         ])
 
-        return dataFrame.rows.map { row in
+        return dataFrame.rows.enumerated().map { (index, row) in
             let time = row[1, String.self]
             let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? FoundationDate()
 
             return PriceData(
+                globalIndex: startOffset + index,
                 date: utcDate,
-                id: row[0, String.self] ?? "",
                 ticker: row[2, String.self] ?? "",
                 open: row[3, Double.self] ?? 0.0,
                 high: row[4, Double.self] ?? 0.0,
