@@ -124,7 +124,6 @@ struct LightweightChartView: View {
         let visibleRange = VisibleLogicalRange(
             localFromIndex: from,
             localToIndex: to,
-            totalCount: visibleCount
         )
         logger.debug("Visible range changed: \(range.from) - \(range.to)")
 

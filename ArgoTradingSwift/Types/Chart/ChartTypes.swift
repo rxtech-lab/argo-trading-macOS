@@ -11,22 +11,18 @@ import Foundation
 struct VisibleLogicalRange {
     let localFromIndex: Int
     let localToIndex: Int
-    let totalCount: Int
 
     /// Distance from the beginning (negative if scrolled past start)
     var distanceFromStart: Int { localFromIndex }
-
-    /// Distance from the end
-    var distanceFromEnd: Int { totalCount - localToIndex }
 
     /// Whether near the start (within threshold)
     func isNearStart(threshold: Int = 10) -> Bool {
         localFromIndex < threshold
     }
 
-    /// Whether near the end (within threshold)
-    func isNearEnd(threshold: Int = 10) -> Bool {
-        distanceFromEnd < threshold
+    func isNearEnd(threshold: Int = 10, totalCount: Int) -> Bool {
+        let distance = totalCount - localToIndex
+        return distance < threshold
     }
 }
 
@@ -43,7 +39,7 @@ struct TradeOverlay: Identifiable {
 struct MarkOverlay: Identifiable {
     let id: String
     let mark: Mark
-    let alignedTime: Date  // Timestamp aligned to chart interval for TradingView rendering
+    let alignedTime: Date // Timestamp aligned to chart interval for TradingView rendering
 }
 
 /// Internal scroll change event for debouncing

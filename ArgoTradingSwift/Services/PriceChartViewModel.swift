@@ -20,6 +20,7 @@ class PriceChartViewModel {
     // MARK: - State
 
     private(set) var loadedData: [PriceData] = []
+    // TotalCount stands for the total number of data available for this dataset
     private(set) var totalCount: Int = 0
     private(set) var currentOffset: Int = 0
     private(set) var isLoading = false
@@ -241,14 +242,8 @@ class PriceChartViewModel {
                 count: loadCount
             )
 
-            var combinedData = newData + loadedData
+            let combinedData = newData + loadedData
             logger.info("Loaded complete, new global first index is \(combinedData.first!.globalIndex)")
-
-//            // Trim from the end if exceeds max buffer size
-//            if combinedData.count > maxBufferSize {
-//                let trimCount = combinedData.count - maxBufferSize
-//                combinedData = Array(combinedData.dropLast(trimCount))
-//            }
 
             loadedData = combinedData
 
@@ -275,16 +270,7 @@ class PriceChartViewModel {
                 count: loadCount
             )
 
-            var combinedData = loadedData + newData
-            var actualTrimCount = 0
-
-            // Trim from the beginning if exceeds max buffer size
-            if combinedData.count > maxBufferSize {
-                actualTrimCount = combinedData.count - maxBufferSize
-                combinedData = Array(combinedData.dropFirst(actualTrimCount))
-                currentOffset += actualTrimCount
-            }
-
+            let combinedData = loadedData + newData
             loadedData = combinedData
 
             // Scroll position is already a global index, no adjustment needed
@@ -300,19 +286,20 @@ class PriceChartViewModel {
 
     /// Handle scroll range change - loads more data and overlays as needed
     func handleScrollChange(_ range: VisibleLogicalRange) async {
+        let firstData = loadedData.first!
+        let lastData = loadedData.last!
         if range.isNearStart(threshold: 200) {
-            let firstData = loadedData.first!
-            let lastData = loadedData.last!
             logger.debug("[PriceChartViewModel] Loading more data at beginning \(range.localFromIndex) - \(range.localToIndex), firstData=\(firstData.date), lastData=\(lastData.date)")
             await loadMoreAtBeginning()
             await loadVisibleOverlays()
             return
         }
-//
-//        if range.isNearEnd(threshold: 50) {
-//            await loadMoreAtEnd()
-//            await loadVisibleOverlays()
-//        }
+
+        if range.isNearEnd(threshold: 50, totalCount: loadedData.count) {
+            logger.debug("[PriceChartViewModel] Loading more data at end \(range.localFromIndex) - \(range.localToIndex), firstData=\(firstData.date), lastData=\(lastData.date), vmTotalCount=\(loadedData.count)")
+            await loadMoreAtEnd()
+            await loadVisibleOverlays()
+        }
     }
 
     // MARK: - Overlay Methods

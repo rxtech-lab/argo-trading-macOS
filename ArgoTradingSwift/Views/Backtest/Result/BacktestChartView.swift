@@ -167,8 +167,6 @@ struct BacktestChartView: View {
             zoomScale: $zoomScale,
             minZoom: minZoom,
             maxZoom: maxZoom,
-            showTrades: .init(get: { showTrades }, set: { showTrades = $0 }),
-            hasTradeOverlays: !(viewModel?.tradeOverlays.isEmpty ?? true)
         )
     }
 
