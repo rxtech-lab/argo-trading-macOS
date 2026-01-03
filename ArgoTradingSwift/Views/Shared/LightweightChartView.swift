@@ -52,7 +52,10 @@ struct LightweightChartView: View {
                     logger.info("Chart initialized, isChartReady = true")
 
                     // Now safe to send initial data
+                    // and clear all existing markers
+                    try await chartService.clearAllMarks()
                     await updateChartData()
+
                 } catch {
                     logger.error("Failed to initialize chart: \(error.localizedDescription)")
                 }
@@ -80,6 +83,11 @@ struct LightweightChartView: View {
                 guard let time = newTime, isChartReady else { return }
                 Task {
                     try? await chartService.scrollToTime(time)
+                }
+            }
+            .onDisappear {
+                Task {
+                    await chartService.onClean()
                 }
             }
     }

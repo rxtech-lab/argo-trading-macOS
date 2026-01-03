@@ -339,6 +339,14 @@ final class LightweightChartService {
         }
     }
 
+    func clearAllMarks() async throws {
+        try await callJavaScript("clearAllMarkers()")
+    }
+
+    func onClean() async {
+        await webpage.reload()
+    }
+
     private func handlePageLoaded() {
         logger.info("[Chart] Page loaded - JS functions available")
         isPageLoaded = true
@@ -422,7 +430,7 @@ final class LightweightChartService {
                 position: "aboveBar",
                 color: trade.isBuy ? "#26a69a" : "#ef5350",
                 shape: "arrowDown",
-                text : trade.isBuy ? "B" : "S",
+                text: trade.isBuy ? "B" : "S",
                 id: trade.id,
                 markerType: "trade"
             )

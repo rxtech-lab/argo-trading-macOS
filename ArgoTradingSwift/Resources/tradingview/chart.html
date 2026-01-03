@@ -828,6 +828,21 @@
         }
       }
 
+      // Clear all markers
+      function clearAllMarkers() {
+        if (!series) return;
+
+        tradeMarkers = [];
+        markMarkers = [];
+        markerDataMap.clear();
+        try {
+          console.log("[Chart] Clearing markers");
+          LightweightCharts.createSeriesMarkers(series, []);
+        } catch (error) {
+          console.error(`[Chart] Error clearing markers: ${error}`);
+        }
+      }
+
       // Scroll to specific time (centers view on the timestamp)
       function scrollToTime(timestamp) {
         if (!chart || !series) return;
