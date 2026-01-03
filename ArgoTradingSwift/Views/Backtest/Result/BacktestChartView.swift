@@ -26,6 +26,10 @@ struct BacktestChartView: View {
     // Overlay visibility toggle (UI state only)
     @State private var showTrades: Bool = true
 
+    // Indicator settings persisted to AppStorage
+    @AppStorage("indicatorSettings") private var indicatorSettingsData: Data?
+    @State private var indicatorSettings: IndicatorSettings = .default
+
     // Scroll to timestamp request (passed to LightweightChartView)
     @State private var scrollToTime: Date?
     @State private var isScrollingProgrammatically: Bool = false
@@ -95,6 +99,10 @@ struct BacktestChartView: View {
         .padding()
         .task(id: dataFilePath) {
             await loadPriceData()
+        }
+        .onAppear {
+            // Load indicator settings from AppStorage
+            indicatorSettings = IndicatorSettings.fromData(indicatorSettingsData)
         }
         .onChange(of: backtestResultService.chartScrollRequest) { _, newRequest in
             guard let request = newRequest,
@@ -191,6 +199,7 @@ struct BacktestChartView: View {
                     markOverlays: vm.markOverlays,
                     showTrades: showTrades,
                     scrollToTime: scrollToTime,
+                    indicatorSettings: indicatorSettings,
                     onScrollChange: { range in
                         await vm.handleScrollChange(range)
                     },
@@ -271,6 +280,7 @@ struct BacktestChartView: View {
                 set: { _ in }
             ),
             chartType: $chartType,
+            indicatorSettings: $indicatorSettings,
             isLoading: viewModel?.isLoading ?? false,
             onIntervalChange: { newInterval in
                 guard let vm = viewModel else { return }
@@ -280,6 +290,10 @@ struct BacktestChartView: View {
                     await vm.setTimeInterval(newInterval, visibleCount: visibleCount)
                     await vm.loadVisibleOverlays()
                 }
+            },
+            onIndicatorsChange: { newSettings in
+                // Persist to AppStorage
+                indicatorSettingsData = newSettings.toData()
             }
         )
     }

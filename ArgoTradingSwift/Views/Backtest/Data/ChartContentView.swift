@@ -20,6 +20,10 @@ struct ChartContentView: View {
     @State private var scrollPosition: Int = 0
     @GestureState private var magnifyBy: CGFloat = 1.0
 
+    // Indicator settings persisted to AppStorage
+    @AppStorage("indicatorSettings") private var indicatorSettingsData: Data?
+    @State private var indicatorSettings: IndicatorSettings = .default
+
     // Zoom configuration
     private let baseVisibleCount = 100
     private let minZoom: CGFloat = 0.1
@@ -66,6 +70,10 @@ struct ChartContentView: View {
         .padding()
         .task {
             await initializeViewModel()
+        }
+        .onAppear {
+            // Load indicator settings from AppStorage
+            indicatorSettings = IndicatorSettings.fromData(indicatorSettingsData)
         }
         .onChange(of: url) { _, newUrl in
             Task {
@@ -134,6 +142,7 @@ struct ChartContentView: View {
                 visibleCount: visibleCount,
                 isLoading: vm.isLoading,
                 totalDataCount: vm.totalCount,
+                indicatorSettings: indicatorSettings,
                 onScrollChange: { range in
                     await vm.handleScrollChange(range)
                 },
@@ -187,12 +196,17 @@ struct ChartContentView: View {
                 set: { _ in }
             ),
             chartType: $chartType,
+            indicatorSettings: $indicatorSettings,
             isLoading: viewModel?.isLoading ?? false,
             onIntervalChange: { newInterval in
                 guard let vm = viewModel else { return }
                 Task {
                     await vm.setTimeInterval(newInterval, visibleCount: visibleCount)
                 }
+            },
+            onIndicatorsChange: { newSettings in
+                // Persist to AppStorage
+                indicatorSettingsData = newSettings.toData()
             }
         )
     }
