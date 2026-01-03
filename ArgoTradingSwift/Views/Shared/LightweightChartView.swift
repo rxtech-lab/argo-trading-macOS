@@ -18,7 +18,6 @@ struct LightweightChartView: View {
     let candlestickWidth: CGFloat
     let visibleCount: Int
     let isLoading: Bool
-    let initialScrollPosition: Int
     let totalDataCount: Int
 
     var tradeOverlays: [TradeOverlay] = []

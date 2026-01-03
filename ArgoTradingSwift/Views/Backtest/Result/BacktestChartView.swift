@@ -189,7 +189,6 @@ struct BacktestChartView: View {
                 candlestickWidth: candlestickWidth,
                 visibleCount: visibleCount,
                 isLoading: vm.isLoading,
-                initialScrollPosition: vm.initialScrollPosition,
                 totalDataCount: vm.totalCount,
                 tradeOverlays: vm.tradeOverlays,
                 markOverlays: vm.markOverlays,

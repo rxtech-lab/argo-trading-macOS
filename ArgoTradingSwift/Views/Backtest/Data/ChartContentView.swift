@@ -84,12 +84,6 @@ struct ChartContentView: View {
                 await initializeViewModel(for: newUrl)
             }
         }
-        .onChange(of: viewModel?.initialScrollPosition) { _, newValue in
-            // Sync scroll position from view model (e.g., after loading more data)
-            if let newValue, newValue != scrollPosition {
-                scrollPosition = newValue
-            }
-        }
     }
 
     // MARK: - Initialization
@@ -119,8 +113,6 @@ struct ChartContentView: View {
         }
 
         await vm.loadInitialData(visibleCount: visibleCount)
-        // Sync initial scroll position from view model
-        scrollPosition = vm.initialScrollPosition
     }
 
     // MARK: - Header
@@ -153,7 +145,6 @@ struct ChartContentView: View {
                 candlestickWidth: candlestickWidth,
                 visibleCount: visibleCount,
                 isLoading: vm.isLoading,
-                initialScrollPosition: scrollPosition,
                 totalDataCount: vm.totalCount,
                 onScrollChange: { range in
                     await vm.handleScrollChange(range)

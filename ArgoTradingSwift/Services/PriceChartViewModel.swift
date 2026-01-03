@@ -24,7 +24,6 @@ class PriceChartViewModel {
     private(set) var totalCount: Int = 0
     private(set) var currentOffset: Int = 0
     private(set) var isLoading = false
-    var initialScrollPosition: Int = 0
 
     /// Current time interval for chart aggregation
     private(set) var timeInterval: ChartTimeInterval = .oneSecond
@@ -93,7 +92,6 @@ class PriceChartViewModel {
         // Reset state
         loadedData = []
         currentOffset = 0
-        initialScrollPosition = 0
 
         do {
             // Get new total count for the interval
@@ -139,9 +137,6 @@ class PriceChartViewModel {
             )
 
             loadedData = fetchedData
-
-            // Set initial scroll position to show recent data (use global index)
-            initialScrollPosition = currentOffset + loadedData.count
         } catch {
             onError?(error.localizedDescription)
         }
@@ -165,16 +160,19 @@ class PriceChartViewModel {
             )
 
             // Check if the target is within currently loaded data
-            let loadedStart = currentOffset
-            let loadedEnd = currentOffset + loadedData.count
+            guard let firstItem = loadedData.first else {
+                return
+            }
 
-            if targetOffset >= loadedStart, targetOffset < loadedEnd {
-                // Data already loaded - just update scroll position to center on target
-                let maxScrollPosition = currentOffset + loadedData.count - visibleCount
-                initialScrollPosition = max(currentOffset, min(targetOffset - visibleCount / 2, maxScrollPosition))
-            } else {
-                // Need to load data around the target timestamp
-                await loadDataAroundOffset(targetOffset, visibleCount: visibleCount)
+            guard let lastItem = loadedData.last else {
+                return
+            }
+
+            let loadedStart = firstItem.globalIndex
+            let loadedEnd = lastItem.globalIndex
+
+            if !(targetOffset >= loadedStart && targetOffset < loadedEnd) {
+                await loadDataAroundOffset(targetOffset, visibleCount: visibleCount * 2)
             }
         } catch {
             onError?(error.localizedDescription)
@@ -191,7 +189,7 @@ class PriceChartViewModel {
 
         do {
             // Calculate start offset to center the target
-            let halfBuffer = bufferSize / 2
+            let halfBuffer = visibleCount / 2
             let startOffset = max(0, targetOffset - halfBuffer)
             currentOffset = startOffset
 
@@ -199,14 +197,10 @@ class PriceChartViewModel {
                 filePath: url,
                 interval: timeInterval,
                 startOffset: startOffset,
-                count: bufferSize
+                count: visibleCount
             )
 
             loadedData = fetchedData
-
-            // Set scroll position to center on target (use global index)
-            let maxScrollPosition = currentOffset + loadedData.count - visibleCount
-            initialScrollPosition = max(currentOffset, min(targetOffset - visibleCount / 2, maxScrollPosition))
         } catch {
             onError?(error.localizedDescription)
         }
