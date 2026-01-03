@@ -36,28 +36,9 @@ struct LightweightChartView: View {
     @State private var scrollCancellable: AnyCancellable?
 
     var body: some View {
-        WebView(chartService.webpage)
-            .webViewContentBackground(.hidden)
+        chartContent
             .task {
-                // Setup callbacks before initialization
-                setupCallbacks()
-
-                do {
-                    // This now waits for HTML to load first
-                    try await chartService.initializeChart(chartType: chartType)
-
-                    // Mark as ready - this enables data updates
-                    isChartReady = true
-                    logger.info("Chart initialized, isChartReady = true")
-
-                    // Now safe to send initial data
-                    // and clear all existing markers
-                    try await chartService.clearAllMarks()
-                    await updateChartData()
-
-                } catch {
-                    logger.error("Failed to initialize chart: \(error.localizedDescription)")
-                }
+                await initializeChart()
             }
             .onChange(of: data) { _, newData in
                 logger.info("onChange(data) triggered - newData.count: \(newData.count)")
@@ -89,6 +70,49 @@ struct LightweightChartView: View {
                     await chartService.onClean()
                 }
             }
+    }
+
+    @ViewBuilder
+    private var chartContent: some View {
+        if !isChartReady {
+            ProgressView("Initializing...")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if data.isEmpty && !isLoading {
+            ContentUnavailableView(
+                "No Data",
+                systemImage: "chart.xyaxis.line",
+                description: Text("No price data available")
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if isLoading && data.isEmpty {
+            ProgressView("Loading chart data...")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            WebView(chartService.webpage)
+                .webViewContentBackground(.hidden)
+        }
+    }
+
+    private func initializeChart() async {
+        // Setup callbacks before initialization
+        setupCallbacks()
+
+        do {
+            // This now waits for HTML to load first
+            try await chartService.initializeChart(chartType: chartType)
+
+            // Mark as ready - this enables data updates
+            isChartReady = true
+            logger.info("Chart initialized, isChartReady = true")
+
+            // Now safe to send initial data
+            // and clear all existing markers
+            try await chartService.clearAllMarks()
+            await updateChartData()
+
+        } catch {
+            logger.error("Failed to initialize chart: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Private Methods

@@ -78,20 +78,8 @@ struct BacktestChartView: View {
             headerView
             legendView
 
-            if let vm = viewModel {
-                if vm.loadedData.isEmpty && !vm.isLoading {
-                    ContentUnavailableView(
-                        "No Data",
-                        systemImage: "chart.xyaxis.line",
-                        description: Text("No price data available")
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if vm.isLoading && vm.loadedData.isEmpty {
-                    ProgressView("Loading chart data...")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    chartContent
-                }
+            if viewModel != nil {
+                chartContent
             } else {
                 ProgressView("Initializing...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
