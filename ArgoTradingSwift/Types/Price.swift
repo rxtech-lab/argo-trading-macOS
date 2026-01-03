@@ -7,12 +7,14 @@
 import Foundation
 
 struct PriceData: Codable, Hashable, Identifiable {
+    let globalIndex: Int
     let date: Date
-    let id: String
     let ticker: String
     let open: Double
     let high: Double
     let low: Double
     let close: Double
     let volume: Double
+
+    var id: Int { globalIndex }
 }

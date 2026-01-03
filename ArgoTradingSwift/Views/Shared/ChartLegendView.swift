@@ -16,9 +16,6 @@ struct ChartLegendView: View {
         Group {
             if let item = priceData {
                 HStack(spacing: 16) {
-                    Text(item.date, format: .dateTime.month().day().hour().minute())
-                        .foregroundStyle(.secondary)
-
                     Group {
                         LegendItem(label: "O", value: item.open, color: .primary)
                         LegendItem(label: "H", value: item.high, color: .green)

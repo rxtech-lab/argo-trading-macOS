@@ -43,6 +43,7 @@ struct ArgoTradingSwiftApp: App {
     @State private var schemaService = SchemaService()
     @State private var toolbarStatusService = ToolbarStatusService()
     @State private var backtestResultService = BacktestResultService()
+    @State private var lightweightChartsService = LightweightChartService()
 
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -78,6 +79,7 @@ struct ArgoTradingSwiftApp: App {
                 .onAppear {
                     // Dismiss welcome window when document opens
                     dismissWindow(id: "welcome")
+                    logger.logLevel = .debug
                 }
                 .toolbar(removing: .title)
         }
@@ -102,6 +104,7 @@ struct ArgoTradingSwiftApp: App {
         .environment(backtestService)
         .environment(schemaService)
         .environment(backtestResultService)
+        .environment(lightweightChartsService)
 
         // Define a custom About window that can be opened once
         Window("About My App", id: "about") {

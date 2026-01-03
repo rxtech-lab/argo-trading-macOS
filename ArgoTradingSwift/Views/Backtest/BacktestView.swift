@@ -7,89 +7,85 @@
 
 import SwiftUI
 
-struct BacktestView: View {
-    @Binding var document: ArgoTradingDocument
-    @Environment(NavigationService.self) var navigationService
-
-    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+struct BacktestContentView: View {
+    var navigationService: NavigationService
+    @Environment(BacktestResultService.self) var backtestResultService
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            // SIDEBAR (Left column)
-            VStack {
-                BacktestSideBar(navigationService: navigationService, document: $document)
-            }
-            .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {} label: {
-                        Label("Stop", systemImage: "square.fill")
-                    }
+        switch navigationService.path {
+        case .backtest(let backtest):
+            switch backtest {
+            case .data(let url):
+                ChartContentView(url: url)
+                    .frame(minWidth: 400)
+            case .strategy(let url):
+                StrategyDetailView(url: url)
+                    .frame(minWidth: 400)
+            case .result(let url):
+                if let resultItem = backtestResultService.getResultItem(for: url) {
+                    BacktestChartView(
+                        dataFilePath: resultItem.result.dataFilePath,
+                        tradesFilePath: resultItem.result.tradesFilePath,
+                        marksFilePath: resultItem.result.marksFilePath
+                    )
+                    .id(url)
+                    .frame(minWidth: 500)
+                } else {
+                    ContentUnavailableView(
+                        "Result Not Found",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text("The selected result could not be loaded")
+                    )
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    Button {} label: {
-                        Label("Start", systemImage: "play.fill")
-                    }
-                }
-            }
-        } content: {
-            // CONTENT (Center column - Chart or Strategy)
-            switch navigationService.path {
-            case .backtest(let backtest):
-                switch backtest {
-                case .data(let url):
-                    ChartContentView(url: url)
-                        .frame(minWidth: 400)
-                case .strategy(let url):
-                    StrategyDetailView(url: url)
-                        .frame(minWidth: 400)
-                default:
-                    chartPlaceholderView
-                }
-            }
-        } detail: {
-            // DETAIL (Right column - Table or empty for strategy)
-            switch navigationService.path {
-            case .backtest(let backtest):
-                switch backtest {
-                case .data(let url):
-                    DataTableView(url: url)
-                        .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
-                case .strategy:
-                    strategyDetailPlaceholderView
-                default:
-                    tablePlaceholderView
-                }
+            default:
+                ContentUnavailableView(
+                    "No Dataset Selected",
+                    systemImage: "chart.xyaxis.line",
+                    description: Text("Select a dataset from the sidebar to view the price chart")
+                )
             }
         }
-        .navigationSplitViewStyle(.balanced)
     }
+}
 
-    // MARK: - Placeholder Views
+struct BacktestDetailView: View {
+    var navigationService: NavigationService
+    @Environment(BacktestResultService.self) var backtestResultService
 
-    private var chartPlaceholderView: some View {
-        ContentUnavailableView(
-            "No Dataset Selected",
-            systemImage: "chart.xyaxis.line",
-            description: Text("Select a dataset from the sidebar to view the price chart")
-        )
-    }
-
-    private var tablePlaceholderView: some View {
-        ContentUnavailableView(
-            "No Dataset Selected",
-            systemImage: "tablecells",
-            description: Text("Select a dataset from the sidebar to view the data table")
-        )
-        .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
-    }
-
-    private var strategyDetailPlaceholderView: some View {
-        ContentUnavailableView(
-            "Strategy Configuration",
-            systemImage: "slider.horizontal.3",
-            description: Text("Strategy parameters and settings will appear here")
-        )
-        .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+    var body: some View {
+        switch navigationService.path {
+        case .backtest(let backtest):
+            switch backtest {
+            case .data(let url):
+                DataTableView(url: url)
+                    .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+            case .strategy:
+                ContentUnavailableView(
+                    "Strategy Results",
+                    systemImage: "slider.horizontal.3",
+                    description: Text("Strategy historical results will appear here")
+                )
+                .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+            case .result(let url):
+                if let resultItem = backtestResultService.getResultItem(for: url) {
+                    BacktestResultDetailView(resultItem: resultItem)
+                        .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+                } else {
+                    ContentUnavailableView(
+                        "Result Not Found",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text("The selected result could not be loaded")
+                    )
+                    .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+                }
+            default:
+                ContentUnavailableView(
+                    "No Dataset Selected",
+                    systemImage: "tablecells",
+                    description: Text("Select a dataset from the sidebar to view the data table")
+                )
+                .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+            }
+        }
     }
 }

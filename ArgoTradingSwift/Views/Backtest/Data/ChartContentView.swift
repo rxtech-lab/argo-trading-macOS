@@ -18,7 +18,6 @@ struct ChartContentView: View {
     @State private var selectedIndex: Int?
     @State private var zoomScale: CGFloat = 1.0
     @State private var scrollPosition: Int = 0
-    @State private var loadDataTask: Task<Void, Never>?
     @GestureState private var magnifyBy: CGFloat = 1.0
 
     // Zoom configuration
@@ -51,20 +50,8 @@ struct ChartContentView: View {
             headerView
             legendView
 
-            if let vm = viewModel {
-                if vm.loadedData.isEmpty && !vm.isLoading {
-                    ContentUnavailableView(
-                        "No Data",
-                        systemImage: "chart.xyaxis.line",
-                        description: Text("Load a dataset to view the chart")
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if vm.isLoading && vm.loadedData.isEmpty {
-                    ProgressView("Loading chart data...")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    chartContent
-                }
+            if viewModel != nil {
+                chartContent
             } else {
                 ProgressView("Initializing...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -83,12 +70,6 @@ struct ChartContentView: View {
         .onChange(of: url) { _, newUrl in
             Task {
                 await initializeViewModel(for: newUrl)
-            }
-        }
-        .onChange(of: viewModel?.scrollPositionIndex) { _, newValue in
-            // Sync scroll position from view model (e.g., after loading more data)
-            if let newValue, newValue != scrollPosition {
-                scrollPosition = newValue
             }
         }
     }
@@ -120,8 +101,6 @@ struct ChartContentView: View {
         }
 
         await vm.loadInitialData(visibleCount: visibleCount)
-        // Sync initial scroll position from view model
-        scrollPosition = vm.scrollPositionIndex
     }
 
     // MARK: - Header
@@ -148,33 +127,15 @@ struct ChartContentView: View {
     @ViewBuilder
     private var chartContent: some View {
         if let vm = viewModel {
-            PriceChartView(
-                indexedData: vm.indexedData,
+            LightweightChartView(
+                data: vm.loadedData,
                 chartType: chartType,
                 candlestickWidth: candlestickWidth,
-                yAxisDomain: vm.yAxisDomain,
                 visibleCount: visibleCount,
                 isLoading: vm.isLoading,
-                scrollPosition: $scrollPosition,
+                totalDataCount: vm.totalCount,
                 onScrollChange: { range in
-                    vm.scrollPositionIndex = range.from
-                    if range.isNearStart(threshold: 50) {
-                        loadDataTask?.cancel()
-                        loadDataTask = Task {
-                            try? await Task.sleep(for: .milliseconds(50))
-                            guard !Task.isCancelled else { return }
-                            await vm.loadMoreAtBeginning()
-                        }
-                    }
-
-                    if range.isNearEnd(threshold: 50) {
-                        loadDataTask?.cancel()
-                        loadDataTask = Task {
-                            try? await Task.sleep(for: .milliseconds(50))
-                            guard !Task.isCancelled else { return }
-                            await vm.loadMoreAtEnd()
-                        }
-                    }
+                    await vm.handleScrollChange(range)
                 },
                 onSelectionChange: { newIndex in
                     selectedIndex = newIndex

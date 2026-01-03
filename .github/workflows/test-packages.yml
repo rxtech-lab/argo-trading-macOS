@@ -32,6 +32,18 @@ jobs:
       - name: Run Xcode tests
         run: ./scripts/run_xcode_tests.sh
 
+      - name: Extract code coverage
+        run: |
+          # Extract coverage for all files in the main target (includes untested files)
+          xcrun xccov view --report --json --files-for-target ArgoTradingSwift test-results/TestResults.xcresult > coverage.json
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.json
+          fail_ci_if_error: false
+
       - name: Upload test results (on failure)
         if: failure()
         uses: actions/upload-artifact@v4
