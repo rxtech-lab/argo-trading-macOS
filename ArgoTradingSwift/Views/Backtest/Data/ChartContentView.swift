@@ -12,12 +12,14 @@ struct ChartContentView: View {
 
     @Environment(DuckDBService.self) private var dbService
     @Environment(AlertManager.self) private var alertManager
+    @Environment(LightweightChartService.self) private var chartService
 
     @State private var viewModel: PriceChartViewModel?
     @State private var chartType: ChartType = .candlestick
     @State private var selectedIndex: Int?
     @State private var zoomScale: CGFloat = 1.0
     @State private var scrollPosition: Int = 0
+    @State private var enabledIndicators: Set<ChartIndicator> = []
     @GestureState private var magnifyBy: CGFloat = 1.0
 
     // Zoom configuration
@@ -187,11 +189,17 @@ struct ChartContentView: View {
                 set: { _ in }
             ),
             chartType: $chartType,
+            enabledIndicators: $enabledIndicators,
             isLoading: viewModel?.isLoading ?? false,
             onIntervalChange: { newInterval in
                 guard let vm = viewModel else { return }
                 Task {
                     await vm.setTimeInterval(newInterval, visibleCount: visibleCount)
+                }
+            },
+            onIndicatorToggle: { indicator, enabled in
+                Task {
+                    try? await chartService.toggleIndicator(indicator, enabled: enabled)
                 }
             }
         )
@@ -199,7 +207,9 @@ struct ChartContentView: View {
 }
 
 #Preview {
+    @Previewable @State var chartService = LightweightChartService()
     ChartContentView(url: URL(fileURLWithPath: "/tmp/test.parquet"))
         .environment(DuckDBService())
         .environment(AlertManager())
+        .environment(chartService)
 }

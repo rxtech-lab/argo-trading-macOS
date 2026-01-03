@@ -600,6 +600,22 @@ final class LightweightChartService {
         try await callJavaScript("switchChartType('\(chartTypeJS)')")
     }
 
+    // MARK: - Indicator API
+
+    /// Toggle a chart indicator on or off
+    func toggleIndicator(_ indicator: ChartIndicator, enabled: Bool) async throws {
+        if enabled {
+            try await callJavaScript(indicator.jsAddFunction)
+        } else {
+            try await callJavaScript(indicator.jsRemoveFunction)
+        }
+    }
+
+    /// Remove all indicators from the chart
+    func removeAllIndicators() async throws {
+        try await callJavaScript("removeAllIndicators()")
+    }
+
     // MARK: - Private Helpers
 
     @MainActor
