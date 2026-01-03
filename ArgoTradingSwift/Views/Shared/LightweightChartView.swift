@@ -24,6 +24,7 @@ struct LightweightChartView: View {
     var markOverlays: [MarkOverlay] = []
     var showTrades: Bool = true
     var scrollToTime: Date?
+    var indicatorSettings: IndicatorSettings = .default
 
     var onScrollChange: ((VisibleLogicalRange) async -> Void)?
     var onSelectionChange: ((Int?) -> Void)?
@@ -66,6 +67,12 @@ struct LightweightChartView: View {
                 guard let time = newTime, isChartReady else { return }
                 Task {
                     try? await chartService.scrollToTime(time)
+                }
+            }
+            .onChange(of: indicatorSettings) { _, newSettings in
+                guard isChartReady else { return }
+                Task {
+                    try? await chartService.setIndicators(newSettings)
                 }
             }
             .onDisappear {
@@ -156,6 +163,11 @@ struct LightweightChartView: View {
             // and clear all existing markers
             try await chartService.clearAllMarks()
             await updateChartData()
+
+            // Apply initial indicator settings if any are enabled
+            if !indicatorSettings.enabledIndicators.isEmpty {
+                try await chartService.setIndicators(indicatorSettings)
+            }
 
         } catch {
             logger.error("Failed to initialize chart: \(error.localizedDescription)")

@@ -600,6 +600,28 @@ final class LightweightChartService {
         try await callJavaScript("switchChartType('\(chartTypeJS)')")
     }
 
+    // MARK: - Indicators
+
+    /// Set indicator configuration on the chart
+    func setIndicators(_ settings: IndicatorSettings) async throws {
+        let enabledIndicators = settings.enabledIndicators
+        if enabledIndicators.isEmpty {
+            try await callJavaScript("clearIndicators()")
+            return
+        }
+
+        let jsonData = try JSONEncoder().encode(settings)
+        guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+            throw LightweightChartError.javascriptError("Failed to encode indicator settings")
+        }
+        try await callJavaScript("setIndicators(\(jsonString))")
+    }
+
+    /// Clear all indicators from the chart
+    func clearIndicators() async throws {
+        try await callJavaScript("clearIndicators()")
+    }
+
     // MARK: - Private Helpers
 
     @MainActor
