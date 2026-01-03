@@ -257,7 +257,6 @@ function handleCrosshairMove(param) {
 
 // Check if hovering near a marker
 function checkMarkerHover(param) {
-  const tooltip = document.getElementById("tooltip");
   const hoveredTime = param.time;
 
   // Find markers at or near this time
@@ -272,13 +271,15 @@ function checkMarkerHover(param) {
   }
 
   if (matchingMarkers.length > 0) {
-    try {
-      showMarkerTooltip(matchingMarkers, param.point);
-    } catch (error) {
-      console.error(`[Chart] Error showing marker tooltip: ${error}`);
-    }
+    // Send marker data to Swift for native tooltip
+    postMessage("markerHover", {
+      markers: matchingMarkers,
+      screenX: param.point.x,
+      screenY: param.point.y,
+    });
   } else {
-    tooltip.style.display = "none";
+    // No markers - dismiss tooltip
+    postMessage("markerHover", null);
   }
 }
 

@@ -16,6 +16,7 @@ enum ChartMessageType: String, CaseIterable {
     case ready // Chart initialized and ready for data
     case visibleRangeChange
     case crosshairMove
+    case markerHover
     case consoleLog
 }
 
@@ -42,6 +43,36 @@ struct JSOHLCV {
     let low: Double
     let close: Double
     let volume: Double
+}
+
+/// Marker hover data from JavaScript
+struct JSMarkerHoverData {
+    let markers: [JSMarkerInfo]
+    let screenX: CGFloat
+    let screenY: CGFloat
+}
+
+/// Individual marker info from JavaScript
+struct JSMarkerInfo {
+    let markerType: String  // "trade" or "mark"
+    let time: Double
+
+    // Trade-specific fields
+    let isBuy: Bool?
+    let symbol: String?
+    let positionType: String?
+    let executedQty: Double?
+    let executedPrice: Double?
+    let pnl: Double?
+    let reason: String?
+
+    // Mark-specific fields
+    let title: String?
+    let color: String?
+    let category: String?
+    let message: String?
+    let signalType: String?
+    let signalReason: String?
 }
 
 /// Candlestick data for JavaScript
@@ -194,6 +225,7 @@ final class ChartMessageHandler: NSObject, WKScriptMessageHandler {
     var onReady: (() -> Void)?
     var onVisibleRangeChange: ((JSVisibleRange) -> Void)?
     var onCrosshairMove: ((JSCrosshairData) -> Void)?
+    var onMarkerHover: ((JSMarkerHoverData?) -> Void)?
     var onConsoleLog: ((String, String) -> Void)?
 
     func userContentController(
@@ -229,6 +261,10 @@ final class ChartMessageHandler: NSObject, WKScriptMessageHandler {
                 let data = self.parseCrosshairData(from: body)
                 self.onCrosshairMove?(data)
 
+            case .markerHover:
+                let data = self.parseMarkerHoverData(from: body)
+                self.onMarkerHover?(data)
+
             case .consoleLog:
                 guard let dict = body as? [String: Any],
                       let level = dict["level"] as? String,
@@ -261,6 +297,50 @@ final class ChartMessageHandler: NSObject, WKScriptMessageHandler {
         return JSCrosshairData(time: time, price: price, globalIndex: globalIndex, ohlcv: ohlcv)
     }
 
+    private func parseMarkerHoverData(from body: Any) -> JSMarkerHoverData? {
+        // Handle null/nil case (no marker hovered)
+        guard let dict = body as? [String: Any] else {
+            return nil
+        }
+
+        guard let markersArray = dict["markers"] as? [[String: Any]],
+              let screenX = dict["screenX"] as? Double,
+              let screenY = dict["screenY"] as? Double else {
+            return nil
+        }
+
+        let markers = markersArray.compactMap { markerDict -> JSMarkerInfo? in
+            guard let markerType = markerDict["markerType"] as? String,
+                  let time = markerDict["time"] as? Double else {
+                return nil
+            }
+
+            return JSMarkerInfo(
+                markerType: markerType,
+                time: time,
+                isBuy: markerDict["isBuy"] as? Bool,
+                symbol: markerDict["symbol"] as? String,
+                positionType: markerDict["positionType"] as? String,
+                executedQty: markerDict["executedQty"] as? Double,
+                executedPrice: markerDict["executedPrice"] as? Double,
+                pnl: markerDict["pnl"] as? Double,
+                reason: markerDict["reason"] as? String,
+                title: markerDict["title"] as? String,
+                color: markerDict["color"] as? String,
+                category: markerDict["category"] as? String,
+                message: markerDict["message"] as? String,
+                signalType: markerDict["signalType"] as? String,
+                signalReason: markerDict["signalReason"] as? String
+            )
+        }
+
+        return JSMarkerHoverData(
+            markers: markers,
+            screenX: CGFloat(screenX),
+            screenY: CGFloat(screenY)
+        )
+    }
+
     /// Creates a WKUserContentController with all message handlers registered
     func createUserContentController() -> WKUserContentController {
         let controller = WKUserContentController()
@@ -287,6 +367,7 @@ final class LightweightChartService {
     // Public callbacks for view layer
     var onVisibleRangeChange: ((JSVisibleRange) -> Void)?
     var onCrosshairMove: ((JSCrosshairData) -> Void)?
+    var onMarkerHover: ((JSMarkerHoverData?) -> Void)?
 
     // MARK: - Initialization
 
@@ -325,6 +406,10 @@ final class LightweightChartService {
 
         messageHandler.onCrosshairMove = { [weak self] data in
             self?.onCrosshairMove?(data)
+        }
+
+        messageHandler.onMarkerHover = { [weak self] data in
+            self?.onMarkerHover?(data)
         }
 
         messageHandler.onConsoleLog = { level, message in

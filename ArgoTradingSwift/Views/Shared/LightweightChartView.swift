@@ -35,6 +35,9 @@ struct LightweightChartView: View {
     @State private var scrollSubject = PassthroughSubject<JSVisibleRange, Never>()
     @State private var scrollCancellable: AnyCancellable?
 
+    // Tooltip state
+    @State private var tooltipData: JSMarkerHoverData?
+
     var body: some View {
         chartContent
             .task {
@@ -88,9 +91,53 @@ struct LightweightChartView: View {
             ProgressView("Loading chart data...")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            WebView(chartService.webpage)
-                .webViewContentBackground(.hidden)
+            GeometryReader { geometry in
+                ZStack(alignment: .topLeading) {
+                    WebView(chartService.webpage)
+                        .webViewContentBackground(.hidden)
+
+                    // Native tooltip overlay
+                    if let data = tooltipData {
+                        ChartMarkerTooltip(data: data)
+                            .position(
+                                tooltipPosition(
+                                    for: data,
+                                    in: geometry.size
+                                )
+                            )
+                            .transition(.opacity.animation(.easeInOut(duration: 0.15)))
+                    }
+                }
+            }
         }
+    }
+
+    /// Calculate tooltip position, adjusting for screen edges
+    private func tooltipPosition(for data: JSMarkerHoverData, in size: CGSize) -> CGPoint {
+        let tooltipWidth: CGFloat = 260
+        let tooltipHeight: CGFloat = 200  // Approximate height
+        let padding: CGFloat = 15
+
+        var x = data.screenX + padding
+        var y = data.screenY - 10
+
+        // Adjust if tooltip would go off right edge
+        if x + tooltipWidth > size.width {
+            x = data.screenX - tooltipWidth - padding
+        }
+
+        // Adjust if tooltip would go off bottom edge
+        if y + tooltipHeight > size.height {
+            y = size.height - tooltipHeight - 10
+        }
+
+        // Ensure tooltip doesn't go above top edge
+        if y < 10 {
+            y = 10
+        }
+
+        // Position is center of the view, so adjust for tooltip size
+        return CGPoint(x: x + tooltipWidth / 2, y: y + tooltipHeight / 2)
     }
 
     private func initializeChart() async {
@@ -135,6 +182,10 @@ struct LightweightChartView: View {
 
         chartService.onCrosshairMove = { data in
             onSelectionChange?(data.globalIndex)
+        }
+
+        chartService.onMarkerHover = { [self] data in
+            tooltipData = data
         }
     }
 
