@@ -40,6 +40,12 @@ class PriceChartViewModel {
     // Error handling callback
     var onError: ((String) -> Void)?
 
+    // MARK: - Scroll Guard
+
+    /// Timestamp of last programmatic scroll to prevent auto-load cascade
+    private var lastProgrammaticScrollTime: Date?
+    private let scrollGuardDuration: TimeInterval = 0.5  // 500ms guard
+
     // MARK: - Configuration
 
     let bufferSize: Int
@@ -151,6 +157,9 @@ class PriceChartViewModel {
     func scrollToTimestamp(_ timestamp: Date, visibleCount: Int) async {
         guard !isLoading else { return }
 
+        // Set scroll guard to prevent handleScrollChange from loading data
+        lastProgrammaticScrollTime = Date()
+
         do {
             // Get the database offset for this timestamp
             let targetOffset = try await dbService.getOffsetForTimestamp(
@@ -172,7 +181,7 @@ class PriceChartViewModel {
             let loadedEnd = lastItem.globalIndex
 
             if !(targetOffset >= loadedStart && targetOffset < loadedEnd) {
-                await loadDataAroundOffset(targetOffset, visibleCount: visibleCount * 2)
+                await loadDataAroundOffset(targetOffset, visibleCount: bufferSize * 2)
             }
         } catch {
             onError?(error.localizedDescription)
@@ -192,6 +201,7 @@ class PriceChartViewModel {
             let halfBuffer = visibleCount / 2
             let startOffset = max(0, targetOffset - halfBuffer)
             currentOffset = startOffset
+            logger.debug("Loading data around offset \(targetOffset), startOffset=\(startOffset), visibleCount=\(visibleCount)")
 
             let fetchedData = try await dbService.fetchAggregatedPriceDataRange(
                 filePath: url,
@@ -205,6 +215,8 @@ class PriceChartViewModel {
             onError?(error.localizedDescription)
         }
 
+        // sleep to allow UI to update
+        try? await Task.sleep(for: .seconds(0.2))
         isLoading = false
     }
 
@@ -280,8 +292,19 @@ class PriceChartViewModel {
 
     /// Handle scroll range change - loads more data and overlays as needed
     func handleScrollChange(_ range: VisibleLogicalRange) async {
-        let firstData = loadedData.first!
-        let lastData = loadedData.last!
+        // Skip auto-load if within guard period after programmatic scroll
+        if let lastScroll = lastProgrammaticScrollTime,
+           Date().timeIntervalSince(lastScroll) < scrollGuardDuration
+        {
+            return
+        }
+
+        guard let firstData = loadedData.first else {
+            return
+        }
+        guard let lastData = loadedData.last else {
+            return
+        }
         if range.isNearStart(threshold: 200) {
             logger.debug("[PriceChartViewModel] Loading more data at beginning \(range.localFromIndex) - \(range.localToIndex), firstData=\(firstData.date), lastData=\(lastData.date)")
             await loadMoreAtBeginning()

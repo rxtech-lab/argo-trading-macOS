@@ -28,6 +28,7 @@ struct BacktestChartView: View {
 
     // Scroll to timestamp request (passed to LightweightChartView)
     @State private var scrollToTime: Date?
+    @State private var isScrollingProgrammatically: Bool = false
 
     // Zoom configuration
     private let baseVisibleCount = 100
@@ -100,15 +101,22 @@ struct BacktestChartView: View {
                   request.dataFilePath == dataFilePath else { return }
 
             Task {
+                isScrollingProgrammatically = true
+                try? await Task.sleep(for: .seconds(0.1))
+                // First load data around the target timestamp
                 await viewModel?.scrollToTimestamp(request.timestamp, visibleCount: visibleCount)
                 // Reset loaded range to force overlay reload for the new visible area
                 viewModel?.resetOverlayRange()
                 await viewModel?.loadVisibleOverlays()
 
-                // Trigger chart scroll to the timestamp
+                // Wait for chart to update with new data before scrolling
+                try? await Task.sleep(for: .milliseconds(100))
+
+                // Now scroll the chart to the timestamp
                 scrollToTime = request.timestamp
 
                 backtestResultService.clearScrollRequest()
+                isScrollingProgrammatically = false
             }
         }
         .gesture(magnificationGesture)
@@ -171,25 +179,39 @@ struct BacktestChartView: View {
     @ViewBuilder
     private var chartContent: some View {
         if let vm = viewModel {
-            LightweightChartView(
-                data: vm.loadedData,
-                chartType: chartType,
-                candlestickWidth: candlestickWidth,
-                visibleCount: visibleCount,
-                isLoading: vm.isLoading,
-                totalDataCount: vm.totalCount,
-                tradeOverlays: vm.tradeOverlays,
-                markOverlays: vm.markOverlays,
-                showTrades: showTrades,
-                scrollToTime: scrollToTime,
-                onScrollChange: { range in
-                    await vm.handleScrollChange(range)
-                },
-                onSelectionChange: { newIndex in
-                    selectedIndex = newIndex
+            ZStack {
+                LightweightChartView(
+                    data: vm.loadedData,
+                    chartType: chartType,
+                    candlestickWidth: candlestickWidth,
+                    visibleCount: visibleCount,
+                    isLoading: vm.isLoading,
+                    totalDataCount: vm.totalCount,
+                    tradeOverlays: vm.tradeOverlays,
+                    markOverlays: vm.markOverlays,
+                    showTrades: showTrades,
+                    scrollToTime: scrollToTime,
+                    onScrollChange: { range in
+                        await vm.handleScrollChange(range)
+                    },
+                    onSelectionChange: { newIndex in
+                        selectedIndex = newIndex
+                    }
+                )
+                .gesture(magnificationGesture)
+
+                // Loading overlay
+                if isScrollingProgrammatically {
+                    Color.black.opacity(0.1)
+                        .overlay {
+                            ProgressView()
+                                .tint(.white)
+                        }
+                        .allowsHitTesting(false)
+                        .transition(.opacity.animation(.easeOut(duration: 0.3).delay(0.2)))
                 }
-            )
-            .gesture(magnificationGesture)
+            }
+            .animation(.easeInOut(duration: 0.2), value: isScrollingProgrammatically)
         }
     }
 

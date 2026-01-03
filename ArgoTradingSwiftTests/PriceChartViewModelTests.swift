@@ -852,6 +852,88 @@ struct VisibleTimeRangeTests {
     }
 }
 
+// MARK: - Scroll Guard Tests
+
+struct ScrollGuardTests {
+    @Test func scrollGuard_blocksHandleScrollChangeImmediatelyAfterProgrammaticScroll() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 1000
+        mockService.mockPriceData = createMockPriceData(count: 1000)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        await viewModel.loadInitialData(visibleCount: 100)
+        // Loaded indices 500-999
+
+        // Trigger programmatic scroll (sets guard)
+        mockService.mockOffsetForTimestamp = 250
+        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+
+        // Reset the fetch flag to track if handleScrollChange triggers a load
+        mockService.fetchAggregatedPriceDataRangeCalled = false
+
+        // Immediately call handleScrollChange with range near start - should be blocked by guard
+        let range = VisibleLogicalRange(localFromIndex: 10, localToIndex: 110)
+        await viewModel.handleScrollChange(range)
+
+        // Should NOT have called fetch (guard is active)
+        #expect(!mockService.fetchAggregatedPriceDataRangeCalled)
+    }
+
+    @Test func scrollGuard_expiresAfterDuration() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 1000
+        mockService.mockPriceData = createMockPriceData(count: 1000)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        await viewModel.loadInitialData(visibleCount: 100)
+        // Loaded indices 500-999
+
+        // Trigger programmatic scroll within loaded range (sets guard but doesn't reload)
+        mockService.mockOffsetForTimestamp = 700  // Within 500-999 range
+        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+
+        // Wait for guard to expire (500ms + buffer)
+        try await Task.sleep(for: .milliseconds(600))
+
+        // Reset the fetch flag
+        mockService.fetchAggregatedPriceDataRangeCalled = false
+
+        // Now handleScrollChange should work (guard expired)
+        let firstIndexBefore = viewModel.loadedData.first?.globalIndex ?? 0
+        let range = VisibleLogicalRange(localFromIndex: 10, localToIndex: 110)
+        await viewModel.handleScrollChange(range)
+
+        // Should have called fetch (guard expired, loading more at beginning)
+        #expect(mockService.fetchAggregatedPriceDataRangeCalled)
+    }
+
+    @Test func handleScrollChange_worksNormallyWithoutProgrammaticScroll() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 1000
+        mockService.mockPriceData = createMockPriceData(count: 1000)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        await viewModel.loadInitialData(visibleCount: 100)
+        // Loaded indices 500-999
+
+        let firstIndexBefore = viewModel.loadedData.first?.globalIndex ?? 0
+
+        // Call handleScrollChange without any programmatic scroll - should work normally
+        let range = VisibleLogicalRange(localFromIndex: 10, localToIndex: 110)
+        await viewModel.handleScrollChange(range)
+
+        // Should have loaded more data at beginning (no guard active)
+        let firstIndexAfter = viewModel.loadedData.first?.globalIndex ?? 0
+        #expect(firstIndexAfter < firstIndexBefore)
+    }
+}
+
 // MARK: - Overlay Loading Tests
 
 struct OverlayLoadingTests {

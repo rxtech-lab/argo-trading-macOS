@@ -430,6 +430,7 @@ final class LightweightChartService {
 
     func onClean() async {
         await webpage.reload()
+        isPageLoaded = false
     }
 
     private func handlePageLoaded() {
