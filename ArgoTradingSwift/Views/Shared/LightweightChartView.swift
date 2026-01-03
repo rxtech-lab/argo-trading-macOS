@@ -24,6 +24,7 @@ struct LightweightChartView: View {
     var tradeOverlays: [TradeOverlay] = []
     var markOverlays: [MarkOverlay] = []
     var showTrades: Bool = true
+    var scrollToTime: Date?
 
     var onScrollChange: ((VisibleLogicalRange) async -> Void)?
     var onSelectionChange: ((Int?) -> Void)?
@@ -74,6 +75,12 @@ struct LightweightChartView: View {
             }
             .onChange(of: showTrades) { _, visible in
                 Task { try? await chartService.setMarkersVisible(visible, type: "trade") }
+            }
+            .onChange(of: scrollToTime) { _, newTime in
+                guard let time = newTime, isChartReady else { return }
+                Task {
+                    try? await chartService.scrollToTime(time)
+                }
             }
     }
 

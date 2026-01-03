@@ -294,6 +294,7 @@
             horzTouchDrag: true,
             vertTouchDrag: false,
           },
+          autoSize: true,
         });
 
         // Create series based on type (v4+ API)
@@ -827,10 +828,39 @@
         }
       }
 
-      // Scroll to specific time
+      // Scroll to specific time (centers view on the timestamp)
       function scrollToTime(timestamp) {
-        if (!chart) return;
-        chart.timeScale().scrollToPosition(-10, false);
+        if (!chart || !series) return;
+
+        // Find data point closest to timestamp
+        let closestTime = null;
+        let minDiff = Infinity;
+
+        dataMap.forEach((info, time) => {
+          const diff = Math.abs(time - timestamp);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestTime = time;
+          }
+        });
+
+        if (closestTime !== null) {
+          // Get visible range width to keep same zoom level
+          const currentRange = chart.timeScale().getVisibleLogicalRange();
+          if (currentRange) {
+            const rangeWidth = currentRange.to - currentRange.from;
+            // Find logical index for this time
+            const dataArray = Array.from(dataMap.keys()).sort((a, b) => a - b);
+            const logicalIndex = dataArray.indexOf(closestTime);
+            if (logicalIndex >= 0) {
+              const halfWidth = rangeWidth / 2;
+              chart.timeScale().setVisibleLogicalRange({
+                from: logicalIndex - halfWidth,
+                to: logicalIndex + halfWidth,
+              });
+            }
+          }
+        }
       }
 
       // Set visible logical range

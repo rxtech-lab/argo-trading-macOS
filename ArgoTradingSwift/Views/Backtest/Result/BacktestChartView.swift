@@ -26,6 +26,9 @@ struct BacktestChartView: View {
     // Overlay visibility toggle (UI state only)
     @State private var showTrades: Bool = true
 
+    // Scroll to timestamp request (passed to LightweightChartView)
+    @State private var scrollToTime: Date?
+
     // Zoom configuration
     private let baseVisibleCount = 100
     private let minZoom: CGFloat = 0.1
@@ -113,6 +116,10 @@ struct BacktestChartView: View {
                 // Reset loaded range to force overlay reload for the new visible area
                 viewModel?.resetOverlayRange()
                 await viewModel?.loadVisibleOverlays()
+
+                // Trigger chart scroll to the timestamp
+                scrollToTime = request.timestamp
+
                 backtestResultService.clearScrollRequest()
             }
         }
@@ -189,6 +196,7 @@ struct BacktestChartView: View {
                 tradeOverlays: vm.tradeOverlays,
                 markOverlays: vm.markOverlays,
                 showTrades: showTrades,
+                scrollToTime: scrollToTime,
                 onScrollChange: { range in
                     await vm.handleScrollChange(range)
                 },
