@@ -723,6 +723,12 @@ function scrollToRealtime() {
   chart.timeScale().scrollToRealTime();
 }
 
+// Set volume series visibility
+function setVolumeVisible(visible) {
+  if (!volumeSeries) return;
+  volumeSeries.applyOptions({ visible: visible });
+}
+
 // Get visible range (called from Swift to get current range)
 function getVisibleRange() {
   if (!chart) return null;

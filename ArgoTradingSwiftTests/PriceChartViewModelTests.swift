@@ -189,7 +189,7 @@ struct InitialDataLoadingTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         #expect(mockService.initDatabaseCalled)
         #expect(mockService.getAggregatedCountCalled)
@@ -209,7 +209,7 @@ struct InitialDataLoadingTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 300)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         #expect(viewModel.totalCount == 750)
         // Offset should be 750 - 300 = 450
@@ -224,7 +224,7 @@ struct InitialDataLoadingTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         #expect(viewModel.totalCount == 0)
         #expect(viewModel.loadedData.isEmpty)
@@ -239,7 +239,7 @@ struct InitialDataLoadingTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         #expect(viewModel.totalCount == 50)
         // Small dataset: offset should be 0
@@ -260,7 +260,7 @@ struct InitialDataLoadingTests {
             errorMessage = message
         }
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         #expect(errorMessage != nil)
         #expect(!viewModel.isLoading)
@@ -278,7 +278,7 @@ struct LoadMoreAtBeginningTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 300)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         let initialCount = viewModel.loadedData.count
         let initialFirstIndex = viewModel.loadedData.first?.globalIndex
 
@@ -297,7 +297,7 @@ struct LoadMoreAtBeginningTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         // Small dataset, first item should have globalIndex 0
         #expect(viewModel.loadedData.first?.globalIndex == 0)
 
@@ -318,7 +318,7 @@ struct LoadMoreAtBeginningTests {
         let viewModel = PriceChartViewModel(url: url, dbService: mockService)
 
         // Load with empty dataset
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         mockService.fetchAggregatedPriceDataRangeCalled = false
 
         await viewModel.loadMoreAtBeginning()
@@ -340,7 +340,7 @@ struct LoadMoreAtBeginningTests {
             loadChunkSize: 300
         )
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         // Offset should be 350 - 300 = 50, so first loaded index is 50
         #expect(viewModel.loadedData.first?.globalIndex == 50)
 
@@ -363,12 +363,12 @@ struct LoadMoreAtEndTests {
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 300)
 
         // First load initial data (required for scrollToTimestamp to work)
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         // Use scrollToTimestamp to position in the middle of the dataset
         // so there's room to load more at the end
         mockService.mockOffsetForTimestamp = 200
-        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+        await viewModel.scrollToTimestamp(Date())
 
         // Now we should be around offset 50 (200 - 150), with data up to ~350
         let lastIndexBefore = viewModel.loadedData.last?.globalIndex ?? 0
@@ -389,7 +389,7 @@ struct LoadMoreAtEndTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         // Already at end (loaded 0-99 for small dataset)
         let lastIndex = viewModel.loadedData.last?.globalIndex
 
@@ -414,7 +414,7 @@ struct LoadMoreAtEndTests {
         )
 
         // Load at beginning to make room at end
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         // Offset is 450 - 300 = 150, so loaded 150-449
         await viewModel.loadMoreAtBeginning()
         // Now loaded from some earlier offset
@@ -446,12 +446,12 @@ struct TimeIntervalTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         mockService.getAggregatedCountCalled = false
         mockService.fetchAggregatedPriceDataRangeCalled = false
 
-        await viewModel.setTimeInterval(.oneMinute, visibleCount: 100)
+        await viewModel.setTimeInterval(.oneMinute)
 
         #expect(mockService.getAggregatedCountCalled)
         #expect(mockService.fetchAggregatedPriceDataRangeCalled)
@@ -467,12 +467,12 @@ struct TimeIntervalTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         mockService.getAggregatedCountCalled = false
         mockService.fetchAggregatedPriceDataRangeCalled = false
 
-        await viewModel.setTimeInterval(.oneSecond, visibleCount: 100)
+        await viewModel.setTimeInterval(.oneSecond)
 
         #expect(!mockService.getAggregatedCountCalled)
         #expect(!mockService.fetchAggregatedPriceDataRangeCalled)
@@ -490,17 +490,17 @@ struct TimeIntervalTests {
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
         // Test 1-minute interval
-        await viewModel.setTimeInterval(.oneMinute, visibleCount: 100)
+        await viewModel.setTimeInterval(.oneMinute)
         #expect(viewModel.timeInterval == .oneMinute)
         #expect(mockService.lastRequestedInterval == .oneMinute)
 
         // Test 1-hour interval
-        await viewModel.setTimeInterval(.oneHour, visibleCount: 100)
+        await viewModel.setTimeInterval(.oneHour)
         #expect(viewModel.timeInterval == .oneHour)
         #expect(mockService.lastRequestedInterval == .oneHour)
 
         // Test 1-day interval
-        await viewModel.setTimeInterval(.oneDay, visibleCount: 100)
+        await viewModel.setTimeInterval(.oneDay)
         #expect(viewModel.timeInterval == .oneDay)
         #expect(mockService.lastRequestedInterval == .oneDay)
     }
@@ -538,7 +538,7 @@ struct ScrollToTimestampTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 300)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         // Loaded indices 200-499
 
         // Set mock offset within loaded range
@@ -546,7 +546,7 @@ struct ScrollToTimestampTests {
         mockService.fetchAggregatedPriceDataRangeCalled = false
 
         let targetTimestamp = Date()
-        await viewModel.scrollToTimestamp(targetTimestamp, visibleCount: 100)
+        await viewModel.scrollToTimestamp(targetTimestamp)
 
         #expect(mockService.getOffsetForTimestampCalled)
         // Should NOT reload since 350 is within 200-499
@@ -561,14 +561,14 @@ struct ScrollToTimestampTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 300)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         // Loaded indices 700-999
 
         // Set mock offset outside loaded range
         mockService.mockOffsetForTimestamp = 100
         mockService.fetchAggregatedPriceDataRangeCalled = false
 
-        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+        await viewModel.scrollToTimestamp(Date())
 
         #expect(mockService.getOffsetForTimestampCalled)
         #expect(mockService.fetchAggregatedPriceDataRangeCalled)
@@ -584,11 +584,11 @@ struct ScrollToTimestampTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 300)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         mockService.mockOffsetForTimestamp = 5
 
-        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+        await viewModel.scrollToTimestamp(Date())
 
         // Offset should be 0 (can't go negative)
         #expect(viewModel.currentOffset == 0)
@@ -602,12 +602,12 @@ struct ScrollToTimestampTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 300)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         // Target near end (already loaded since initial load goes to end)
         mockService.mockOffsetForTimestamp = 950
 
-        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+        await viewModel.scrollToTimestamp(Date())
 
         // Should still be near end
         #expect(viewModel.loadedData.last?.globalIndex ?? 0 >= 950)
@@ -621,7 +621,7 @@ struct ScrollToTimestampTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         var errorMessage: String?
         viewModel.onError = { message in
@@ -630,7 +630,7 @@ struct ScrollToTimestampTests {
 
         mockService.shouldThrowError = true
 
-        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+        await viewModel.scrollToTimestamp(Date())
 
         #expect(errorMessage != nil)
     }
@@ -647,7 +647,7 @@ struct PriceDataAtIndexTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         let data = viewModel.priceData(at: 50)
         #expect(data != nil)
@@ -662,7 +662,7 @@ struct PriceDataAtIndexTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         #expect(viewModel.priceData(at: 0) == nil)
         #expect(viewModel.priceData(at: 50) == nil)
@@ -676,7 +676,7 @@ struct PriceDataAtIndexTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 300)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         // Loaded indices 700-999
 
         // Index 50 is not in loaded range
@@ -693,7 +693,7 @@ struct PriceDataAtIndexTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         #expect(viewModel.priceData(at: -1) == nil)
         #expect(viewModel.priceData(at: -100) == nil)
@@ -711,7 +711,7 @@ struct HandleScrollChangeTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         let initialFirstIndex = viewModel.loadedData.first?.globalIndex ?? 0
 
         // Create range near start
@@ -732,7 +732,7 @@ struct HandleScrollChangeTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         // Offset is 1500, loaded 1500-1999
 
         // First load more at beginning to make room at end
@@ -756,7 +756,7 @@ struct HandleScrollChangeTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         let countBefore = viewModel.loadedData.count
 
         mockService.fetchAggregatedPriceDataRangeCalled = false
@@ -830,7 +830,7 @@ struct VisibleTimeRangeTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         #expect(viewModel.getVisibleTimeRange() == nil)
     }
@@ -843,7 +843,7 @@ struct VisibleTimeRangeTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         let range = viewModel.getVisibleTimeRange()
         #expect(range != nil)
@@ -863,12 +863,12 @@ struct ScrollGuardTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         // Loaded indices 500-999
 
         // Trigger programmatic scroll (sets guard)
         mockService.mockOffsetForTimestamp = 250
-        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+        await viewModel.scrollToTimestamp(Date())
 
         // Reset the fetch flag to track if handleScrollChange triggers a load
         mockService.fetchAggregatedPriceDataRangeCalled = false
@@ -889,12 +889,12 @@ struct ScrollGuardTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         // Loaded indices 500-999
 
         // Trigger programmatic scroll within loaded range (sets guard but doesn't reload)
         mockService.mockOffsetForTimestamp = 700  // Within 500-999 range
-        await viewModel.scrollToTimestamp(Date(), visibleCount: 100)
+        await viewModel.scrollToTimestamp(Date())
 
         // Wait for guard to expire (500ms + buffer)
         try await Task.sleep(for: .milliseconds(600))
@@ -919,7 +919,7 @@ struct ScrollGuardTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         // Loaded indices 500-999
 
         let firstIndexBefore = viewModel.loadedData.first?.globalIndex ?? 0
@@ -946,7 +946,7 @@ struct OverlayLoadingTests {
         // No tradesURL or marksURL provided
         let viewModel = PriceChartViewModel(url: url, dbService: mockService)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
         await viewModel.loadVisibleOverlays()
 
         #expect(viewModel.trades.isEmpty)
@@ -961,7 +961,7 @@ struct OverlayLoadingTests {
         let url = URL(fileURLWithPath: "/tmp/test.parquet")
         let viewModel = PriceChartViewModel(url: url, dbService: mockService)
 
-        await viewModel.loadInitialData(visibleCount: 100)
+        await viewModel.loadInitialData()
 
         viewModel.resetOverlayRange()
 

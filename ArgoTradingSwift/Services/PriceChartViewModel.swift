@@ -84,14 +84,14 @@ class PriceChartViewModel {
     }
 
     /// Set the time interval and reload data
-    func setTimeInterval(_ interval: ChartTimeInterval, visibleCount: Int) async {
+    func setTimeInterval(_ interval: ChartTimeInterval) async {
         guard interval != timeInterval else { return }
         timeInterval = interval
-        await reloadDataForInterval(visibleCount: visibleCount)
+        await reloadDataForInterval()
     }
 
     /// Reload data when interval changes
-    private func reloadDataForInterval(visibleCount: Int) async {
+    private func reloadDataForInterval() async {
         guard !isLoading else { return }
         isLoading = true
 
@@ -121,7 +121,7 @@ class PriceChartViewModel {
         isLoading = false
     }
 
-    func loadInitialData(visibleCount: Int) async {
+    func loadInitialData() async {
         guard !isLoading else { return }
         isLoading = true
 
@@ -154,7 +154,7 @@ class PriceChartViewModel {
     /// - Parameters:
     ///   - timestamp: The target timestamp to scroll to
     ///   - visibleCount: Number of visible bars for centering
-    func scrollToTimestamp(_ timestamp: Date, visibleCount: Int) async {
+    func scrollToTimestamp(_ timestamp: Date) async {
         guard !isLoading else { return }
 
         // Set scroll guard to prevent handleScrollChange from loading data

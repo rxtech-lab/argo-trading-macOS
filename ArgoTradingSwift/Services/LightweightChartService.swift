@@ -594,6 +594,11 @@ final class LightweightChartService {
         try await callJavaScript("scrollToRealtime()")
     }
 
+    /// Set volume series visibility
+    func setVolumeVisible(_ visible: Bool) async throws {
+        try await callJavaScript("setVolumeVisible(\(visible))")
+    }
+
     /// Switch chart type
     func switchChartType(_ chartType: ChartType) async throws {
         let chartTypeJS = chartType == .candlestick ? "Candlestick" : "Line"

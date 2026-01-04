@@ -16,7 +16,6 @@ struct ChartContentView: View {
     @State private var viewModel: PriceChartViewModel?
     @State private var chartType: ChartType = .candlestick
     @State private var selectedIndex: Int?
-    @State private var zoomScale: CGFloat = 1.0
     @State private var scrollPosition: Int = 0
     @GestureState private var magnifyBy: CGFloat = 1.0
 
@@ -24,29 +23,14 @@ struct ChartContentView: View {
     @AppStorage("indicatorSettings") private var indicatorSettingsData: Data?
     @State private var indicatorSettings: IndicatorSettings = .default
 
-    // Zoom configuration
-    private let baseVisibleCount = 100
-    private let minZoom: CGFloat = 0.1
-    private let maxZoom: CGFloat = 5.0
+    // Volume visibility
+    @State private var showVolume: Bool = true
 
     // MARK: - Computed Properties
 
     /// Available time intervals filtered based on the original data timespan
     private var availableIntervals: [ChartTimeInterval] {
         ChartTimeInterval.filtered(for: url)
-    }
-
-    private var visibleCount: Int {
-        let scale = max(0.01, zoomScale * magnifyBy)
-        let adjustedCount = Double(baseVisibleCount) / scale
-        guard adjustedCount.isFinite else { return baseVisibleCount }
-        return min(max(10, Int(adjustedCount)), 200)
-    }
-
-    private var candlestickWidth: CGFloat {
-        let scale = max(0.1, zoomScale * magnifyBy)
-        let baseWidth: CGFloat = 6
-        return max(2, min(baseWidth * scale, 20))
     }
 
     var body: some View {
@@ -105,10 +89,10 @@ struct ChartContentView: View {
         if let parsed = ParquetFileNameParser.parse(fileName),
            let minInterval = parsed.minimumInterval
         {
-            await vm.setTimeInterval(minInterval, visibleCount: visibleCount)
+            await vm.setTimeInterval(minInterval)
         }
 
-        await vm.loadInitialData(visibleCount: visibleCount)
+        await vm.loadInitialData()
     }
 
     // MARK: - Header
@@ -116,9 +100,11 @@ struct ChartContentView: View {
     private var headerView: some View {
         ChartHeaderView(
             title: "Price Chart",
-            zoomScale: $zoomScale,
-            minZoom: minZoom,
-            maxZoom: maxZoom
+            showVolume: $showVolume,
+            indicatorSettings: $indicatorSettings,
+            onIndicatorsChange: { newSettings in
+                indicatorSettingsData = newSettings.toData()
+            }
         )
     }
 
@@ -138,10 +124,9 @@ struct ChartContentView: View {
             LightweightChartView(
                 data: vm.loadedData,
                 chartType: chartType,
-                candlestickWidth: candlestickWidth,
-                visibleCount: visibleCount,
                 isLoading: vm.isLoading,
                 totalDataCount: vm.totalCount,
+                showVolume: showVolume,
                 indicatorSettings: indicatorSettings,
                 onScrollChange: { range in
                     await vm.handleScrollChange(range)
@@ -150,21 +135,7 @@ struct ChartContentView: View {
                     selectedIndex = newIndex
                 }
             )
-            .gesture(magnificationGesture)
         }
-    }
-
-    // MARK: - Gestures
-
-    private var magnificationGesture: some Gesture {
-        MagnifyGesture()
-            .updating($magnifyBy) { value, state, _ in
-                state = value.magnification
-            }
-            .onEnded { value in
-                let newScale = zoomScale * value.magnification
-                zoomScale = min(max(newScale, minZoom), maxZoom)
-            }
     }
 
     // MARK: - Scroll Info
@@ -196,17 +167,12 @@ struct ChartContentView: View {
                 set: { _ in }
             ),
             chartType: $chartType,
-            indicatorSettings: $indicatorSettings,
             isLoading: viewModel?.isLoading ?? false,
             onIntervalChange: { newInterval in
                 guard let vm = viewModel else { return }
                 Task {
-                    await vm.setTimeInterval(newInterval, visibleCount: visibleCount)
+                    await vm.setTimeInterval(newInterval)
                 }
-            },
-            onIndicatorsChange: { newSettings in
-                // Persist to AppStorage
-                indicatorSettingsData = newSettings.toData()
             }
         )
     }
