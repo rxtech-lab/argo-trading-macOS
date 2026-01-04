@@ -20,8 +20,6 @@ struct BacktestChartView: View {
     @State private var viewModel: PriceChartViewModel?
     @State private var chartType: ChartType = .candlestick
     @State private var selectedIndex: Int?
-    @State private var zoomScale: CGFloat = 1.0
-    @GestureState private var magnifyBy: CGFloat = 1.0
 
     // Overlay visibility toggle (UI state only)
     @State private var showTrades: Bool = true
@@ -29,6 +27,9 @@ struct BacktestChartView: View {
     // Indicator settings persisted to AppStorage
     @AppStorage("indicatorSettings") private var indicatorSettingsData: Data?
     @State private var indicatorSettings: IndicatorSettings = .default
+
+    // Volume visibility
+    @State private var showVolume: Bool = true
 
     // Scroll to timestamp request (passed to LightweightChartView)
     @State private var scrollToTime: Date?
@@ -54,19 +55,6 @@ struct BacktestChartView: View {
     /// Available time intervals filtered based on the original data timespan
     private var availableIntervals: [ChartTimeInterval] {
         ChartTimeInterval.filtered(for: dataURL)
-    }
-
-    private var visibleCount: Int {
-        let scale = max(0.01, zoomScale * magnifyBy)
-        let adjustedCount = Double(baseVisibleCount) / scale
-        guard adjustedCount.isFinite else { return baseVisibleCount }
-        return min(max(10, Int(adjustedCount)), 200)
-    }
-
-    private var candlestickWidth: CGFloat {
-        let scale = max(0.1, zoomScale * magnifyBy)
-        let baseWidth: CGFloat = 6
-        return max(2, min(baseWidth * scale, 20))
     }
 
     private func loadPriceData() async {
@@ -112,7 +100,7 @@ struct BacktestChartView: View {
                 isScrollingProgrammatically = true
                 try? await Task.sleep(for: .seconds(0.1))
                 // First load data around the target timestamp
-                await viewModel?.scrollToTimestamp(request.timestamp, visibleCount: visibleCount)
+                await viewModel?.scrollToTimestamp(request.timestamp)
                 // Reset loaded range to force overlay reload for the new visible area
                 viewModel?.resetOverlayRange()
                 await viewModel?.loadVisibleOverlays()
@@ -127,7 +115,6 @@ struct BacktestChartView: View {
                 isScrollingProgrammatically = false
             }
         }
-        .gesture(magnificationGesture)
     }
 
     // MARK: - Initialization
@@ -156,10 +143,10 @@ struct BacktestChartView: View {
         if let parsed = ParquetFileNameParser.parse(fileName),
            let minInterval = parsed.minimumInterval
         {
-            await vm.setTimeInterval(minInterval, visibleCount: visibleCount)
+            await vm.setTimeInterval(minInterval)
         }
 
-        await vm.loadInitialData(visibleCount: visibleCount)
+        await vm.loadInitialData()
         await vm.loadVisibleOverlays()
     }
 
@@ -168,9 +155,11 @@ struct BacktestChartView: View {
     private var headerView: some View {
         ChartHeaderView(
             title: "Price Chart",
-            zoomScale: $zoomScale,
-            minZoom: minZoom,
-            maxZoom: maxZoom,
+            showVolume: $showVolume,
+            indicatorSettings: $indicatorSettings,
+            onIndicatorsChange: { newSettings in
+                indicatorSettingsData = newSettings.toData()
+            }
         )
     }
 
@@ -191,13 +180,12 @@ struct BacktestChartView: View {
                 LightweightChartView(
                     data: vm.loadedData,
                     chartType: chartType,
-                    candlestickWidth: candlestickWidth,
-                    visibleCount: visibleCount,
                     isLoading: vm.isLoading,
                     totalDataCount: vm.totalCount,
                     tradeOverlays: vm.tradeOverlays,
                     markOverlays: vm.markOverlays,
                     showTrades: showTrades,
+                    showVolume: showVolume,
                     scrollToTime: scrollToTime,
                     indicatorSettings: indicatorSettings,
                     onScrollChange: { range in
@@ -207,7 +195,6 @@ struct BacktestChartView: View {
                         selectedIndex = newIndex
                     }
                 )
-                .gesture(magnificationGesture)
 
                 // Loading overlay
                 if isScrollingProgrammatically {
@@ -222,19 +209,6 @@ struct BacktestChartView: View {
             }
             .animation(.easeInOut(duration: 0.2), value: isScrollingProgrammatically)
         }
-    }
-
-    // MARK: - Gestures
-
-    private var magnificationGesture: some Gesture {
-        MagnifyGesture()
-            .updating($magnifyBy) { value, state, _ in
-                state = value.magnification
-            }
-            .onEnded { value in
-                let newScale = zoomScale * value.magnification
-                zoomScale = min(max(newScale, minZoom), maxZoom)
-            }
     }
 
     // MARK: - Scroll Info
@@ -280,20 +254,15 @@ struct BacktestChartView: View {
                 set: { _ in }
             ),
             chartType: $chartType,
-            indicatorSettings: $indicatorSettings,
             isLoading: viewModel?.isLoading ?? false,
             onIntervalChange: { newInterval in
                 guard let vm = viewModel else { return }
                 // Reset overlay range when interval changes
                 vm.resetOverlayRange()
                 Task {
-                    await vm.setTimeInterval(newInterval, visibleCount: visibleCount)
+                    await vm.setTimeInterval(newInterval)
                     await vm.loadVisibleOverlays()
                 }
-            },
-            onIndicatorsChange: { newSettings in
-                // Persist to AppStorage
-                indicatorSettingsData = newSettings.toData()
             }
         )
     }

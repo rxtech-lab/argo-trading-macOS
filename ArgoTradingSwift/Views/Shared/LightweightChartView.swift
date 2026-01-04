@@ -15,14 +15,13 @@ struct LightweightChartView: View {
 
     let data: [PriceData]
     let chartType: ChartType
-    let candlestickWidth: CGFloat
-    let visibleCount: Int
     let isLoading: Bool
     let totalDataCount: Int
 
     var tradeOverlays: [TradeOverlay] = []
     var markOverlays: [MarkOverlay] = []
     var showTrades: Bool = true
+    var showVolume: Bool = true
     var scrollToTime: Date?
     var indicatorSettings: IndicatorSettings = .default
 
@@ -73,6 +72,12 @@ struct LightweightChartView: View {
                 guard isChartReady else { return }
                 Task {
                     try? await chartService.setIndicators(newSettings)
+                }
+            }
+            .onChange(of: showVolume) { _, visible in
+                guard isChartReady else { return }
+                Task {
+                    try? await chartService.setVolumeVisible(visible)
                 }
             }
             .onDisappear {
