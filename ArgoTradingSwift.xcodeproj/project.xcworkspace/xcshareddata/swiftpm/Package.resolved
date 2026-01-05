@@ -1,13 +1,13 @@
 {
-  "originHash" : "762a92566c90f0a3f6835d0b609567d9783cb52b767f1321f0632c9cf28d3946",
+  "originHash" : "972dcbd0ed3ec7628955072b675a79875a2cec5424634cb056648a6cd6e71b0c",
   "pins" : [
     {
       "identity" : "argo-trading",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/rxtech-lab/argo-trading",
       "state" : {
-        "revision" : "399428d1be0a5c3912795fd59a100b8a59ffb14a",
-        "version" : "1.6.0"
+        "revision" : "a10ef6792e097cb2e48ce5162c26b96b5dd5f9c1",
+        "version" : "1.8.0"
       }
     },
     {
@@ -43,7 +43,7 @@
       "location" : "https://github.com/sirily11/swift-jsonschema-form",
       "state" : {
         "branch" : "main",
-        "revision" : "d296a07d23d7690a0f3f33be6e7047ffbd8fab72"
+        "revision" : "52f93ae06df4ef0454b114cb00514554901f5886"
       }
     },
     {

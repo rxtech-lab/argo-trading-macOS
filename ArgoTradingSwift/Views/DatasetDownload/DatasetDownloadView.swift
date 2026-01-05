@@ -6,9 +6,14 @@
 //
 
 import ArgoTrading
+import JSONSchema
+import JSONSchemaForm
 import SwiftUI
 
 struct DatasetDownloadView: View {
+    @AppStorage("config") private var configData: String = "{}"
+    @AppStorage("data-provider") private var dataProvider: String = ""
+
     @Binding var document: ArgoTradingDocument
 
     @Environment(DatasetDownloadService.self) var datasetDownloadService
@@ -16,16 +21,24 @@ struct DatasetDownloadView: View {
     @Environment(ToolbarStatusService.self) var toolbarStatusService
     @Environment(\.dismiss) var dismiss
 
-    @AppStorage("ticker") private var ticker: String = ""
-    @AppStorage("start-time") private var startDate: Date = .init()
-    @AppStorage("end-time") private var endDate: Date = .init()
-    @AppStorage("span") private var timespan: Timespan = .oneMinute
-    @AppStorage("data-provider") private var dataProvider: DataProvider = .Binance
-    @AppStorage("polygon-api-key") private var polygonApiKey: String = ""
-
-    @AppStorage("writer") private var writer: DataWriter = .duckdb
-
+    private let supportedProviders: [String]
     @State private var showFilePicker: Bool = false
+    @State private var formData: FormData = .object(properties: [:])
+    @State private var controller = JSONSchemaFormController()
+
+    private var providerSchema: String {
+        let schema = SwiftargoGetDownloadClientSchema(dataProvider)
+        return schema
+    }
+
+    init(document: Binding<ArgoTradingDocument>) {
+        _document = document
+        if let providers = SwiftargoGetSupportedDownloadClients(), let stringProviders = providers as? SwiftargoStringCollection {
+            supportedProviders = stringProviders.stringArray
+        } else {
+            supportedProviders = []
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -33,7 +46,7 @@ struct DatasetDownloadView: View {
                 ProgressView(value: datasetDownloadService.currentProgress,
                              total: datasetDownloadService.totalProgress)
                 {
-                    Text("Downloading \(dataProvider.rawValue)-\(ticker)-\(formattedStartDate)-\(formattedEndDate)")
+                    Text("Downloading")
                     Text("Progress: \(datasetDownloadService.progressPercentage)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -43,42 +56,30 @@ struct DatasetDownloadView: View {
                 .navigationTitle("Downloading Dataset")
             } else {
                 Form {
-                    Section(header: Text("Data Provider")) {
-                        Picker("Data Provider", selection: $dataProvider) {
-                            ForEach(DataProvider.allCases) { provider in
-                                Text(provider.rawValue.capitalized).tag(provider)
+                    Section("Data Provider") {
+                        Picker("Provider", selection: $dataProvider) {
+                            if supportedProviders.isEmpty {
+                                Text("Loading...").tag("")
+                            }
+
+                            ForEach(supportedProviders, id: \.self) { provider in
+                                Text(provider).tag(provider)
                             }
                         }
-                        dataProvider.providerField
                     }
 
-                    Section(header: Text("Writer config")) {
-                        Picker("Writer", selection: $writer) {
-                            ForEach(DataWriter.allCases) { writer in
-                                Text(writer.rawValue).tag(writer)
-                            }
-                        }
-                        writer.writerField
-                    }
-
-                    Section(header: Text("Dataset Config")) {
-                        TextField("Ticker", text: $ticker)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-
-                        DatePicker("Start Date", selection: $startDate, displayedComponents: [.date])
-
-                        DatePicker("End Date", selection: $endDate, displayedComponents: [.date])
-
-                        Picker("Timespan", selection: $timespan) {
-                            ForEach(Timespan.allCases, id: \.self) { timespan in
-                                Text(timespan.rawValue).tag(timespan)
+                    if !dataProvider.isEmpty {
+                        Section("Provider Configuration") {
+                            if let jsonSchema = try? JSONSchema(jsonString: providerSchema) {
+                                JSONSchemaForm(schema: jsonSchema, formData: $formData, showSubmitButton: false, controller: controller)
+                            } else {
+                                Text("Failed to load provider configuration schema.")
                             }
                         }
                     }
                 }
-                .frame(minHeight: 400)
+                .disabled(datasetDownloadService.isDownloading)
                 .padding()
-                .navigationTitle("Download Dataset")
                 .formStyle(.grouped)
             }
         }
@@ -91,7 +92,9 @@ struct DatasetDownloadView: View {
                     }
                 } else {
                     Button("Download") {
-                        downloadDataset()
+                        Task {
+                            await downloadDataset()
+                        }
                     }
                 }
             }
@@ -108,38 +111,35 @@ struct DatasetDownloadView: View {
 }
 
 extension DatasetDownloadView {
-    private var formattedStartDate: String {
-        startDate.formatted(.iso8601.year().month().day().dateSeparator(.dash))
-    }
-
-    private var formattedEndDate: String {
-        endDate.formatted(.iso8601.year().month().day().dateSeparator(.dash))
-    }
-
-    func downloadDataset() {
-        guard !ticker.isEmpty else {
-            alertManager.showAlert(message: "Ticker cannot be empty")
+    func downloadDataset() async {
+        do {
+            let success = try await controller.submit()
+            if !success {
+                return
+            }
+        } catch {
+            alertManager.showAlert(message: "Please fix the errors in the form before downloading.")
             return
         }
-
-        let marketDownloader = SwiftargoNewMarketDownloader(datasetDownloadService, dataProvider.rawValue, writer.rawValue, document.dataFolder.path(percentEncoded: false), polygonApiKey)
+        let marketDownloader = SwiftargoMarketDownloader(datasetDownloadService)
         datasetDownloadService.marketDownloader = marketDownloader
 
         datasetDownloadService.toolbarStatusService = toolbarStatusService
-        datasetDownloadService.currentTicker = ticker
-
         // Move download process to background thread
         datasetDownloadService.downloadTask = Task.detached {
             do {
                 await MainActor.run {
                     self.datasetDownloadService.isDownloading = true
                 }
-                try await marketDownloader!.download(self.ticker, from: self.startDate.ISO8601Format(), to: self.endDate.ISO8601Format(), interval: self.timespan.rawValue)
+
+                let jsonEncoder = JSONEncoder()
+                let configData = try jsonEncoder.encode(self.formData)
+                try await marketDownloader!.download(withConfig: dataProvider, configJSON: String(data: configData, encoding: .utf8) ?? "{}", dataFolder: document.dataFolder.path(percentEncoded: false))
 
                 // Check cancellation before dismissing
                 if !Task.isCancelled {
                     await self.toolbarStatusService.setStatus(.finished(
-                        message: "Downloaded \(self.ticker)",
+                        message: "Downloaded",
                         at: Date()
                     ))
                     await dismiss()
