@@ -426,3 +426,359 @@ struct ChartMessageTypeTests {
         #expect(ChartMessageType.consoleLog.rawValue == "consoleLog")
     }
 }
+
+// MARK: - Crosshair Data Parsing Tests
+
+@Suite("Crosshair Data Parsing Tests")
+struct CrosshairDataParsingTests {
+    @Test("parseCrosshairData returns empty data for non-dictionary input")
+    func parseNonDictionary() {
+        let result = parseCrosshairData(from: "invalid")
+        #expect(result.time == nil)
+        #expect(result.price == nil)
+        #expect(result.globalIndex == nil)
+        #expect(result.ohlcv == nil)
+    }
+
+    @Test("parseCrosshairData returns empty data for empty dictionary")
+    func parseEmptyDictionary() {
+        let result = parseCrosshairData(from: [:] as [String: Any])
+        #expect(result.time == nil)
+        #expect(result.price == nil)
+        #expect(result.globalIndex == nil)
+        #expect(result.ohlcv == nil)
+    }
+
+    @Test("parseCrosshairData parses time correctly")
+    func parseTime() {
+        let input: [String: Any] = ["time": 1704067200.0]
+        let result = parseCrosshairData(from: input)
+        #expect(result.time == 1704067200.0)
+    }
+
+    @Test("parseCrosshairData parses price correctly")
+    func parsePrice() {
+        let input: [String: Any] = ["price": 42000.50]
+        let result = parseCrosshairData(from: input)
+        #expect(result.price == 42000.50)
+    }
+
+    @Test("parseCrosshairData parses globalIndex correctly")
+    func parseGlobalIndex() {
+        let input: [String: Any] = ["globalIndex": 42]
+        let result = parseCrosshairData(from: input)
+        #expect(result.globalIndex == 42)
+    }
+
+    @Test("parseCrosshairData parses complete OHLCV data")
+    func parseOHLCV() {
+        let ohlcvDict: [String: Any] = [
+            "open": 100.0,
+            "high": 110.0,
+            "low": 95.0,
+            "close": 105.0,
+            "volume": 1000000.0
+        ]
+        let input: [String: Any] = ["ohlcv": ohlcvDict]
+        let result = parseCrosshairData(from: input)
+
+        #expect(result.ohlcv != nil)
+        #expect(result.ohlcv?.open == 100.0)
+        #expect(result.ohlcv?.high == 110.0)
+        #expect(result.ohlcv?.low == 95.0)
+        #expect(result.ohlcv?.close == 105.0)
+        #expect(result.ohlcv?.volume == 1000000.0)
+    }
+
+    @Test("parseCrosshairData handles partial OHLCV data with defaults")
+    func parsePartialOHLCV() {
+        let ohlcvDict: [String: Any] = ["open": 100.0, "close": 105.0]
+        let input: [String: Any] = ["ohlcv": ohlcvDict]
+        let result = parseCrosshairData(from: input)
+
+        #expect(result.ohlcv?.open == 100.0)
+        #expect(result.ohlcv?.high == 0)
+        #expect(result.ohlcv?.low == 0)
+        #expect(result.ohlcv?.close == 105.0)
+        #expect(result.ohlcv?.volume == 0)
+    }
+
+    @Test("parseCrosshairData parses complete data")
+    func parseCompleteData() {
+        let ohlcvDict: [String: Any] = [
+            "open": 100.0, "high": 110.0, "low": 95.0,
+            "close": 105.0, "volume": 1000000.0
+        ]
+        let input: [String: Any] = [
+            "time": 1704067200.0,
+            "price": 105.0,
+            "globalIndex": 42,
+            "ohlcv": ohlcvDict
+        ]
+        let result = parseCrosshairData(from: input)
+
+        #expect(result.time == 1704067200.0)
+        #expect(result.price == 105.0)
+        #expect(result.globalIndex == 42)
+        #expect(result.ohlcv?.close == 105.0)
+    }
+}
+
+// MARK: - Marker Hover Data Parsing Tests
+
+@Suite("Marker Hover Data Parsing Tests")
+struct MarkerHoverDataParsingTests {
+    @Test("parseMarkerHoverData returns nil for non-dictionary input")
+    func parseNonDictionary() {
+        let result = parseMarkerHoverData(from: "invalid")
+        #expect(result == nil)
+    }
+
+    @Test("parseMarkerHoverData returns nil for empty dictionary")
+    func parseEmptyDictionary() {
+        let result = parseMarkerHoverData(from: [:] as [String: Any])
+        #expect(result == nil)
+    }
+
+    @Test("parseMarkerHoverData returns nil when markers array is missing")
+    func parseMissingMarkers() {
+        let input: [String: Any] = [
+            "screenX": 100.0,
+            "screenY": 200.0
+        ]
+        let result = parseMarkerHoverData(from: input)
+        #expect(result == nil)
+    }
+
+    @Test("parseMarkerHoverData returns nil when screenX is missing")
+    func parseMissingScreenX() {
+        let input: [String: Any] = [
+            "markers": [] as [[String: Any]],
+            "screenY": 200.0
+        ]
+        let result = parseMarkerHoverData(from: input)
+        #expect(result == nil)
+    }
+
+    @Test("parseMarkerHoverData returns nil when screenY is missing")
+    func parseMissingScreenY() {
+        let input: [String: Any] = [
+            "markers": [] as [[String: Any]],
+            "screenX": 100.0
+        ]
+        let result = parseMarkerHoverData(from: input)
+        #expect(result == nil)
+    }
+
+    @Test("parseMarkerHoverData parses empty markers array")
+    func parseEmptyMarkersArray() {
+        let input: [String: Any] = [
+            "markers": [] as [[String: Any]],
+            "screenX": 100.0,
+            "screenY": 200.0
+        ]
+        let result = parseMarkerHoverData(from: input)
+
+        #expect(result != nil)
+        #expect(result?.markers.isEmpty == true)
+        #expect(result?.screenX == 100.0)
+        #expect(result?.screenY == 200.0)
+    }
+
+    @Test("parseMarkerHoverData parses trade marker")
+    func parseTradeMarker() {
+        let markerDict: [String: Any] = [
+            "markerType": "trade",
+            "time": 1704067200.0,
+            "isBuy": true,
+            "symbol": "BTCUSDT",
+            "positionType": "LONG",
+            "executedQty": 0.5,
+            "executedPrice": 42000.0,
+            "pnl": 500.0,
+            "reason": "RSI oversold"
+        ]
+        let input: [String: Any] = [
+            "markers": [markerDict],
+            "screenX": 150.0,
+            "screenY": 250.0
+        ]
+        let result = parseMarkerHoverData(from: input)
+
+        #expect(result != nil)
+        #expect(result?.markers.count == 1)
+
+        let marker = result?.markers.first
+        #expect(marker?.markerType == "trade")
+        #expect(marker?.time == 1704067200.0)
+        #expect(marker?.isBuy == true)
+        #expect(marker?.symbol == "BTCUSDT")
+        #expect(marker?.positionType == "LONG")
+        #expect(marker?.executedQty == 0.5)
+        #expect(marker?.executedPrice == 42000.0)
+        #expect(marker?.pnl == 500.0)
+        #expect(marker?.reason == "RSI oversold")
+    }
+
+    @Test("parseMarkerHoverData parses mark marker")
+    func parseMarkMarker() {
+        let markerDict: [String: Any] = [
+            "markerType": "mark",
+            "time": 1704067200.0,
+            "title": "RSI Signal",
+            "color": "#ffc107",
+            "category": "Technical",
+            "message": "RSI crossed threshold",
+            "signalType": "BUY",
+            "signalReason": "RSI < 30"
+        ]
+        let input: [String: Any] = [
+            "markers": [markerDict],
+            "screenX": 150.0,
+            "screenY": 250.0
+        ]
+        let result = parseMarkerHoverData(from: input)
+
+        #expect(result != nil)
+        let marker = result?.markers.first
+        #expect(marker?.markerType == "mark")
+        #expect(marker?.title == "RSI Signal")
+        #expect(marker?.color == "#ffc107")
+        #expect(marker?.category == "Technical")
+        #expect(marker?.message == "RSI crossed threshold")
+        #expect(marker?.signalType == "BUY")
+        #expect(marker?.signalReason == "RSI < 30")
+    }
+
+    @Test("parseMarkerHoverData parses multiple markers")
+    func parseMultipleMarkers() {
+        let tradeMarker: [String: Any] = [
+            "markerType": "trade",
+            "time": 1704067200.0
+        ]
+        let markMarker: [String: Any] = [
+            "markerType": "mark",
+            "time": 1704067300.0
+        ]
+        let input: [String: Any] = [
+            "markers": [tradeMarker, markMarker],
+            "screenX": 100.0,
+            "screenY": 200.0
+        ]
+        let result = parseMarkerHoverData(from: input)
+
+        #expect(result?.markers.count == 2)
+    }
+
+    @Test("parseMarkerHoverData filters out invalid markers")
+    func parseFiltersInvalidMarkers() {
+        let validMarker: [String: Any] = [
+            "markerType": "trade",
+            "time": 1704067200.0
+        ]
+        let invalidMarker: [String: Any] = [
+            "markerType": "trade"
+            // missing required 'time' field
+        ]
+        let input: [String: Any] = [
+            "markers": [validMarker, invalidMarker],
+            "screenX": 100.0,
+            "screenY": 200.0
+        ]
+        let result = parseMarkerHoverData(from: input)
+
+        #expect(result?.markers.count == 1)
+    }
+
+    @Test("parseMarkerHoverData handles markers with missing optional fields")
+    func parseMarkersWithMissingOptionalFields() {
+        let markerDict: [String: Any] = [
+            "markerType": "trade",
+            "time": 1704067200.0
+        ]
+        let input: [String: Any] = [
+            "markers": [markerDict],
+            "screenX": 100.0,
+            "screenY": 200.0
+        ]
+        let result = parseMarkerHoverData(from: input)
+
+        let marker = result?.markers.first
+        #expect(marker?.isBuy == nil)
+        #expect(marker?.symbol == nil)
+        #expect(marker?.executedPrice == nil)
+    }
+}
+
+// MARK: - MIME Type Tests
+
+@Suite("MIME Type Tests")
+struct MIMETypeTests {
+    @Test("HTML files return text/html")
+    func htmlMimeType() {
+        #expect(mimeType(for: "html") == "text/html")
+        #expect(mimeType(for: "HTML") == "text/html")
+    }
+
+    @Test("JavaScript files return application/javascript")
+    func jsMimeType() {
+        #expect(mimeType(for: "js") == "application/javascript")
+        #expect(mimeType(for: "JS") == "application/javascript")
+    }
+
+    @Test("CSS files return text/css")
+    func cssMimeType() {
+        #expect(mimeType(for: "css") == "text/css")
+    }
+
+    @Test("JSON files return application/json")
+    func jsonMimeType() {
+        #expect(mimeType(for: "json") == "application/json")
+    }
+
+    @Test("PNG files return image/png")
+    func pngMimeType() {
+        #expect(mimeType(for: "png") == "image/png")
+    }
+
+    @Test("JPEG files return image/jpeg")
+    func jpegMimeType() {
+        #expect(mimeType(for: "jpg") == "image/jpeg")
+        #expect(mimeType(for: "jpeg") == "image/jpeg")
+        #expect(mimeType(for: "JPEG") == "image/jpeg")
+    }
+
+    @Test("SVG files return image/svg+xml")
+    func svgMimeType() {
+        #expect(mimeType(for: "svg") == "image/svg+xml")
+    }
+
+    @Test("Unknown extensions return application/octet-stream")
+    func unknownMimeType() {
+        #expect(mimeType(for: "xyz") == "application/octet-stream")
+        #expect(mimeType(for: "") == "application/octet-stream")
+        #expect(mimeType(for: "txt") == "application/octet-stream")
+    }
+}
+
+// MARK: - DefaultChartLogger Tests
+
+@Suite("DefaultChartLogger Tests")
+struct DefaultChartLoggerTests {
+    @Test("DefaultChartLogger can be instantiated")
+    func defaultLoggerInit() {
+        let logger = DefaultChartLogger()
+        #expect(logger is ChartLogger)
+    }
+
+    @Test("DefaultChartLogger methods execute without throwing")
+    func loggerMethodsDoNotThrow() {
+        let logger = DefaultChartLogger()
+        // These should silently succeed (no-op implementation)
+        logger.debug("test debug")
+        logger.info("test info")
+        logger.warning("test warning")
+        logger.error("test error")
+        // If we get here without crashing, test passes
+    }
+}

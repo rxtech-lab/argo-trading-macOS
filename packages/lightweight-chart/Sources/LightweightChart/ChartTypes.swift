@@ -7,12 +7,40 @@
 
 import Foundation
 
+/// Price data for a single ticker
+public struct PriceData: Codable, Hashable, Identifiable {
+    public let globalIndex: Int
+    public let date: Date
+    public let ticker: String
+    public let open: Double
+    public let high: Double
+    public let low: Double
+    public let close: Double
+    public let volume: Double
+
+    public var id: Int { globalIndex }
+
+    public init(
+        globalIndex: Int, date: Date, ticker: String, open: Double, high: Double, low: Double,
+        close: Double, volume: Double
+    ) {
+        self.globalIndex = globalIndex
+        self.date = date
+        self.ticker = ticker
+        self.open = open
+        self.high = high
+        self.low = low
+        self.close = close
+        self.volume = volume
+    }
+}
+
 // MARK: - Message Types
 
 /// Message types sent from JavaScript to Swift
 public enum ChartMessageType: String, CaseIterable, Sendable {
-    case pageLoaded // JS functions are available (page finished loading)
-    case ready // Chart initialized and ready for data
+    case pageLoaded  // JS functions are available (page finished loading)
+    case ready  // Chart initialized and ready for data
     case visibleRangeChange
     case crosshairMove
     case markerHover
@@ -156,7 +184,10 @@ public struct CandlestickDataJS: Codable, Sendable {
     public let globalIndex: Int
     public let volume: Double
 
-    public init(time: Double, open: Double, high: Double, low: Double, close: Double, globalIndex: Int, volume: Double) {
+    public init(
+        time: Double, open: Double, high: Double, low: Double, close: Double, globalIndex: Int,
+        volume: Double
+    ) {
         self.time = time
         self.open = open
         self.high = high
@@ -183,7 +214,7 @@ public struct LineDataJS: Codable, Sendable {
 }
 
 /// Marker data for JavaScript
-public struct MarkerDataJS: Codable, Sendable {
+public struct MarkerDataJS: Codable, Sendable, Equatable {
     public let time: Double
     public let position: String
     public let color: String
@@ -370,10 +401,8 @@ public struct IndicatorConfig: Codable, Identifiable, Hashable, Sendable {
     }
 
     public static func == (lhs: IndicatorConfig, rhs: IndicatorConfig) -> Bool {
-        lhs.id == rhs.id &&
-            lhs.isEnabled == rhs.isEnabled &&
-            lhs.parameters == rhs.parameters &&
-            lhs.color == rhs.color
+        lhs.id == rhs.id && lhs.isEnabled == rhs.isEnabled && lhs.parameters == rhs.parameters
+            && lhs.color == rhs.color
     }
 }
 
@@ -405,7 +434,7 @@ public struct IndicatorSettings: Codable, Equatable, Sendable {
     /// Decode from JSON Data
     public static func fromData(_ data: Data?) -> IndicatorSettings {
         guard let data = data,
-              let settings = try? JSONDecoder().decode(IndicatorSettings.self, from: data)
+            let settings = try? JSONDecoder().decode(IndicatorSettings.self, from: data)
         else {
             return .default
         }
@@ -429,5 +458,32 @@ public enum LightweightChartError: Error, LocalizedError, Sendable {
         case .resourceNotFound(let resource):
             return "Resource not found: \(resource)"
         }
+    }
+}
+
+// MARK: - PriceData Conversions
+
+extension PriceData {
+    /// Convert to CandlestickDataJS for JavaScript chart
+    public func toCandlestickJS() -> CandlestickDataJS {
+        CandlestickDataJS(
+            time: date.timeIntervalSince1970,
+            open: open,
+            high: high,
+            low: low,
+            close: close,
+            globalIndex: globalIndex,
+            volume: volume
+        )
+    }
+
+    /// Convert to LineDataJS for JavaScript chart (uses close price as value)
+    public func toLineJS() -> LineDataJS {
+        LineDataJS(
+            time: date.timeIntervalSince1970,
+            value: close,
+            globalIndex: globalIndex,
+            volume: volume
+        )
     }
 }

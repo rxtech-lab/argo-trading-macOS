@@ -7,6 +7,7 @@
 
 @testable import ArgoTradingSwift
 import Foundation
+import LightweightChart
 import Testing
 
 // MARK: - Mock DuckDB Service
@@ -372,7 +373,7 @@ struct LoadMoreAtEndTests {
 
         // Now we should be around offset 50 (200 - 150), with data up to ~350
         let lastIndexBefore = viewModel.loadedData.last?.globalIndex ?? 0
-        #expect(lastIndexBefore < 999)  // Ensure we're not at the end
+        #expect(lastIndexBefore < 999) // Ensure we're not at the end
 
         await viewModel.loadMoreAtEnd()
 
@@ -480,7 +481,7 @@ struct TimeIntervalTests {
 
     @Test func variousIntervals_workCorrectly() async throws {
         let mockService = MockDuckDBService()
-        mockService.mockTotalCount = 86400  // 1 day of seconds
+        mockService.mockTotalCount = 86400 // 1 day of seconds
         mockService.mockPriceData = createMockPriceData(count: 86400)
         mockService.mockAggregatedCounts[.oneMinute] = 1440
         mockService.mockAggregatedCounts[.oneHour] = 24
@@ -893,7 +894,7 @@ struct ScrollGuardTests {
         // Loaded indices 500-999
 
         // Trigger programmatic scroll within loaded range (sets guard but doesn't reload)
-        mockService.mockOffsetForTimestamp = 700  // Within 500-999 range
+        mockService.mockOffsetForTimestamp = 700 // Within 500-999 range
         await viewModel.scrollToTimestamp(Date())
 
         // Wait for guard to expire (500ms + buffer)

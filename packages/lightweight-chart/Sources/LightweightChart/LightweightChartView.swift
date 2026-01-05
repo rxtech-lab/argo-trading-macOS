@@ -13,8 +13,7 @@ import WebKit
 public struct LightweightChartView: View {
     // MARK: - Properties
 
-    public let candlestickData: [CandlestickDataJS]
-    public let lineData: [LineDataJS]
+    public let data: [PriceData]
     public let chartType: ChartType
     public let isLoading: Bool
     public let totalDataCount: Int
@@ -36,11 +35,13 @@ public struct LightweightChartView: View {
     @State private var scrollSubject = PassthroughSubject<JSVisibleRange, Never>()
     @State private var scrollCancellable: AnyCancellable?
 
+    // Tooltip state
+    @State private var tooltipData: JSMarkerHoverData?
+
     // MARK: - Initializers
 
     public init(
-        candlestickData: [CandlestickDataJS] = [],
-        lineData: [LineDataJS] = [],
+        data: [PriceData],
         chartType: ChartType,
         isLoading: Bool,
         totalDataCount: Int,
@@ -53,8 +54,7 @@ public struct LightweightChartView: View {
         onSelectionChange: ((Int?) -> Void)? = nil,
         onMarkerHover: ((JSMarkerHoverData?) -> Void)? = nil
     ) {
-        self.candlestickData = candlestickData
-        self.lineData = lineData
+        self.data = data
         self.chartType = chartType
         self.isLoading = isLoading
         self.totalDataCount = totalDataCount
@@ -73,47 +73,60 @@ public struct LightweightChartView: View {
             .task {
                 await initializeChart()
             }
-            .onChange(of: candlestickData) { _, _ in
-                Task { await updateChartData() }
-            }
-            .onChange(of: lineData) { _, _ in
-                Task { await updateChartData() }
-            }
-            .onChange(of: chartType) { _, newType in
-                Task {
-                    try? await chartService.switchChartType(newType)
-                    await updateChartData()
-                }
-            }
-            .onChange(of: markers) { _, _ in
-                Task { await updateMarkers() }
-            }
-            .onChange(of: showTrades) { _, visible in
-                Task { try? await chartService.setMarkersVisible(visible, type: "trade") }
-            }
-            .onChange(of: scrollToTime) { _, newTime in
-                guard let time = newTime, isChartReady else { return }
-                Task {
-                    try? await chartService.scrollToTime(time)
-                }
-            }
-            .onChange(of: indicatorSettings) { _, newSettings in
-                guard isChartReady else { return }
-                Task {
-                    try? await chartService.setIndicators(newSettings)
-                }
-            }
-            .onChange(of: showVolume) { _, visible in
-                guard isChartReady else { return }
-                Task {
-                    try? await chartService.setVolumeVisible(visible)
-                }
-            }
+            .onChange(of: data, handleDataChange)
+            .onChange(of: chartType, handleChartTypeChange)
+            .onChange(of: markers, handleMarkersChange)
+            .onChange(of: showTrades, handleShowTradesChange)
+            .onChange(of: scrollToTime, handleScrollToTimeChange)
+            .onChange(of: indicatorSettings, handleIndicatorSettingsChange)
+            .onChange(of: showVolume, handleShowVolumeChange)
             .onDisappear {
                 Task {
                     await chartService.onClean()
                 }
             }
+    }
+
+    private func handleDataChange(_: [PriceData], _: [PriceData]) {
+        Task { await updateChartData() }
+    }
+
+    private func handleChartTypeChange(_: ChartType, _ newType: ChartType) {
+        Task {
+            try? await chartService.switchChartType(newType)
+            await updateChartData()
+        }
+    }
+
+    private func handleMarkersChange(_: [MarkerDataJS], _: [MarkerDataJS]) {
+        Task { await updateMarkers() }
+    }
+
+    private func handleShowTradesChange(_: Bool, _ visible: Bool) {
+        Task { try? await chartService.setMarkersVisible(visible, type: "trade") }
+    }
+
+    private func handleScrollToTimeChange(_: Date?, _ newTime: Date?) {
+        guard let time = newTime, isChartReady else { return }
+        Task {
+            try? await chartService.scrollToTime(time)
+        }
+    }
+
+    private func handleIndicatorSettingsChange(
+        _: IndicatorSettings, _ newSettings: IndicatorSettings
+    ) {
+        guard isChartReady else { return }
+        Task {
+            try? await chartService.setIndicators(newSettings)
+        }
+    }
+
+    private func handleShowVolumeChange(_: Bool, _ visible: Bool) {
+        guard isChartReady else { return }
+        Task {
+            try? await chartService.setVolumeVisible(visible)
+        }
     }
 
     @ViewBuilder
@@ -132,13 +145,52 @@ public struct LightweightChartView: View {
             ProgressView("Loading chart data...")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            WebView(chartService.webpage)
-                .webViewContentBackground(.hidden)
+            GeometryReader { geometry in
+                ZStack(alignment: .topLeading) {
+                    WebView(chartService.webpage)
+                        .webViewContentBackground(.hidden)
+
+                    // Native tooltip overlay
+                    if let data = tooltipData {
+                        ChartMarkerTooltip(data: data)
+                            .position(tooltipPosition(for: data, in: geometry.size))
+                            .transition(.opacity.animation(.easeInOut(duration: 0.15)))
+                    }
+                }
+            }
         }
     }
 
+    /// Calculate tooltip position, adjusting for screen edges
+    private func tooltipPosition(for data: JSMarkerHoverData, in size: CGSize) -> CGPoint {
+        let tooltipWidth: CGFloat = 260
+        let tooltipHeight: CGFloat = 200
+        let padding: CGFloat = 15
+
+        var x = data.screenX + padding
+        var y = data.screenY - 10
+
+        // Adjust if tooltip would go off right edge
+        if x + tooltipWidth > size.width {
+            x = data.screenX - tooltipWidth - padding
+        }
+
+        // Adjust if tooltip would go off bottom edge
+        if y + tooltipHeight > size.height {
+            y = size.height - tooltipHeight - 10
+        }
+
+        // Ensure tooltip doesn't go above top edge
+        if y < 10 {
+            y = 10
+        }
+
+        // Position is center of the view, so adjust for tooltip size
+        return CGPoint(x: x + tooltipWidth / 2, y: y + tooltipHeight / 2)
+    }
+
     private var hasNoData: Bool {
-        candlestickData.isEmpty && lineData.isEmpty
+        data.isEmpty
     }
 
     private func initializeChart() async {
@@ -165,7 +217,8 @@ public struct LightweightChartView: View {
     // MARK: - Private Methods
 
     private func setupCallbacks() {
-        scrollCancellable = scrollSubject
+        scrollCancellable =
+            scrollSubject
             .debounce(for: .milliseconds(40), scheduler: RunLoop.main)
             .removeDuplicates()
             .sink { range in
@@ -178,12 +231,13 @@ public struct LightweightChartView: View {
             scrollSubject.send(range)
         }
 
-        chartService.onCrosshairMove = { data in
-            onSelectionChange?(data.globalIndex)
+        chartService.onCrosshairMove = { crosshairData in
+            onSelectionChange?(crosshairData.globalIndex)
         }
 
-        chartService.onMarkerHover = { data in
-            onMarkerHover?(data)
+        chartService.onMarkerHover = { hoverData in
+            tooltipData = hoverData
+            onMarkerHover?(hoverData)
         }
     }
 
@@ -202,15 +256,15 @@ public struct LightweightChartView: View {
 
     @MainActor
     private func updateChartData() async {
-        guard isChartReady else { return }
+        guard isChartReady, !data.isEmpty else { return }
 
         do {
             if chartType == .candlestick {
-                guard !candlestickData.isEmpty else { return }
-                try await chartService.setCandlestickData(candlestickData)
+                let jsData = data.map { $0.toCandlestickJS() }
+                try await chartService.setCandlestickData(jsData)
             } else {
-                guard !lineData.isEmpty else { return }
-                try await chartService.setLineData(lineData)
+                let jsData = data.map { $0.toLineJS() }
+                try await chartService.setLineData(jsData)
             }
         } catch {
             // Error handling

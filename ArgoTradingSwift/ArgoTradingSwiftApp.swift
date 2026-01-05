@@ -5,6 +5,7 @@
 //  Created by Qiwei Li on 4/20/25.
 //
 
+import LightweightChart
 import SwiftUI
 
 class AppDelegate: NSObject, NSApplicationDelegate {

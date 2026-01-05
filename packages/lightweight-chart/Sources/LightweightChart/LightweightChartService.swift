@@ -34,8 +34,9 @@ public struct ChartSchemeHandler: URLSchemeHandler {
     private let bundle: Bundle
     private let logger: ChartLogger
 
-    public init(bundle: Bundle = Bundle.module, logger: ChartLogger = DefaultChartLogger()) {
-        self.bundle = bundle
+    public init(bundle: Bundle? = nil, logger: ChartLogger = DefaultChartLogger()) {
+        // Resolve to the package bundle by default when not provided
+        self.bundle = bundle ?? Bundle.module
         self.logger = logger
     }
 
@@ -68,21 +69,11 @@ public struct ChartSchemeHandler: URLSchemeHandler {
             }
 
             // Determine MIME type based on file extension
-            let mimeType: String
-            switch fileExtension.lowercased() {
-            case "html": mimeType = "text/html"
-            case "js": mimeType = "application/javascript"
-            case "css": mimeType = "text/css"
-            case "json": mimeType = "application/json"
-            case "png": mimeType = "image/png"
-            case "jpg", "jpeg": mimeType = "image/jpeg"
-            case "svg": mimeType = "image/svg+xml"
-            default: mimeType = "application/octet-stream"
-            }
+            let mimeTypeValue = mimeType(for: fileExtension)
 
             let response = URLResponse(
                 url: url,
-                mimeType: mimeType,
+                mimeType: mimeTypeValue,
                 expectedContentLength: pageData.count,
                 textEncodingName: "utf-8"
             )
@@ -90,6 +81,90 @@ public struct ChartSchemeHandler: URLSchemeHandler {
             continuation.yield(.data(pageData))
             continuation.finish()
         }
+    }
+}
+
+// MARK: - Parsing Functions (internal for testing)
+
+/// Parse crosshair data from JavaScript message body
+func parseCrosshairData(from body: Any) -> JSCrosshairData {
+    guard let dict = body as? [String: Any] else {
+        return JSCrosshairData(time: nil, price: nil, globalIndex: nil, ohlcv: nil)
+    }
+
+    let time = dict["time"] as? Double
+    let price = dict["price"] as? Double
+    let globalIndex = dict["globalIndex"] as? Int
+
+    var ohlcv: JSOHLCV?
+    if let ohlcvDict = dict["ohlcv"] as? [String: Any] {
+        ohlcv = JSOHLCV(
+            open: ohlcvDict["open"] as? Double ?? 0,
+            high: ohlcvDict["high"] as? Double ?? 0,
+            low: ohlcvDict["low"] as? Double ?? 0,
+            close: ohlcvDict["close"] as? Double ?? 0,
+            volume: ohlcvDict["volume"] as? Double ?? 0
+        )
+    }
+
+    return JSCrosshairData(time: time, price: price, globalIndex: globalIndex, ohlcv: ohlcv)
+}
+
+/// Parse marker hover data from JavaScript message body
+func parseMarkerHoverData(from body: Any) -> JSMarkerHoverData? {
+    guard let dict = body as? [String: Any] else {
+        return nil
+    }
+
+    guard let markersArray = dict["markers"] as? [[String: Any]],
+          let screenX = dict["screenX"] as? Double,
+          let screenY = dict["screenY"] as? Double else {
+        return nil
+    }
+
+    let markers = markersArray.compactMap { markerDict -> JSMarkerInfo? in
+        guard let markerType = markerDict["markerType"] as? String,
+              let time = markerDict["time"] as? Double else {
+            return nil
+        }
+
+        return JSMarkerInfo(
+            markerType: markerType,
+            time: time,
+            isBuy: markerDict["isBuy"] as? Bool,
+            symbol: markerDict["symbol"] as? String,
+            positionType: markerDict["positionType"] as? String,
+            executedQty: markerDict["executedQty"] as? Double,
+            executedPrice: markerDict["executedPrice"] as? Double,
+            pnl: markerDict["pnl"] as? Double,
+            reason: markerDict["reason"] as? String,
+            title: markerDict["title"] as? String,
+            color: markerDict["color"] as? String,
+            category: markerDict["category"] as? String,
+            message: markerDict["message"] as? String,
+            signalType: markerDict["signalType"] as? String,
+            signalReason: markerDict["signalReason"] as? String
+        )
+    }
+
+    return JSMarkerHoverData(
+        markers: markers,
+        screenX: CGFloat(screenX),
+        screenY: CGFloat(screenY)
+    )
+}
+
+/// Determine MIME type for a file extension
+func mimeType(for fileExtension: String) -> String {
+    switch fileExtension.lowercased() {
+    case "html": return "text/html"
+    case "js": return "application/javascript"
+    case "css": return "text/css"
+    case "json": return "application/json"
+    case "png": return "image/png"
+    case "jpg", "jpeg": return "image/jpeg"
+    case "svg": return "image/svg+xml"
+    default: return "application/octet-stream"
     }
 }
 
@@ -139,11 +214,11 @@ public final class ChartMessageHandler: NSObject, WKScriptMessageHandler, @unche
                 self.onVisibleRangeChange?(JSVisibleRange(from: from, to: to))
 
             case .crosshairMove:
-                let data = self.parseCrosshairData(from: body)
+                let data = parseCrosshairData(from: body)
                 self.onCrosshairMove?(data)
 
             case .markerHover:
-                let data = self.parseMarkerHoverData(from: body)
+                let data = parseMarkerHoverData(from: body)
                 self.onMarkerHover?(data)
 
             case .consoleLog:
@@ -153,72 +228,6 @@ public final class ChartMessageHandler: NSObject, WKScriptMessageHandler, @unche
                 self.onConsoleLog?(level, msg)
             }
         }
-    }
-
-    private func parseCrosshairData(from body: Any) -> JSCrosshairData {
-        guard let dict = body as? [String: Any] else {
-            return JSCrosshairData(time: nil, price: nil, globalIndex: nil, ohlcv: nil)
-        }
-
-        let time = dict["time"] as? Double
-        let price = dict["price"] as? Double
-        let globalIndex = dict["globalIndex"] as? Int
-
-        var ohlcv: JSOHLCV?
-        if let ohlcvDict = dict["ohlcv"] as? [String: Any] {
-            ohlcv = JSOHLCV(
-                open: ohlcvDict["open"] as? Double ?? 0,
-                high: ohlcvDict["high"] as? Double ?? 0,
-                low: ohlcvDict["low"] as? Double ?? 0,
-                close: ohlcvDict["close"] as? Double ?? 0,
-                volume: ohlcvDict["volume"] as? Double ?? 0
-            )
-        }
-
-        return JSCrosshairData(time: time, price: price, globalIndex: globalIndex, ohlcv: ohlcv)
-    }
-
-    private func parseMarkerHoverData(from body: Any) -> JSMarkerHoverData? {
-        guard let dict = body as? [String: Any] else {
-            return nil
-        }
-
-        guard let markersArray = dict["markers"] as? [[String: Any]],
-              let screenX = dict["screenX"] as? Double,
-              let screenY = dict["screenY"] as? Double else {
-            return nil
-        }
-
-        let markers = markersArray.compactMap { markerDict -> JSMarkerInfo? in
-            guard let markerType = markerDict["markerType"] as? String,
-                  let time = markerDict["time"] as? Double else {
-                return nil
-            }
-
-            return JSMarkerInfo(
-                markerType: markerType,
-                time: time,
-                isBuy: markerDict["isBuy"] as? Bool,
-                symbol: markerDict["symbol"] as? String,
-                positionType: markerDict["positionType"] as? String,
-                executedQty: markerDict["executedQty"] as? Double,
-                executedPrice: markerDict["executedPrice"] as? Double,
-                pnl: markerDict["pnl"] as? Double,
-                reason: markerDict["reason"] as? String,
-                title: markerDict["title"] as? String,
-                color: markerDict["color"] as? String,
-                category: markerDict["category"] as? String,
-                message: markerDict["message"] as? String,
-                signalType: markerDict["signalType"] as? String,
-                signalReason: markerDict["signalReason"] as? String
-            )
-        }
-
-        return JSMarkerHoverData(
-            markers: markers,
-            screenX: CGFloat(screenX),
-            screenY: CGFloat(screenY)
-        )
     }
 
     /// Creates a WKUserContentController with all message handlers registered
@@ -484,3 +493,4 @@ public final class LightweightChartService {
         }
     }
 }
+

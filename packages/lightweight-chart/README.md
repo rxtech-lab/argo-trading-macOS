@@ -43,18 +43,21 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var chartService = LightweightChartService()
-    
+    @State private var priceData: [PriceData] = []
+
     var body: some View {
         LightweightChartView(
-            candlestickData: myCandlestickData,
+            data: priceData,
             chartType: .candlestick,
             isLoading: false,
-            totalDataCount: myCandlestickData.count
+            totalDataCount: priceData.count
         )
         .environment(chartService)
     }
 }
 ```
+
+The `LightweightChartView` accepts `PriceData` and automatically converts it to the appropriate JavaScript format based on the selected `chartType`.
 
 ### Chart Types
 
@@ -64,7 +67,7 @@ The package provides these main types:
 - `LightweightChartView` - SwiftUI view wrapper for the chart
 - `ChartMarkerTooltip` - Native tooltip view for marker information
 - `ChartType` - Enum for chart type (`.line`, `.candlestick`)
-- `CandlestickDataJS` / `LineDataJS` - Data structures for chart data
+- `PriceData` - Primary data structure for OHLCV price data
 - `MarkerDataJS` - Data structure for chart markers
 - `IndicatorSettings` / `IndicatorConfig` - Configuration for technical indicators
 

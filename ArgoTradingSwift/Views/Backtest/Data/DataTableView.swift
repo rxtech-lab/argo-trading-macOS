@@ -5,6 +5,7 @@
 //  Created by Claude on 12/22/25.
 //
 
+import LightweightChart
 import SwiftUI
 
 struct DataTableView: View {
@@ -12,6 +13,7 @@ struct DataTableView: View {
 
     @Environment(DuckDBService.self) private var dbService
     @Environment(AlertManager.self) private var alertManager
+    @Environment(BacktestResultService.self) private var backtestResultService
 
     @State private var data: PaginationResult<PriceData> = PaginationResult(items: [], total: 0, page: 0, pageSize: 0)
     @State private var selectedRows: Set<Int> = []
@@ -136,6 +138,11 @@ struct DataTableView: View {
                 await loadDataset(with: 1)
             }
         }
+        .onChange(of: selectedRows) { _, newSelection in
+            guard let firstIndex = newSelection.first,
+                  let priceData = data.items.first(where: { $0.globalIndex == firstIndex }) else { return }
+            backtestResultService.scrollChartToTimestamp(priceData.date, dataFilePath: url.path)
+        }
     }
 }
 
@@ -185,4 +192,5 @@ extension DataTableView {
     DataTableView(url: URL(fileURLWithPath: "/tmp/test.parquet"))
         .environment(DuckDBService())
         .environment(AlertManager())
+        .environment(BacktestResultService())
 }

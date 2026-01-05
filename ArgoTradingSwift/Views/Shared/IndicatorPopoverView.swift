@@ -5,6 +5,7 @@
 //  Created by Claude on 1/3/26.
 //
 
+import LightweightChart
 import SwiftUI
 
 /// Popover view for configuring technical indicators

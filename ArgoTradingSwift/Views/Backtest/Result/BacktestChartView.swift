@@ -5,6 +5,7 @@
 //  Created by Claude on 12/27/25.
 //
 
+import LightweightChart
 import SwiftUI
 
 /// Chart view for backtest results with trade and mark overlays
@@ -182,8 +183,7 @@ struct BacktestChartView: View {
                     chartType: chartType,
                     isLoading: vm.isLoading,
                     totalDataCount: vm.totalCount,
-                    tradeOverlays: vm.tradeOverlays,
-                    markOverlays: vm.markOverlays,
+                    markers: vm.tradeOverlays.map { $0.toMarkerDataJS() } + vm.markOverlays.map { $0.toMarkerDataJS() },
                     showTrades: showTrades,
                     showVolume: showVolume,
                     scrollToTime: scrollToTime,

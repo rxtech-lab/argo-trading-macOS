@@ -7,6 +7,7 @@
 
 import DuckDB
 import Foundation
+import LightweightChart
 import SwiftUI
 import TabularData
 
@@ -148,7 +149,7 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(volumeColumn).eraseToAnyColumn(),
         ])
 
-        let priceData = dataFrame.rows.enumerated().map { (index, row) in
+        let priceData = dataFrame.rows.enumerated().map { index, row in
             let time = row[1, String.self]
             let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? Date()
 
@@ -226,7 +227,7 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(volumeColumn).eraseToAnyColumn(),
         ])
 
-        return dataFrame.rows.enumerated().map { (index, row) in
+        return dataFrame.rows.enumerated().map { index, row in
             let time = row[1, String.self]
             let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? Date()
 
@@ -860,7 +861,7 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(volumeColumn).eraseToAnyColumn(),
         ])
 
-        return dataFrame.rows.enumerated().map { (index, row) in
+        return dataFrame.rows.enumerated().map { index, row in
             let time = row[1, String.self]
             let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? FoundationDate()
 

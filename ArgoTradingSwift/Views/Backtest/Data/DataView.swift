@@ -5,6 +5,7 @@
 //  Created by Qiwei Li on 4/21/25.
 //
 
+import LightweightChart
 import SwiftUI
 import TabularData
 
