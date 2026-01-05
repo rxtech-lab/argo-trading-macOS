@@ -59,11 +59,10 @@ struct BacktestDetailView: View {
             case .data(let url):
                 DataTableView(url: url)
                     .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
-            case .strategy:
-                ContentUnavailableView(
-                    "Strategy Results",
-                    systemImage: "slider.horizontal.3",
-                    description: Text("Strategy historical results will appear here")
+            case .strategy(let url):
+                StrategyDetailNavigationView(
+                    strategyURL: url,
+                    navigationService: navigationService
                 )
                 .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
             case .result(let url):
@@ -85,6 +84,36 @@ struct BacktestDetailView: View {
                     description: Text("Select a dataset from the sidebar to view the data table")
                 )
                 .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
+            }
+        }
+    }
+}
+
+private struct StrategyDetailNavigationView: View {
+    let strategyURL: URL
+    var navigationService: NavigationService
+    @Environment(BacktestResultService.self) var backtestResultService
+
+    @State private var detailPath: [URL] = []
+
+    var body: some View {
+        NavigationStack(path: $detailPath) {
+            StrategyResultsListView(url: strategyURL)
+                .navigationDestination(for: URL.self) { resultURL in
+                    if let resultItem = backtestResultService.getResultItem(for: resultURL) {
+                        BacktestResultDetailView(resultItem: resultItem)
+                    } else {
+                        ContentUnavailableView(
+                            "Result Not Found",
+                            systemImage: "exclamationmark.triangle",
+                            description: Text("The selected result could not be loaded")
+                        )
+                    }
+                }
+        }
+        .onChange(of: detailPath) { oldPath, newPath in
+            if newPath.isEmpty && !oldPath.isEmpty {
+                navigationService.path = .backtest(backtest: .strategy(url: strategyURL))
             }
         }
     }

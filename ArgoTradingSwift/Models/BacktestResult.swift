@@ -7,6 +7,12 @@
 
 import Foundation
 
+struct StrategyInfo: Codable, Identifiable, Hashable {
+    let id: String
+    let version: String
+    let name: String
+}
+
 struct BacktestResult: Codable, Identifiable, Hashable {
     let id: UUID
     let symbol: String
@@ -14,6 +20,7 @@ struct BacktestResult: Codable, Identifiable, Hashable {
     let totalFees: Double
     let tradeHoldingTime: TradeHoldingTime
     let tradePnl: TradePnl
+    let strategy: StrategyInfo
     let buyAndHoldPnl: Double
     let tradesFilePath: String
     let ordersFilePath: String
@@ -32,6 +39,7 @@ struct BacktestResult: Codable, Identifiable, Hashable {
         case ordersFilePath = "orders_file_path"
         case marksFilePath = "marks_file_path"
         case dataFilePath = "data_path"
+        case strategy
     }
 }
 

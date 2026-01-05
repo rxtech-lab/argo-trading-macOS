@@ -59,6 +59,12 @@ struct BacktestResultDetailView: View {
                 }
             }
 
+            Section("Strategy Info") {
+                LabeledContent("Name", value: result.strategy.name)
+                LabeledContent("Identifier", value: result.strategy.id)
+                LabeledContent("Version", value: result.strategy.version)
+            }
+
             Section("Profit & Loss") {
                 LabeledContent("Total PnL", value: formatCurrency(result.tradePnl.totalPnl))
                 LabeledContent("Realized PnL", value: formatCurrency(result.tradePnl.realizedPnl))

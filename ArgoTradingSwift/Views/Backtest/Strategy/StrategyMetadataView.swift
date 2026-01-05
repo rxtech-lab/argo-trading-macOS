@@ -15,6 +15,7 @@ struct StrategyMetadataView: View {
         Form {
             Section("Metadata") {
                 FormDescriptionField(title: "Name", value: strategyMetadata.name)
+                FormDescriptionField(title: "Identifier", value: strategyMetadata.identifier)
                 FormDescriptionField(title: "Description", value: strategyMetadata.description)
                 FormDescriptionField(title: "Engine Api Version", value: strategyMetadata.runtimeVersion)
             }
