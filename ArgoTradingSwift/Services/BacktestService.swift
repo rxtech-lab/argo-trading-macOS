@@ -11,15 +11,17 @@ import Yams
 
 @Observable
 class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
-    var currentBacktestTab: BacktestTabs = .general
-
     // Service references
     var toolbarStatusService: ToolbarStatusService?
+    var strategyCacheService: StrategyCacheService?
 
     // Engine and task management
     var argoEngine: SwiftargoArgo?
     var backtestTask: Task<Void, Never>?
     var isRunning: Bool = false
+
+    // Current strategy being run
+    var currentStrategyId: String?
 
     // Progress tracking
     var totalStrategies: Int = 0
@@ -51,9 +53,11 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
         datasetURL: URL,
         strategyFolder: URL,
         resultFolder: URL,
-        toolbarStatusService: ToolbarStatusService
+        toolbarStatusService: ToolbarStatusService,
+        strategyCacheService: StrategyCacheService?
     ) async {
         self.toolbarStatusService = toolbarStatusService
+        self.strategyCacheService = strategyCacheService
         isRunning = true
 
         // Create SwiftargoArgo instance with self as helper
@@ -94,6 +98,18 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
             return
         }
 
+        // Load strategy ID from metadata before running (using cache if available)
+        let strategyURL = strategyFolder.appendingPathComponent(schema.strategyPath)
+        if let cacheService = strategyCacheService,
+           let metadata = try? await cacheService.getMetadata(for: strategyURL)
+        {
+            currentStrategyId = metadata.identifier
+        } else if let strategyApi = SwiftargoStrategyApi(),
+                  let metadata = try? strategyApi.getStrategyMetadata(strategyURL.toPathStringWithoutFilePrefix())
+        {
+            currentStrategyId = metadata.identifier
+        }
+
         // Run in background task
         backtestTask = Task.detached { [weak self, strategyFolder, resultFolder] in
             guard let self = self else { return }
@@ -127,6 +143,7 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
             self.backtestTask?.cancel()
             self.backtestTask = nil
             self.isRunning = false
+            self.currentStrategyId = nil
         }
     }
 
@@ -152,6 +169,7 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
             self.isRunning = false
             self.argoEngine = nil
             self.backtestTask = nil
+            self.currentStrategyId = nil
 
             // Combine passed error with accumulated errors
             var allErrors = self.accumulatedErrors

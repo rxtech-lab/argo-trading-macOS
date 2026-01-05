@@ -21,22 +21,24 @@ struct BacktestSideBar: View {
         @Bindable var strategyVM = strategyService
 
         VStack(spacing: 0) {
-            BacktestTabsView(backtestService: backtestService)
-            List(selection: $navigationService.path) {
-                switch navigationService.selectedMode {
-                case .Backtest:
-                    switch backtestService.currentBacktestTab {
-                    case .general:
+            BacktestTabsView(navigationService: navigationService)
+
+            switch navigationService.selectedMode {
+            case .Backtest:
+                switch navigationService.currentSelectedBacktestTab {
+                case .general:
+                    List(selection: $navigationService.generalSelection) {
                         BacktestSection(document: $document)
                         StrategySection(document: $document, strategyFolder: document.strategyFolder)
-                    case .results:
+                    }
+                case .results:
+                    List(selection: $navigationService.resultsSelection) {
                         ResultSection(document: $document, resultFolder: document.resultFolder)
                     }
-                default:
-                    EmptyView()
                 }
+            default:
+                EmptyView()
             }
-            .id(backtestService.currentBacktestTab)
         }
         .contextMenu {
             Button {

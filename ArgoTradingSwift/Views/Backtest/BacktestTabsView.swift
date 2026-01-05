@@ -8,9 +8,9 @@
 import SwiftUI
 
 struct BacktestTabsView: View {
-    @Bindable var backtestService: BacktestService
+    @Bindable var navigationService: NavigationService
     var body: some View {
-        Picker("", selection: $backtestService.currentBacktestTab) {
+        Picker("", selection: $navigationService.currentSelectedBacktestTab) {
             ForEach(BacktestTabs.allCases) { tab in
                 Text(tab.title).tag(tab)
             }

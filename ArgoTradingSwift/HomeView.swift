@@ -16,6 +16,7 @@ struct HomeView: View {
     @Environment(ToolbarStatusService.self) var toolbarStatusService
     @Environment(BacktestService.self) var backtestService
     @Environment(BacktestResultService.self) var backtestResultService
+    @Environment(StrategyCacheService.self) var strategyCacheService
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -46,7 +47,8 @@ struct HomeView: View {
                                         datasetURL: datasetURL,
                                         strategyFolder: document.strategyFolder,
                                         resultFolder: document.resultFolder,
-                                        toolbarStatusService: toolbarStatusService
+                                        toolbarStatusService: toolbarStatusService,
+                                        strategyCacheService: strategyCacheService
                                     )
                                 }
                             } label: {
@@ -82,6 +84,15 @@ struct HomeView: View {
             ToolbarItem(placement: .navigation) {
                 SidebarModePicker(navigationService: navigationService)
             }
+            if navigationService.canGoBack {
+                ToolbarItem(placement: .navigation) {
+                    Button {
+                        navigationService.pop()
+                    } label: {
+                        Label("Back", systemImage: "chevron.left")
+                    }
+                }
+            }
             ToolbarItemGroup(placement: .principal) {
                 ToolbarRunningSectionView(
                     document: $document,
@@ -110,7 +121,6 @@ struct HomeView: View {
         }
     }
 }
-
 
 // MARK: - Trading Content Views
 

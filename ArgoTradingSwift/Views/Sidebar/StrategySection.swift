@@ -52,6 +52,7 @@ struct StrategySection: View {
                             }
                         }
                 }
+                .id(NavigationPath.backtest(backtest: .strategy(url: file)))
             }
         }
         .onAppear {

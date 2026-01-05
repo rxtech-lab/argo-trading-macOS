@@ -14,6 +14,8 @@ struct StrategyDetailView: View {
     @State var metadata: SwiftargoStrategyMetadata?
     @State var selectedTab: StrategyTab = .general
 
+    @Environment(StrategyCacheService.self) private var strategyCacheService
+
     var body: some View {
         VStack {
             if let metadata = metadata {
@@ -27,7 +29,7 @@ struct StrategyDetailView: View {
 
                 switch selectedTab {
                 case .general:
-                    StrategyMetadataView(strategyMetadata: metadata)
+                    StrategyMetadataView(strategyMetadata: metadata, strategyId: metadata.identifier)
                 case .parameters:
                     StrategyParametersView(jsonSchema: metadata.schema)
                 }
@@ -45,20 +47,15 @@ struct StrategyDetailView: View {
         }
         .padding()
         .task {
-            Task.detached {
-                await loadStrategyMetadata()
-            }
+            await loadStrategyMetadata()
         }
     }
 
-    func loadStrategyMetadata() -> Void {
-        let strategy = SwiftargoStrategyApi()
+    private func loadStrategyMetadata() async {
         do {
-            var abosultePath = url.absoluteString
-            abosultePath.replace("file://", with: "")
-            metadata = try strategy?.getStrategyMetadata(abosultePath)
+            metadata = try await strategyCacheService.getMetadata(for: url)
         } catch {
-            print("Failed to load strategy metadata: \(error)")
+            logger.error("Failed to load strategy metadata: \(error)")
             self.error = error.localizedDescription
         }
     }

@@ -39,6 +39,7 @@ struct BacktestSection: View {
                             }
                         }
                 }
+                .id(NavigationPath.backtest(backtest: .data(url: file)))
             }
         }
         .alert("Delete File", isPresented: $showDeleteAlert) {

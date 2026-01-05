@@ -37,14 +37,12 @@ class BacktestResultService {
     private static let timestampFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd_HHmmss"
-        formatter.timeZone = TimeZone(identifier: "UTC")
         return formatter
     }()
 
     private static let dateOnlyFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd"
-        formatter.timeZone = TimeZone(identifier: "UTC")
         return formatter
     }()
 
@@ -74,6 +72,13 @@ class BacktestResultService {
         allResultItems.values.first { $0.statsFileURL == statsFileURL }
     }
 
+    /// Returns all results matching the given strategy identifier, sorted by timestamp (newest first)
+    func results(forStrategyId strategyId: String) -> [BacktestResultItem] {
+        allResultItems.values
+            .filter { $0.result.strategy.id == strategyId }
+            .sorted { $0.runTimestamp > $1.runTimestamp }
+    }
+
     /// Request the chart to scroll to a specific timestamp
     func scrollChartToTimestamp(_ timestamp: Date, dataFilePath: String) {
         chartScrollRequest = ChartScrollRequest(timestamp: timestamp, dataFilePath: dataFilePath)
@@ -82,6 +87,17 @@ class BacktestResultService {
     /// Clear the current scroll request (called after chart processes it)
     func clearScrollRequest() {
         chartScrollRequest = nil
+    }
+
+    /// Delete a result item by removing its containing folder
+    func deleteResult(_ resultItem: BacktestResultItem) throws {
+        let folderToDelete = resultItem.statsFileURL.deletingLastPathComponent()
+
+        guard fileManager.fileExists(atPath: folderToDelete.path) else {
+            throw BacktestResultError.folderNotFound
+        }
+
+        try fileManager.removeItem(at: folderToDelete)
     }
 
     @MainActor
@@ -196,6 +212,7 @@ class BacktestResultService {
 enum BacktestResultError: LocalizedError {
     case invalidTimestamp
     case parsingFailed
+    case folderNotFound
 
     var errorDescription: String? {
         switch self {
@@ -203,6 +220,8 @@ enum BacktestResultError: LocalizedError {
             return "Could not parse timestamp from folder path"
         case .parsingFailed:
             return "Failed to parse stats.yaml file"
+        case .folderNotFound:
+            return "Result folder not found"
         }
     }
 }

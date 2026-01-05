@@ -17,6 +17,7 @@ struct SchemaEditorView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(BacktestService.self) var backtestService
     @Environment(AlertManager.self) var alertManager
+    @Environment(StrategyCacheService.self) var strategyCacheService
 
     let isEditing: Bool
     let existingSchema: Schema?
@@ -167,25 +168,15 @@ struct SchemaEditorView: View {
         isLoadingMetadata = true
         strategyError = nil
 
-        Task.detached {
+        Task {
             do {
-                let strategy = SwiftargoStrategyApi()
-                var absolutePath = url.absoluteString
-                absolutePath.replace("file://", with: "")
-                let metadata = try strategy?.getStrategyMetadata(absolutePath)
-
-                await MainActor.run {
-                    strategyMetadata = metadata
-                    if let schemaString = metadata?.schema {
-                        strategySchema = try? JSONSchema(jsonString: schemaString)
-                    }
-                    isLoadingMetadata = false
-                }
+                let metadata = try await strategyCacheService.getMetadata(for: url)
+                strategyMetadata = metadata
+                strategySchema = try? JSONSchema(jsonString: metadata.schema)
+                isLoadingMetadata = false
             } catch {
-                await MainActor.run {
-                    self.strategyError = error.localizedDescription
-                    isLoadingMetadata = false
-                }
+                self.strategyError = error.localizedDescription
+                isLoadingMetadata = false
             }
         }
     }
@@ -275,6 +266,7 @@ struct SchemaEditorView: View {
     .environment(SchemaService())
     .environment(StrategyService())
     .environment(AlertManager())
+    .environment(StrategyCacheService())
 }
 
 #Preview("Edit") {
@@ -286,4 +278,5 @@ struct SchemaEditorView: View {
     .environment(SchemaService())
     .environment(StrategyService())
     .environment(AlertManager())
+    .environment(StrategyCacheService())
 }

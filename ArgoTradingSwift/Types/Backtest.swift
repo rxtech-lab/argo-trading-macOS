@@ -6,11 +6,11 @@
 //
 import Foundation
 
-enum BacktestSelection: Identifiable, Hashable {
+enum BacktestSelection: Identifiable, Hashable, Equatable {
     case strategy(url: URL)
     case data(url: URL)
     case results
-    case result(url: URL)  // Individual result (url points to stats.yaml file)
+    case result(url: URL) // Individual result (url points to stats.yaml file)
 
     var key: String {
         switch self {
