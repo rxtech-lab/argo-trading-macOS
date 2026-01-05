@@ -16,6 +16,7 @@ struct SchemaEditorView: View {
     @Environment(StrategyService.self) var strategyService
     @Environment(\.dismiss) var dismiss
     @Environment(BacktestService.self) var backtestService
+    @Environment(AlertManager.self) var alertManager
 
     let isEditing: Bool
     let existingSchema: Schema?
@@ -30,6 +31,8 @@ struct SchemaEditorView: View {
     @State private var isLoadingMetadata = false
     @State private var strategyError: String?
     @State private var backtestError: String?
+    @State private var strategyController = JSONSchemaFormController()
+    @State private var backtestController = JSONSchemaFormController()
 
     var body: some View {
         TabView {
@@ -41,6 +44,7 @@ struct SchemaEditorView: View {
             }
 
         }.tabViewStyle(.sidebarAdaptable)
+            .alertManager(alertManager)
             .frame(minWidth: 600, minHeight: 700)
             .onAppear {
                 // Load backtest engine schema
@@ -75,7 +79,9 @@ struct SchemaEditorView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isEditing ? "Save" : "Create") {
-                        saveSchema()
+                        Task {
+                            await saveSchema()
+                        }
                     }
                     .disabled(name.isEmpty || selectedStrategyURL == nil)
                 }
@@ -90,7 +96,7 @@ struct SchemaEditorView: View {
         Form {
             Section("Backtest Engine Configuration") {
                 if let backtestSchema = backtestSchema {
-                    JSONSchemaForm(schema: backtestSchema, formData: $backtestFormData, showErrorList: false, showSubmitButton: false)
+                    JSONSchemaForm(schema: backtestSchema, formData: $backtestFormData, showErrorList: false, showSubmitButton: false, controller: backtestController)
                 }
 
                 if let error = backtestError {
@@ -130,7 +136,8 @@ struct SchemaEditorView: View {
                     JSONSchemaForm(
                         schema: schema,
                         formData: $strategyFormData,
-                        showSubmitButton: false
+                        showSubmitButton: false,
+                        controller: strategyController
                     )
                 }
             } else if selectedStrategyURL != nil && strategyError == nil {
@@ -183,8 +190,26 @@ struct SchemaEditorView: View {
         }
     }
 
-    private func saveSchema() {
+    private func saveSchema() async {
         guard let strategyURL = selectedStrategyURL else { return }
+
+        // Validate both forms before saving
+        do {
+            let strategyValid = try await strategyController.submit()
+            if !strategyValid {
+                alertManager.showAlert(message: "Please fix the errors in the strategy form before saving.")
+                return
+            }
+
+            let backtestValid = try await backtestController.submit()
+            if !backtestValid {
+                alertManager.showAlert(message: "Please fix the errors in the backtest form before saving.")
+                return
+            }
+        } catch {
+            alertManager.showAlert(message: "Please fix the errors in the form before saving.")
+            return
+        }
 
         do {
             let dict = strategyFormData.toDictionary() ?? [:]
@@ -213,7 +238,7 @@ struct SchemaEditorView: View {
             schemaService.dismissEditor()
             dismiss()
         } catch {
-            strategyError = error.localizedDescription
+            alertManager.showAlert(message: error.localizedDescription)
         }
     }
 
@@ -249,6 +274,7 @@ struct SchemaEditorView: View {
     )
     .environment(SchemaService())
     .environment(StrategyService())
+    .environment(AlertManager())
 }
 
 #Preview("Edit") {
@@ -259,4 +285,5 @@ struct SchemaEditorView: View {
     )
     .environment(SchemaService())
     .environment(StrategyService())
+    .environment(AlertManager())
 }
