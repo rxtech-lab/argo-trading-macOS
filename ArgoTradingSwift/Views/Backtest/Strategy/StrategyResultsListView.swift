@@ -14,6 +14,7 @@ struct StrategyResultsListView: View {
     @Environment(BacktestResultService.self) private var backtestResultService
     @Environment(BacktestService.self) private var backtestService
     @Environment(NavigationService.self) private var navigationService
+    @Environment(StrategyCacheService.self) private var strategyCacheService
 
     @State private var strategyId: String?
     @State private var strategyName: String?
@@ -134,26 +135,11 @@ struct StrategyResultsListView: View {
     private func loadStrategyMetadata() async {
         isLoadingMetadata = true
 
-        let path = url.path.replacingOccurrences(of: "file://", with: "")
-
-        let result: Result<(id: String, name: String), Error> = await Task.detached(priority: .userInitiated) {
-            guard let strategyApi = SwiftargoStrategyApi() else {
-                return .failure(NSError(domain: "StrategyResultsListView", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create strategy API"]))
-            }
-
-            do {
-                let metadata = try strategyApi.getStrategyMetadata(path)
-                return .success((id: metadata.identifier, name: metadata.name))
-            } catch {
-                return .failure(error)
-            }
-        }.value
-
-        switch result {
-        case .success(let metadata):
-            strategyId = metadata.id
+        do {
+            let metadata = try await strategyCacheService.getMetadata(for: url)
+            strategyId = metadata.identifier
             strategyName = metadata.name
-        case .failure(let error):
+        } catch {
             loadError = error.localizedDescription
         }
 

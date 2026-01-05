@@ -11,8 +11,14 @@ struct BacktestResultDetailView: View {
     @State private var selectedTab: ResultTab = .general
     let resultItem: BacktestResultItem
 
+    @Environment(NavigationService.self) private var navigationService
+
     private var result: BacktestResult {
         resultItem.result
+    }
+
+    private var strategyPath: URL? {
+        return URL(string: "file://\(result.strategyPath)")
     }
 
     var body: some View {
@@ -60,7 +66,19 @@ struct BacktestResultDetailView: View {
             }
 
             Section("Strategy Info") {
-                LabeledContent("Name", value: result.strategy.name)
+                HStack {
+                    Text("Name")
+                    Spacer()
+                    Button {
+                        guard let strategyPath = strategyPath else { return }
+                        navigationService.push(.backtest(backtest: .strategy(url: strategyPath)))
+                    } label: {
+                        Text(result.strategy.name)
+                    }
+                    .disabled(strategyPath == nil)
+                    .buttonStyle(.link)
+                    .pointerStyle(.link)
+                }
                 LabeledContent("Identifier", value: result.strategy.id)
                 LabeledContent("Version", value: result.strategy.version)
             }

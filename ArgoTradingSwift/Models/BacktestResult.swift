@@ -21,6 +21,7 @@ struct BacktestResult: Codable, Identifiable, Hashable {
     let tradeHoldingTime: TradeHoldingTime
     let tradePnl: TradePnl
     let strategy: StrategyInfo
+    let strategyPath: String
     let buyAndHoldPnl: Double
     let tradesFilePath: String
     let ordersFilePath: String
@@ -39,6 +40,7 @@ struct BacktestResult: Codable, Identifiable, Hashable {
         case ordersFilePath = "orders_file_path"
         case marksFilePath = "marks_file_path"
         case dataFilePath = "data_path"
+        case strategyPath = "strategy_path"
         case strategy
     }
 }

@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-enum NavigationPath: Hashable {
+enum NavigationPath: Hashable, Equatable {
     case backtest(backtest: BacktestSelection?)
 }
 

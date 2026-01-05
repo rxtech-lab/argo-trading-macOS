@@ -13,6 +13,7 @@ import Yams
 class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
     // Service references
     var toolbarStatusService: ToolbarStatusService?
+    var strategyCacheService: StrategyCacheService?
 
     // Engine and task management
     var argoEngine: SwiftargoArgo?
@@ -52,9 +53,11 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
         datasetURL: URL,
         strategyFolder: URL,
         resultFolder: URL,
-        toolbarStatusService: ToolbarStatusService
+        toolbarStatusService: ToolbarStatusService,
+        strategyCacheService: StrategyCacheService?
     ) async {
         self.toolbarStatusService = toolbarStatusService
+        self.strategyCacheService = strategyCacheService
         isRunning = true
 
         // Create SwiftargoArgo instance with self as helper
@@ -95,10 +98,14 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
             return
         }
 
-        // Load strategy ID from metadata before running
+        // Load strategy ID from metadata before running (using cache if available)
         let strategyURL = strategyFolder.appendingPathComponent(schema.strategyPath)
-        if let strategyApi = SwiftargoStrategyApi(),
-           let metadata = try? strategyApi.getStrategyMetadata(strategyURL.toPathStringWithoutFilePrefix())
+        if let cacheService = strategyCacheService,
+           let metadata = try? await cacheService.getMetadata(for: strategyURL)
+        {
+            currentStrategyId = metadata.identifier
+        } else if let strategyApi = SwiftargoStrategyApi(),
+                  let metadata = try? strategyApi.getStrategyMetadata(strategyURL.toPathStringWithoutFilePrefix())
         {
             currentStrategyId = metadata.identifier
         }
