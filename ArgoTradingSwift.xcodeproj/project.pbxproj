@@ -683,7 +683,7 @@
 			repositoryURL = "https://github.com/rxtech-lab/argo-trading";
 			requirement = {
 				kind = exactVersion;
-				version = 1.6.0;
+				version = 1.8.0;
 			};
 		};
 		DFBEFC422F06E6BE00F7CE2D /* XCRemoteSwiftPackageReference "swift-log" */ = {
