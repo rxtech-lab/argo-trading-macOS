@@ -242,18 +242,18 @@ struct IndicatorConfigTests {
         #expect(config.parameters["period"] == 20)
     }
 
-    @Test("IndicatorConfig equality")
+    @Test("IndicatorConfig equality is based on UUID, not just type")
     func indicatorConfigEquality() {
-        var config1 = IndicatorConfig(type: .sma, isEnabled: true)
-        var config2 = IndicatorConfig(type: .sma, isEnabled: true)
+        let config1 = IndicatorConfig(type: .sma, isEnabled: true)
+        let config2 = IndicatorConfig(type: .sma, isEnabled: true)
 
-        // Different UUIDs, so not equal
+        // Each IndicatorConfig gets a unique UUID on creation, 
+        // so two configs with same type are not equal
         #expect(config1 != config2)
 
-        // Same config compared to itself
-        config1 = IndicatorConfig(type: .ema)
-        config2 = config1
-        #expect(config1 == config2)
+        // Assigning to a new variable copies the same UUID, so they are equal
+        let config3 = config1
+        #expect(config1 == config3)
     }
 
     @Test("IndicatorConfig is codable")

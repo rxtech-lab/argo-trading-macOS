@@ -642,7 +642,6 @@ function updateVisibleMarkers() {
 
   console.log("[Chart] Updating visible markers:", allMarkers.length);
   try {
-    // series.setMarkers(allMarkers);
     LightweightCharts.createSeriesMarkers(series, allMarkers);
   } catch (error) {
     console.error(`[Chart] Error updating visible markers: ${error}`);
