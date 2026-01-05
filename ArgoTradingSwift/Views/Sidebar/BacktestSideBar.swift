@@ -27,12 +27,12 @@ struct BacktestSideBar: View {
             case .Backtest:
                 switch navigationService.currentSelectedBacktestTab {
                 case .general:
-                    List(selection: $navigationService.path) {
+                    List(selection: $navigationService.generalSelection) {
                         BacktestSection(document: $document)
                         StrategySection(document: $document, strategyFolder: document.strategyFolder)
                     }
                 case .results:
-                    List(selection: $navigationService.path) {
+                    List(selection: $navigationService.resultsSelection) {
                         ResultSection(document: $document, resultFolder: document.resultFolder)
                     }
                 }

@@ -55,7 +55,7 @@ struct StrategyDetailView: View {
         do {
             metadata = try await strategyCacheService.getMetadata(for: url)
         } catch {
-            print("Failed to load strategy metadata: \(error)")
+            logger.error("Failed to load strategy metadata: \(error)")
             self.error = error.localizedDescription
         }
     }

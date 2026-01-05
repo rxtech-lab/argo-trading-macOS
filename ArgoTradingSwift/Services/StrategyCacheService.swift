@@ -120,9 +120,20 @@ class StrategyCacheService {
             }
 
             do {
-                let data = try Data(contentsOf: url)
-                let hash = SHA256.hash(data: data)
-                return hash.compactMap { String(format: "%02x", $0) }.joined()
+                // Use streaming hash computation for memory efficiency
+                var hasher = SHA256()
+                let fileHandle = try FileHandle(forReadingFrom: url)
+                defer { try? fileHandle.close() }
+
+                let chunkSize = 64 * 1024  // 64KB chunks
+                while let chunk = try fileHandle.read(upToCount: chunkSize), !chunk.isEmpty {
+                    hasher.update(data: chunk)
+                }
+
+                let digest = hasher.finalize()
+                return digest.compactMap { String(format: "%02x", $0) }.joined()
+            } catch let error as StrategyCacheError {
+                throw error
             } catch {
                 throw StrategyCacheError.hashComputationFailed(url, error)
             }

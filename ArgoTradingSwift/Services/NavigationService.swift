@@ -13,59 +13,80 @@ enum NavigationPath: Hashable, Equatable {
 
 @Observable
 class NavigationService {
-    private var pathStack: [NavigationPath] = [.backtest(backtest: nil)] {
-        didSet {
-            guard let lastPath = pathStack.last else { return }
-            switch lastPath {
-            case .backtest(let selection):
-                switch selection {
-                case .data, .strategy:
-                    currentSelectedBacktestTab = .general
+    /// Separate selection states for each tab
+    var generalSelection: NavigationPath? = nil
+    var resultsSelection: NavigationPath? = nil
 
-                case .result:
-                    currentSelectedBacktestTab = .results
-
-                default:
-                    break
-                }
-
-            default:
-                return
-            }
-        }
-    }
+    /// Stack for push-based navigation (back button only works for push operations)
+    private var pushStack: [NavigationPath] = []
 
     var selectedMode: EditorMode = .Backtest
     var currentSelectedBacktestTab: BacktestTabs = .general
 
-    /// Current navigation path (settable for SwiftUI binding compatibility)
-    var path: NavigationPath {
-        get {
-            pathStack.last ?? .backtest(backtest: nil)
-        }
-        set {
-            // When set via binding (e.g., sidebar selection), replace current path
-            if pathStack.isEmpty {
-                pathStack = [newValue]
-            } else {
-                pathStack[pathStack.count - 1] = newValue
-            }
+    /// Current selection based on the active tab
+    var currentSelection: NavigationPath? {
+        switch currentSelectedBacktestTab {
+        case .general:
+            return generalSelection
+        case .results:
+            return resultsSelection
         }
     }
 
     var canGoBack: Bool {
-        pathStack.count > 1
+        !pushStack.isEmpty
     }
 
     /// Push a new path onto the stack (preserves history for back navigation)
     func push(_ path: NavigationPath) {
-        pathStack.append(path)
+        // Save current selection to stack before navigating
+        if let current = currentSelection {
+            pushStack.append(current)
+        }
+        // Update the appropriate selection based on path type
+        setSelection(path)
     }
 
     /// Pop the current path and return to the previous one
     func pop() {
-        if pathStack.count > 1 {
-            pathStack.removeLast()
+        guard let previous = pushStack.popLast() else { return }
+        setSelection(previous)
+    }
+
+    /// Set the appropriate selection based on path type
+    private func setSelection(_ path: NavigationPath) {
+        switch path {
+        case .backtest(let selection):
+            switch selection {
+            case .data, .strategy:
+                // Clear first, then set async to force SwiftUI to deselect
+                generalSelection = nil
+                DispatchQueue.main.async {
+                    self.generalSelection = path
+                }
+                currentSelectedBacktestTab = .general
+            case .result:
+                // Clear first, then set async to force SwiftUI to deselect
+                resultsSelection = nil
+                DispatchQueue.main.async {
+                    self.resultsSelection = path
+                }
+                currentSelectedBacktestTab = .results
+            default:
+                // For nil selection, update based on current tab
+                switch currentSelectedBacktestTab {
+                case .general:
+                    generalSelection = nil
+                    DispatchQueue.main.async {
+                        self.generalSelection = path
+                    }
+                case .results:
+                    resultsSelection = nil
+                    DispatchQueue.main.async {
+                        self.resultsSelection = path
+                    }
+                }
+            }
         }
     }
 }

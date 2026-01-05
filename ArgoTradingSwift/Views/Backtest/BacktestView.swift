@@ -12,7 +12,7 @@ struct BacktestContentView: View {
     @Environment(BacktestResultService.self) var backtestResultService
 
     var body: some View {
-        switch navigationService.path {
+        switch navigationService.currentSelection {
         case .backtest(let backtest):
             switch backtest {
             case .data(let url):
@@ -44,6 +44,12 @@ struct BacktestContentView: View {
                     description: Text("Select a dataset from the sidebar to view the price chart")
                 )
             }
+        case nil:
+            ContentUnavailableView(
+                "No Dataset Selected",
+                systemImage: "chart.xyaxis.line",
+                description: Text("Select a dataset from the sidebar to view the price chart")
+            )
         }
     }
 }
@@ -53,7 +59,7 @@ struct BacktestDetailView: View {
     @Environment(BacktestResultService.self) var backtestResultService
 
     var body: some View {
-        switch navigationService.path {
+        switch navigationService.currentSelection {
         case .backtest(let backtest):
             switch backtest {
             case .data(let url):
@@ -85,6 +91,13 @@ struct BacktestDetailView: View {
                 )
                 .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
             }
+        case nil:
+            ContentUnavailableView(
+                "No Dataset Selected",
+                systemImage: "tablecells",
+                description: Text("Select a dataset from the sidebar to view the data table")
+            )
+            .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
         }
     }
 }
@@ -113,7 +126,7 @@ private struct StrategyDetailNavigationView: View {
         }
         .onChange(of: detailPath) { oldPath, newPath in
             if newPath.isEmpty && !oldPath.isEmpty {
-                navigationService.path = .backtest(backtest: .strategy(url: strategyURL))
+                navigationService.generalSelection = .backtest(backtest: .strategy(url: strategyURL))
             }
         }
     }
