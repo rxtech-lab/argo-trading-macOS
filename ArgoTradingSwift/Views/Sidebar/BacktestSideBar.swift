@@ -22,21 +22,23 @@ struct BacktestSideBar: View {
 
         VStack(spacing: 0) {
             BacktestTabsView(navigationService: navigationService)
-            List(selection: $navigationService.path) {
-                switch navigationService.selectedMode {
-                case .Backtest:
-                    switch navigationService.currentSelectedBacktestTab {
-                    case .general:
+
+            switch navigationService.selectedMode {
+            case .Backtest:
+                switch navigationService.currentSelectedBacktestTab {
+                case .general:
+                    List(selection: $navigationService.path) {
                         BacktestSection(document: $document)
                         StrategySection(document: $document, strategyFolder: document.strategyFolder)
-                    case .results:
+                    }
+                case .results:
+                    List(selection: $navigationService.path) {
                         ResultSection(document: $document, resultFolder: document.resultFolder)
                     }
-                default:
-                    EmptyView()
                 }
+            default:
+                EmptyView()
             }
-            .id(navigationService.currentSelectedBacktestTab)
         }
         .contextMenu {
             Button {

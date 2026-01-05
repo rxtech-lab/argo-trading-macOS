@@ -84,6 +84,15 @@ struct HomeView: View {
             ToolbarItem(placement: .navigation) {
                 SidebarModePicker(navigationService: navigationService)
             }
+            if navigationService.canGoBack {
+                ToolbarItem(placement: .navigation) {
+                    Button {
+                        navigationService.pop()
+                    } label: {
+                        Label("Back", systemImage: "chevron.left")
+                    }
+                }
+            }
             ToolbarItemGroup(placement: .principal) {
                 ToolbarRunningSectionView(
                     document: $document,
@@ -112,7 +121,6 @@ struct HomeView: View {
         }
     }
 }
-
 
 // MARK: - Trading Content Views
 

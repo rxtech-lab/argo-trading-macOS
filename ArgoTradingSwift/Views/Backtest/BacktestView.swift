@@ -30,17 +30,6 @@ struct BacktestContentView: View {
                     )
                     .id(url)
                     .frame(minWidth: 500)
-                    .toolbar {
-                        if navigationService.canGoBack {
-                            ToolbarItem(placement: .navigation) {
-                                Button {
-                                    navigationService.pop()
-                                } label: {
-                                    Label("Back", systemImage: "chevron.left")
-                                }
-                            }
-                        }
-                    }
                 } else {
                     ContentUnavailableView(
                         "Result Not Found",
