@@ -5,6 +5,7 @@
 //  Native SwiftUI tooltip for chart markers
 //
 
+import LightweightChart
 import SwiftUI
 
 /// Native SwiftUI tooltip for displaying marker information on hover

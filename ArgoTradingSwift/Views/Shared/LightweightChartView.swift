@@ -6,6 +6,7 @@
 //
 
 import Combine
+import LightweightChart
 import SwiftUI
 import WebKit
 

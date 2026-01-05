@@ -1,0 +1,40 @@
+{
+  "": {
+    "swift-dependencies": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/master.swiftdeps"
+  },
+  "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/Sources/LightweightChart/ChartMarkerTooltip.swift": {
+    "dependencies": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/ChartMarkerTooltip.d",
+    "object": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/ChartMarkerTooltip.swift.o",
+    "swiftmodule": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/ChartMarkerTooltip~partial.swiftmodule",
+    "swift-dependencies": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/ChartMarkerTooltip.swiftdeps",
+    "diagnostics": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/ChartMarkerTooltip.dia"
+  },
+  "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/Sources/LightweightChart/ChartTypes.swift": {
+    "dependencies": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/ChartTypes.d",
+    "object": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/ChartTypes.swift.o",
+    "swiftmodule": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/ChartTypes~partial.swiftmodule",
+    "swift-dependencies": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/ChartTypes.swiftdeps",
+    "diagnostics": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/ChartTypes.dia"
+  },
+  "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/Sources/LightweightChart/LightweightChartService.swift": {
+    "dependencies": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/LightweightChartService.d",
+    "object": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/LightweightChartService.swift.o",
+    "swiftmodule": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/LightweightChartService~partial.swiftmodule",
+    "swift-dependencies": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/LightweightChartService.swiftdeps",
+    "diagnostics": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/LightweightChartService.dia"
+  },
+  "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/Sources/LightweightChart/LightweightChartView.swift": {
+    "dependencies": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/LightweightChartView.d",
+    "object": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/LightweightChartView.swift.o",
+    "swiftmodule": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/LightweightChartView~partial.swiftmodule",
+    "swift-dependencies": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/LightweightChartView.swiftdeps",
+    "diagnostics": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/LightweightChartView.dia"
+  },
+  "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/DerivedSources/resource_bundle_accessor.swift": {
+    "dependencies": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/resource_bundle_accessor.d",
+    "object": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/resource_bundle_accessor.swift.o",
+    "swiftmodule": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/resource_bundle_accessor~partial.swiftmodule",
+    "swift-dependencies": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/resource_bundle_accessor.swiftdeps",
+    "diagnostics": "/home/runner/work/argo-trading-macOS/argo-trading-macOS/packages/lightweight-chart/.build/x86_64-unknown-linux-gnu/debug/LightweightChart.build/resource_bundle_accessor.dia"
+  }
+}
