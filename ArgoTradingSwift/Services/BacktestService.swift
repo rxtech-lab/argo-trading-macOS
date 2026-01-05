@@ -11,8 +11,6 @@ import Yams
 
 @Observable
 class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
-    var currentBacktestTab: BacktestTabs = .general
-
     // Service references
     var toolbarStatusService: ToolbarStatusService?
 
@@ -100,7 +98,8 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
         // Load strategy ID from metadata before running
         let strategyURL = strategyFolder.appendingPathComponent(schema.strategyPath)
         if let strategyApi = SwiftargoStrategyApi(),
-           let metadata = try? strategyApi.getStrategyMetadata(strategyURL.toPathStringWithoutFilePrefix()) {
+           let metadata = try? strategyApi.getStrategyMetadata(strategyURL.toPathStringWithoutFilePrefix())
+        {
             currentStrategyId = metadata.identifier
         }
 

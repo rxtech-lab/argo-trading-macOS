@@ -87,6 +87,14 @@ struct StrategyResultsListView: View {
                             }
                             .buttonStyle(.plain)
                             .contextMenu {
+                                Button {
+                                    navigationService.push(.backtest(backtest: .result(url: resultItem.statsFileURL)))
+                                } label: {
+                                    Label("Locate in Results", systemImage: "arrow.right.circle")
+                                }
+
+                                Divider()
+
                                 Button(role: .destructive) {
                                     deleteResult(resultItem)
                                 } label: {
