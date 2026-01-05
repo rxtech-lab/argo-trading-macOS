@@ -133,7 +133,7 @@ extension DatasetDownloadView {
                 }
 
                 let jsonEncoder = JSONEncoder()
-                let configData = try jsonEncoder.encode(self.formData)
+                let configData = try await jsonEncoder.encode(self.formData)
                 try await marketDownloader!.download(withConfig: dataProvider, configJSON: String(data: configData, encoding: .utf8) ?? "{}", dataFolder: document.dataFolder.path(percentEncoded: false))
 
                 // Check cancellation before dismissing
