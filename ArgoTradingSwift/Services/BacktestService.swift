@@ -136,15 +136,14 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
         }
     }
 
-    func cancel() {
+    @MainActor
+    func cancel() async {
         _ = argoEngine?.cancel()
-        Task { @MainActor in
-            self.argoEngine = nil
-            self.backtestTask?.cancel()
-            self.backtestTask = nil
-            self.isRunning = false
-            self.currentStrategyId = nil
-        }
+        argoEngine = nil
+        backtestTask?.cancel()
+        backtestTask = nil
+        isRunning = false
+        currentStrategyId = nil
     }
 
     // MARK: - SwiftargoArgoHelperProtocol

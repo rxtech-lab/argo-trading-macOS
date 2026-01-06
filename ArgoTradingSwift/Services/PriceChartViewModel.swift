@@ -33,8 +33,6 @@ class PriceChartViewModel {
 
     private(set) var trades: [Trade] = []
     private(set) var marks: [Mark] = []
-    private(set) var tradeOverlays: [TradeOverlay] = []
-    private(set) var markOverlays: [MarkOverlay] = []
     private(set) var loadedOverlayRange: ClosedRange<Date>?
     private(set) var isLoadingOverlays: Bool = false
 
@@ -383,41 +381,9 @@ class PriceChartViewModel {
                 )
             }
 
-            buildOverlays()
             loadedOverlayRange = range
         } catch {
             onError?("Failed to load overlay data: \(error.localizedDescription)")
         }
-    }
-
-    /// Build overlay objects from loaded trades and marks
-    private func buildOverlays() {
-        tradeOverlays = trades.compactMap { trade in
-            let isBuy = trade.side == .buy
-            return TradeOverlay(
-                id: trade.orderId,
-                timestamp: trade.timestamp,
-                price: trade.executedPrice,
-                isBuy: isBuy,
-                trade: trade
-            )
-        }
-
-        markOverlays = marks.map { mark in
-            MarkOverlay(
-                id: mark.id,
-                mark: mark,
-                alignedTime: alignToInterval(mark.signal.time, interval: timeInterval)
-            )
-        }
-    }
-
-    /// Align timestamp to interval boundary (floor to interval start)
-    /// This ensures markers match exactly with chart data points for proper rendering
-    private func alignToInterval(_ date: Date, interval: ChartTimeInterval) -> Date {
-        let seconds = interval.seconds
-        let timestamp = date.timeIntervalSince1970
-        let aligned = floor(timestamp / Double(seconds)) * Double(seconds)
-        return Date(timeIntervalSince1970: aligned)
     }
 }

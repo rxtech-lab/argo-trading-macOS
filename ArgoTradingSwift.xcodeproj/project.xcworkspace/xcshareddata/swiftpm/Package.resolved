@@ -1,13 +1,13 @@
 {
-  "originHash" : "972dcbd0ed3ec7628955072b675a79875a2cec5424634cb056648a6cd6e71b0c",
+  "originHash" : "9a6fdaf69ca4de471d4e1f13c68f17aef0fb9b79676186563eb76c379054be87",
   "pins" : [
     {
       "identity" : "argo-trading",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/rxtech-lab/argo-trading",
       "state" : {
-        "revision" : "dfc1a0fae925b505962271d610e2e672aa4e842f",
-        "version" : "1.9.1"
+        "revision" : "2c9ee3b0f300119f7ca90679bbd0daf06630f210",
+        "version" : "1.10.0"
       }
     },
     {

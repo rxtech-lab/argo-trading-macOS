@@ -711,7 +711,7 @@ class DuckDBService: DuckDBServiceProtocol {
         // Main query with pagination and sorting
         let query = """
         SELECT
-            id,
+            CAST(id AS VARCHAR),
             market_data_id,
             signal_type,
             signal_name,
@@ -721,7 +721,8 @@ class DuckDBService: DuckDBServiceProtocol {
             shape,
             title,
             message,
-            category
+            category,
+            level
         FROM read_parquet('\(filePath.path)')
         ORDER BY \(column) \(direction)
         LIMIT \(pageSize) OFFSET \(offset)
@@ -729,7 +730,7 @@ class DuckDBService: DuckDBServiceProtocol {
 
         let result = try connection.query(query)
 
-        let idColumn = result[0].cast(to: Int64.self)
+        let idColumn = result[0].cast(to: String.self)
         let marketDataIdColumn = result[1].cast(to: String.self)
         let signalTypeColumn = result[2].cast(to: String.self)
         let signalNameColumn = result[3].cast(to: String.self)
@@ -740,6 +741,7 @@ class DuckDBService: DuckDBServiceProtocol {
         let titleColumn = result[8].cast(to: String.self)
         let messageColumn = result[9].cast(to: String.self)
         let categoryColumn = result[10].cast(to: String.self)
+        let levelColumn = result[11].cast(to: String.self)
 
         let dataFrame = DataFrame(columns: [
             TabularData.Column(idColumn).eraseToAnyColumn(),
@@ -753,6 +755,7 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(titleColumn).eraseToAnyColumn(),
             TabularData.Column(messageColumn).eraseToAnyColumn(),
             TabularData.Column(categoryColumn).eraseToAnyColumn(),
+            TabularData.Column(levelColumn).eraseToAnyColumn(),
         ])
 
         // ISO8601 date formatter for signal_time
@@ -764,6 +767,7 @@ class DuckDBService: DuckDBServiceProtocol {
             let shape = MarkShape(rawValue: shapeStr) ?? .circle
 
             // Parse signal time separately (always available in parquet)
+            let id = row[0, String.self] ?? "0"
             let signalTypeStr = row[2, String.self] ?? ""
             let signalNameStr = row[3, String.self] ?? ""
             let signalTimeStr = row[4, String.self] ?? ""
@@ -774,15 +778,18 @@ class DuckDBService: DuckDBServiceProtocol {
             let signal = Signal(time: signalTime, type: signalType, name: signalNameStr, reason: "", rawValue: "", symbol: signalSymbolStr, indicator: "")
             let markColorStr = row[6, String.self] ?? "#FFFFFF"
             let markColor = MarkColor(string: markColorStr)
+            let levelStr = row[11, String.self] ?? "info"
+            let markLevel = MarkLevel(rawValue: levelStr) ?? .info
 
             return Mark(
-                marketDataId: row[1, String.self] ?? "",
+                id: id,
                 color: markColor,
                 shape: shape,
                 title: row[8, String.self] ?? "",
                 message: row[9, String.self] ?? "",
                 category: row[10, String.self] ?? "",
-                signal: signal
+                signal: signal,
+                level: markLevel
             )
         }
 
@@ -1015,7 +1022,7 @@ class DuckDBService: DuckDBServiceProtocol {
         // Query marks within time range
         let query = """
         SELECT
-            id,
+            CAST(id AS VARCHAR),
             market_data_id,
             signal_type,
             signal_name,
@@ -1025,7 +1032,8 @@ class DuckDBService: DuckDBServiceProtocol {
             shape,
             title,
             message,
-            category
+            category,
+            level
         FROM read_parquet('\(filePath.path)')
         WHERE signal_time >= '\(startTimeStr)' AND signal_time <= '\(endTimeStr)'
         ORDER BY signal_time ASC
@@ -1033,7 +1041,7 @@ class DuckDBService: DuckDBServiceProtocol {
 
         let result = try connection.query(query)
 
-        let idColumn = result[0].cast(to: Int64.self)
+        let idColumn = result[0].cast(to: String.self)
         let marketDataIdColumn = result[1].cast(to: String.self)
         let signalTypeColumn = result[2].cast(to: String.self)
         let signalNameColumn = result[3].cast(to: String.self)
@@ -1044,6 +1052,7 @@ class DuckDBService: DuckDBServiceProtocol {
         let titleColumn = result[8].cast(to: String.self)
         let messageColumn = result[9].cast(to: String.self)
         let categoryColumn = result[10].cast(to: String.self)
+        let levelColumn = result[11].cast(to: String.self)
 
         let dataFrame = DataFrame(columns: [
             TabularData.Column(idColumn).eraseToAnyColumn(),
@@ -1057,6 +1066,7 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(titleColumn).eraseToAnyColumn(),
             TabularData.Column(messageColumn).eraseToAnyColumn(),
             TabularData.Column(categoryColumn).eraseToAnyColumn(),
+            TabularData.Column(levelColumn).eraseToAnyColumn(),
         ])
 
         return dataFrame.rows.compactMap { row in
@@ -1064,6 +1074,7 @@ class DuckDBService: DuckDBServiceProtocol {
             let shape = MarkShape(rawValue: shapeStr) ?? .circle
 
             // Parse signal time separately (always available in parquet)
+            let id = row[0, String.self] ?? "0"
             let signalTypeStr = row[2, String.self] ?? ""
             let signalNameStr = row[3, String.self] ?? ""
             let signalTimeStr = row[4, String.self] ?? ""
@@ -1074,16 +1085,135 @@ class DuckDBService: DuckDBServiceProtocol {
             let signal = Signal(time: signalTime, type: signalType, name: signalNameStr, reason: "", rawValue: "", symbol: signalSymbolStr, indicator: "")
             let markColorStr = row[6, String.self] ?? "#FFFFFF"
             let markColor = MarkColor(string: markColorStr)
+            let levelStr = row[11, String.self] ?? "INFO"
+            let markLevel = MarkLevel(rawValue: levelStr) ?? .info
 
             return Mark(
-                marketDataId: row[1, String.self] ?? "",
+                id: id,
                 color: markColor,
                 shape: shape,
                 title: row[8, String.self] ?? "",
                 message: row[9, String.self] ?? "",
                 category: row[10, String.self] ?? "",
-                signal: signal
+                signal: signal,
+                level: markLevel
             )
         }
+    }
+
+    /// Fetch log data from a parquet file with pagination and filtering
+    func fetchLogData(
+        filePath: URL,
+        page: Int = 1,
+        pageSize: Int = 100,
+        sortColumn: String = "timestamp",
+        sortDirection: String = "DESC",
+        startTime: FoundationDate? = nil,
+        endTime: FoundationDate? = nil,
+        levelFilter: LogLevel? = nil
+    ) async throws -> PaginationResult<Log> {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+
+        // Check if file exists
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: filePath.path) else {
+            throw DuckDBError.missingDataset
+        }
+
+        // Validate sortColumn to prevent SQL injection
+        let validColumns = ["id", "timestamp", "symbol", "level", "message", "fields"]
+        let column = validColumns.contains(sortColumn) ? sortColumn : "timestamp"
+
+        // Validate sortDirection to prevent SQL injection
+        let direction = (sortDirection == "ASC" || sortDirection == "DESC") ? sortDirection : "DESC"
+
+        // Build WHERE clause
+        var whereConditions: [String] = []
+
+        if let startTime = startTime {
+            let startTimeStr = Self.utcDateFormatter.string(from: startTime)
+            whereConditions.append("timestamp >= '\(startTimeStr)'")
+        }
+
+        if let endTime = endTime {
+            let endTimeStr = Self.utcDateFormatter.string(from: endTime)
+            whereConditions.append("timestamp <= '\(endTimeStr)'")
+        }
+
+        if let levelFilter = levelFilter {
+            whereConditions.append("level = '\(levelFilter.rawValue)'")
+        }
+
+        let whereClause = whereConditions.isEmpty ? "" : "WHERE " + whereConditions.joined(separator: " AND ")
+
+        // First get the total count with filters
+        let countQuery = """
+        SELECT COUNT(*) as total
+        FROM read_parquet('\(filePath.path)')
+        \(whereClause)
+        """
+
+        let countResult = try connection.query(countQuery)
+        let totalCount = countResult[0].cast(to: Int.self)[0]
+
+        // Calculate offset
+        let offset = (page - 1) * pageSize
+
+        // Main query with pagination, sorting, and filtering
+        let query = """
+        SELECT
+            id,
+            CAST(timestamp AS VARCHAR),
+            symbol,
+            level,
+            message,
+            fields
+        FROM read_parquet('\(filePath.path)')
+        \(whereClause)
+        ORDER BY \(column) \(direction)
+        LIMIT \(pageSize) OFFSET \(offset)
+        """
+
+        let result = try connection.query(query)
+
+        let idColumn = result[0].cast(to: Int64.self)
+        let timestampColumn = result[1].cast(to: String.self)
+        let symbolColumn = result[2].cast(to: String.self)
+        let levelColumn = result[3].cast(to: String.self)
+        let messageColumn = result[4].cast(to: String.self)
+        let fieldsColumn = result[5].cast(to: String.self)
+
+        let dataFrame = DataFrame(columns: [
+            TabularData.Column(idColumn).eraseToAnyColumn(),
+            TabularData.Column(timestampColumn).eraseToAnyColumn(),
+            TabularData.Column(symbolColumn).eraseToAnyColumn(),
+            TabularData.Column(levelColumn).eraseToAnyColumn(),
+            TabularData.Column(messageColumn).eraseToAnyColumn(),
+            TabularData.Column(fieldsColumn).eraseToAnyColumn(),
+        ])
+
+        let logs = dataFrame.rows.map { row in
+            let timestampStr = row[1, String.self]
+            let timestamp = Self.utcDateFormatter.date(from: timestampStr ?? "") ?? Date()
+            let levelStr = row[3, String.self] ?? "INFO"
+
+            return Log(
+                id: row[0, Int64.self] ?? 0,
+                timestamp: timestamp,
+                symbol: row[2, String.self] ?? "",
+                level: LogLevel(rawValue: levelStr) ?? .info,
+                message: row[4, String.self] ?? "",
+                fields: row[5, String.self] ?? ""
+            )
+        }
+
+        return PaginationResult(
+            items: logs,
+            total: totalCount ?? 0,
+            page: page,
+            pageSize: pageSize
+        )
     }
 }

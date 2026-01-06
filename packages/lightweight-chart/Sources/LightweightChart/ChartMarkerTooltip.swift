@@ -192,6 +192,14 @@ private struct MarkMarkerSection: View {
                 TooltipRow(label: "Signal", value: signalType)
             }
 
+            if let level = marker.level, !level.isEmpty {
+                TooltipRow(
+                    label: "Level",
+                    value: level,
+                    valueColor: levelColor(level)
+                )
+            }
+
             // Message
             if let message = marker.message, !message.isEmpty {
                 Text("Message: \(message)")
@@ -211,6 +219,14 @@ private struct MarkMarkerSection: View {
                     .lineSpacing(2)
                     .padding(.top, marker.message == nil ? 8 : 4)
             }
+        }
+    }
+
+    private func levelColor(_ level: String) -> Color {
+        switch level.uppercased() {
+        case "ERROR": return .red
+        case "WARNING": return .orange
+        default: return Color(white: 0.9)
         }
     }
 }

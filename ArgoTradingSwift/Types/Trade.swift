@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import LightweightChart
 
 enum OrderSide: String, Codable, CaseIterable, Hashable {
     case buy = "BUY"
@@ -36,4 +37,30 @@ struct Trade: Codable, Hashable, Identifiable {
     let positionType: String
 
     var id: String { orderId }
+}
+
+// MARK: - LightweightChart Conversion
+
+extension Trade {
+    /// Convert Trade to MarkerDataJS for LightweightChart display
+    func toMarkerDataJS() -> MarkerDataJS {
+        let isBuy = side == .buy
+        var marker = MarkerDataJS(
+            time: timestamp.timeIntervalSince1970,
+            position: "aboveBar",
+            color: isBuy ? "#26a69a" : "#ef5350",
+            shape: isBuy ? "arrowUp" : "arrowDown",
+            text: isBuy ? "BUY" : "SELL",
+            id: orderId,
+            markerType: "trade"
+        )
+        marker.isBuy = isBuy
+        marker.symbol = symbol
+        marker.positionType = positionType
+        marker.executedQty = executedQty
+        marker.executedPrice = executedPrice
+        marker.pnl = pnl
+        marker.reason = reason
+        return marker
+    }
 }

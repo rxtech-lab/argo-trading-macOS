@@ -27,6 +27,7 @@ struct BacktestResult: Codable, Identifiable, Hashable {
     let ordersFilePath: String
     let marksFilePath: String
     let dataFilePath: String
+    let logFilePath: String
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -40,6 +41,7 @@ struct BacktestResult: Codable, Identifiable, Hashable {
         case ordersFilePath = "orders_file_path"
         case marksFilePath = "marks_file_path"
         case dataFilePath = "data_path"
+        case logFilePath = "logs_file_path"
         case strategyPath = "strategy_path"
         case strategy
     }

@@ -126,6 +126,7 @@ public struct JSMarkerInfo: Sendable {
     public let message: String?
     public let signalType: String?
     public let signalReason: String?
+    public let level: String?
 
     public init(
         markerType: String,
@@ -142,7 +143,8 @@ public struct JSMarkerInfo: Sendable {
         category: String? = nil,
         message: String? = nil,
         signalType: String? = nil,
-        signalReason: String? = nil
+        signalReason: String? = nil,
+        level: String? = nil
     ) {
         self.markerType = markerType
         self.time = time
@@ -159,6 +161,7 @@ public struct JSMarkerInfo: Sendable {
         self.message = message
         self.signalType = signalType
         self.signalReason = signalReason
+        self.level = level
     }
 }
 
@@ -238,6 +241,7 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
     public var message: String?
     public var signalType: String?
     public var signalReason: String?
+    public var level: String?
 
     public init(
         time: Double,
@@ -258,7 +262,8 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
         category: String? = nil,
         message: String? = nil,
         signalType: String? = nil,
-        signalReason: String? = nil
+        signalReason: String? = nil,
+        level: String? = nil
     ) {
         self.time = time
         self.position = position
@@ -279,6 +284,7 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
         self.message = message
         self.signalType = signalType
         self.signalReason = signalReason
+        self.level = level
     }
 }
 
@@ -439,6 +445,45 @@ public struct IndicatorSettings: Codable, Equatable, Sendable {
             return .default
         }
         return settings
+    }
+}
+
+// MARK: - Mark Level Filter
+
+/// Filter settings for mark levels displayed on chart
+public struct MarkLevelFilter: Codable, Equatable, Sendable {
+    public var showInfo: Bool
+    public var showWarning: Bool
+    public var showError: Bool
+
+    public init(showInfo: Bool = true, showWarning: Bool = true, showError: Bool = true) {
+        self.showInfo = showInfo
+        self.showWarning = showWarning
+        self.showError = showError
+    }
+
+    public static var `default`: MarkLevelFilter {
+        MarkLevelFilter()
+    }
+
+    public func shouldShow(level: String) -> Bool {
+        switch level.uppercased() {
+        case "INFO": return showInfo
+        case "WARNING": return showWarning
+        case "ERROR": return showError
+        default: return true
+        }
+    }
+
+    public func toData() -> Data? {
+        try? JSONEncoder().encode(self)
+    }
+
+    public static func fromData(_ data: Data?) -> MarkLevelFilter {
+        guard let data = data,
+              let filter = try? JSONDecoder().decode(MarkLevelFilter.self, from: data)
+        else { return .default }
+        return filter
     }
 }
 

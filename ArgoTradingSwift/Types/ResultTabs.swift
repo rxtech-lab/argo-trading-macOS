@@ -12,6 +12,7 @@ enum ResultTab: String, CaseIterable, Identifiable {
     case trades = "Trades"
     case orders = "Orders"
     case marks = "Marks"
+    case logs = "Logs"
 
     var id: String { self.rawValue }
 }

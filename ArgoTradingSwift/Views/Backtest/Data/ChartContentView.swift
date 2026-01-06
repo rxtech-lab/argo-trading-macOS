@@ -26,6 +26,9 @@ struct ChartContentView: View {
     @AppStorage("indicatorSettings") private var indicatorSettingsData: Data?
     @State private var indicatorSettings: IndicatorSettings = .default
 
+    // Mark level filter (not used in this view but required by ChartHeaderView)
+    @State private var markLevelFilter: MarkLevelFilter = .default
+
     // Volume visibility
     @State private var showVolume: Bool = true
 
@@ -114,6 +117,7 @@ struct ChartContentView: View {
             title: "Price Chart",
             showVolume: $showVolume,
             indicatorSettings: $indicatorSettings,
+            markLevelFilter: $markLevelFilter,
             onIndicatorsChange: { newSettings in
                 indicatorSettingsData = newSettings.toData()
             }

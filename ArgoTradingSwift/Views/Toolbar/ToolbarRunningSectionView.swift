@@ -120,6 +120,7 @@ struct ToolbarRunningSectionView: View {
                 ProgressView(value: Double(progress.current), total: Double(progress.total))
                     .controlSize(.small)
                     .progressViewStyle(.circular)
+                    .help("Downloaded \(progress.current) out of \(progress.total) files")
             }
             .id("downloading-\(label)")
 
