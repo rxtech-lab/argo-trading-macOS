@@ -2,3 +2,8 @@
 test-results
 coverage.json
 ArgoTradingSwift.xcodeproj/xcuserdata/qiweili.xcuserdatad/xcdebugger/Breakpoints_v2.xcbkptlist
+.build/
+.swiftpm/
+Packages/*/Build/
+DerivedData/
+*.xcworkspace/xcuserdata/

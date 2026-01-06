@@ -5,6 +5,7 @@
 //  Created by Claude on 12/27/25.
 //
 
+import LightweightChart
 import SwiftUI
 
 /// Reusable chart header with title and zoom controls

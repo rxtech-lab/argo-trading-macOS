@@ -6,25 +6,7 @@
 //
 
 import Foundation
-
-/// Represents the visible logical range of the chart (similar to lightweight-charts)
-struct VisibleLogicalRange {
-    let localFromIndex: Int
-    let localToIndex: Int
-
-    /// Distance from the beginning (negative if scrolled past start)
-    var distanceFromStart: Int { localFromIndex }
-
-    /// Whether near the start (within threshold)
-    func isNearStart(threshold: Int = 10) -> Bool {
-        localFromIndex < threshold
-    }
-
-    func isNearEnd(threshold: Int = 10, totalCount: Int) -> Bool {
-        let distance = totalCount - localToIndex
-        return distance < threshold
-    }
-}
+import LightweightChart
 
 /// Trade overlay data for chart visualization
 struct TradeOverlay: Identifiable {
@@ -50,5 +32,51 @@ struct ScrollChangeEvent: Equatable {
 
     var localIndex: Int {
         currentScrollIndex - firstGlobalIndex
+    }
+}
+
+// MARK: - MarkerDataJS Conversion Extensions
+
+extension TradeOverlay {
+    /// Convert TradeOverlay to MarkerDataJS for LightweightChart
+    func toMarkerDataJS() -> MarkerDataJS {
+        var marker = MarkerDataJS(
+            time: timestamp.timeIntervalSince1970,
+            position: "aboveBar",  // Trades always on top
+            color: isBuy ? "#26a69a" : "#ef5350",
+            shape: isBuy ? "arrowUp" : "arrowDown",
+            text: isBuy ? "BUY" : "SELL",
+            id: id,
+            markerType: "trade"
+        )
+        marker.isBuy = isBuy
+        marker.symbol = trade.symbol
+        marker.positionType = trade.positionType
+        marker.executedQty = trade.executedQty
+        marker.executedPrice = trade.executedPrice
+        marker.pnl = trade.pnl
+        marker.reason = trade.reason
+        return marker
+    }
+}
+
+extension MarkOverlay {
+    /// Convert MarkOverlay to MarkerDataJS for LightweightChart
+    func toMarkerDataJS() -> MarkerDataJS {
+        var marker = MarkerDataJS(
+            time: alignedTime.timeIntervalSince1970,
+            position: "belowBar",  // Marks always on bottom
+            color: mark.color.toHexString(),
+            shape: mark.shape.toJSShape(),
+            text: mark.title,
+            id: id,
+            markerType: "mark"
+        )
+        marker.title = mark.title
+        marker.category = mark.category
+        marker.message = mark.message
+        marker.signalType = mark.signal.type.rawValue
+        marker.signalReason = mark.signal.reason
+        return marker
     }
 }

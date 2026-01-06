@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import LightweightChart
 
 /// Protocol for database operations used by PriceChartViewModel
 /// Enables dependency injection and mocking for tests

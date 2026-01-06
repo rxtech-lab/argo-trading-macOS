@@ -1,18 +1,53 @@
 //
 //  ChartMarkerTooltip.swift
-//  ArgoTradingSwift
+//  LightweightChart
 //
 //  Native SwiftUI tooltip for chart markers
 //
 
-import LightweightChart
 import SwiftUI
 
-/// Native SwiftUI tooltip for displaying marker information on hover
-struct ChartMarkerTooltip: View {
-    let data: JSMarkerHoverData
+// MARK: - Color Extension
 
-    var body: some View {
+extension Color {
+    init?(hex: String) {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+        var rgb: UInt64 = 0
+        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else {
+            return nil
+        }
+
+        let r, g, b, a: Double
+        switch hexSanitized.count {
+        case 6:
+            r = Double((rgb & 0xFF0000) >> 16) / 255.0
+            g = Double((rgb & 0x00FF00) >> 8) / 255.0
+            b = Double(rgb & 0x0000FF) / 255.0
+            a = 1.0
+        case 8:
+            r = Double((rgb & 0xFF000000) >> 24) / 255.0
+            g = Double((rgb & 0x00FF0000) >> 16) / 255.0
+            b = Double((rgb & 0x0000FF00) >> 8) / 255.0
+            a = Double(rgb & 0x000000FF) / 255.0
+        default:
+            return nil
+        }
+
+        self.init(red: r, green: g, blue: b, opacity: a)
+    }
+}
+
+/// Native SwiftUI tooltip for displaying marker information on hover
+public struct ChartMarkerTooltip: View {
+    public let data: JSMarkerHoverData
+
+    public init(data: JSMarkerHoverData) {
+        self.data = data
+    }
+
+    public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(sortedMarkers.enumerated()), id: \.offset) { index, marker in
                 if index > 0 {
@@ -34,7 +69,6 @@ struct ChartMarkerTooltip: View {
     }
 
     private var sortedMarkers: [JSMarkerInfo] {
-        // Sort: trades first, then marks
         data.markers.sorted { a, b in
             if a.markerType == "trade" && b.markerType != "trade" { return true }
             if a.markerType != "trade" && b.markerType == "trade" { return false }
@@ -216,90 +250,4 @@ private func formatDate(_ timestamp: Double) -> String {
     let formatter = DateFormatter()
     formatter.dateFormat = "MMM d, yyyy, h:mm a"
     return formatter.string(from: date)
-}
-
-// MARK: - Preview
-
-#Preview("Trade Marker") {
-    ChartMarkerTooltip(data: JSMarkerHoverData(
-        markers: [
-            JSMarkerInfo(
-                markerType: "trade",
-                time: Date().timeIntervalSince1970,
-                isBuy: true,
-                symbol: "BTCUSDT",
-                positionType: "LONG",
-                executedQty: 0.5,
-                executedPrice: 42350.00,
-                pnl: nil,
-                reason: "RSI oversold signal triggered",
-                title: nil,
-                color: nil,
-                category: nil,
-                message: nil,
-                signalType: nil,
-                signalReason: nil
-            )
-        ],
-        screenX: 100,
-        screenY: 100
-    ))
-    .padding()
-    .background(Color.black)
-}
-
-#Preview("Sell with PnL") {
-    ChartMarkerTooltip(data: JSMarkerHoverData(
-        markers: [
-            JSMarkerInfo(
-                markerType: "trade",
-                time: Date().timeIntervalSince1970,
-                isBuy: false,
-                symbol: "ETHUSDT",
-                positionType: "SHORT",
-                executedQty: 2.0,
-                executedPrice: 2250.50,
-                pnl: 125.75,
-                reason: "Take profit reached",
-                title: nil,
-                color: nil,
-                category: nil,
-                message: nil,
-                signalType: nil,
-                signalReason: nil
-            )
-        ],
-        screenX: 100,
-        screenY: 100
-    ))
-    .padding()
-    .background(Color.black)
-}
-
-#Preview("Signal Mark") {
-    ChartMarkerTooltip(data: JSMarkerHoverData(
-        markers: [
-            JSMarkerInfo(
-                markerType: "mark",
-                time: Date().timeIntervalSince1970,
-                isBuy: nil,
-                symbol: nil,
-                positionType: nil,
-                executedQty: nil,
-                executedPrice: nil,
-                pnl: nil,
-                reason: nil,
-                title: "RSI Divergence",
-                color: "#ffc107",
-                category: "Technical",
-                message: "Bullish divergence detected",
-                signalType: "BUY",
-                signalReason: "RSI showing higher lows while price shows lower lows"
-            )
-        ],
-        screenX: 100,
-        screenY: 100
-    ))
-    .padding()
-    .background(Color.black)
 }

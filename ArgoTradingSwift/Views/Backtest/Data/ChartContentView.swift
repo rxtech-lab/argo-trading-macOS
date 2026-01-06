@@ -5,6 +5,7 @@
 //  Created by Claude on 12/22/25.
 //
 
+import LightweightChart
 import SwiftUI
 
 struct ChartContentView: View {
@@ -12,12 +13,14 @@ struct ChartContentView: View {
 
     @Environment(DuckDBService.self) private var dbService
     @Environment(AlertManager.self) private var alertManager
+    @Environment(BacktestResultService.self) private var backtestResultService
 
     @State private var viewModel: PriceChartViewModel?
     @State private var chartType: ChartType = .candlestick
     @State private var selectedIndex: Int?
     @State private var scrollPosition: Int = 0
     @GestureState private var magnifyBy: CGFloat = 1.0
+    @State private var scrollToTime: Date?
 
     // Indicator settings persisted to AppStorage
     @AppStorage("indicatorSettings") private var indicatorSettingsData: Data?
@@ -62,6 +65,15 @@ struct ChartContentView: View {
         .onChange(of: url) { _, newUrl in
             Task {
                 await initializeViewModel(for: newUrl)
+            }
+        }
+        .onChange(of: backtestResultService.chartScrollRequest) { _, newRequest in
+            guard let request = newRequest,
+                  request.dataFilePath == url.path else { return }
+            Task {
+                await viewModel?.scrollToTimestamp(request.timestamp)
+                scrollToTime = request.timestamp
+                backtestResultService.clearScrollRequest()
             }
         }
     }
@@ -127,6 +139,7 @@ struct ChartContentView: View {
                 isLoading: vm.isLoading,
                 totalDataCount: vm.totalCount,
                 showVolume: showVolume,
+                scrollToTime: scrollToTime,
                 indicatorSettings: indicatorSettings,
                 onScrollChange: { range in
                     await vm.handleScrollChange(range)
@@ -182,4 +195,5 @@ struct ChartContentView: View {
     ChartContentView(url: URL(fileURLWithPath: "/tmp/test.parquet"))
         .environment(DuckDBService())
         .environment(AlertManager())
+        .environment(BacktestResultService())
 }

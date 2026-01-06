@@ -4,6 +4,7 @@
 //
 //  Created by Qiwei Li on 12/21/25.
 //
+import LightweightChart
 import SwiftUI
 
 struct DataInfoView: View {

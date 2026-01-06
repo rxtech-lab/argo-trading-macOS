@@ -5,6 +5,7 @@
 //  Created by Claude on 12/27/25.
 //
 
+import LightweightChart
 import SwiftUI
 
 /// Reusable chart legend displaying OHLCV values for a selected data point

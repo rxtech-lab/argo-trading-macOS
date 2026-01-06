@@ -4,6 +4,25 @@ on:
   push:
 
 jobs:
+  test-packages:
+    name: Test Swift Packages
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Run package tests
+        run: ./scripts/run_package_tests.sh
+
   test-xcode:
     name: Test Xcode App
     runs-on: macos-26

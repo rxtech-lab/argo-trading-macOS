@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import LightweightChart
 import SwiftUI
 
 @Observable
@@ -44,7 +45,7 @@ class PriceChartViewModel {
 
     /// Timestamp of last programmatic scroll to prevent auto-load cascade
     private var lastProgrammaticScrollTime: Date?
-    private let scrollGuardDuration: TimeInterval = 0.5  // 500ms guard
+    private let scrollGuardDuration: TimeInterval = 0.5 // 500ms guard
 
     // MARK: - Configuration
 
