@@ -87,6 +87,16 @@ struct MarksTableView: View {
         }
         .width(min: 140, ideal: 160)
 
+        TableColumn("Level", value: \.level) { mark in
+            HStack(spacing: 4) {
+                Image(systemName: mark.level.icon)
+                    .foregroundStyle(mark.level.foregroundColor)
+                Text(mark.level.rawValue)
+                    .foregroundStyle(mark.level.foregroundColor)
+            }
+        }
+        .width(min: 70, ideal: 90)
+
         TableColumn("Title", value: \.title) { mark in
             Text(mark.title)
         }
@@ -208,7 +218,7 @@ extension MarksTableView {
         case \Mark.shape: column = "shape"
         case \Mark.color: column = "color"
         case \Mark.message: column = "message"
-        case \Mark.marketDataId: column = "market_data_id"
+        case \Mark.level: column = "level"
         default: column = "id"
         }
         return (column, direction)

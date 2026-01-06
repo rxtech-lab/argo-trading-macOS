@@ -29,6 +29,10 @@ struct BacktestChartView: View {
     @AppStorage("indicatorSettings") private var indicatorSettingsData: Data?
     @State private var indicatorSettings: IndicatorSettings = .default
 
+    // Mark level filter persisted to AppStorage
+    @AppStorage("markLevelFilter") private var markLevelFilterData: Data?
+    @State private var markLevelFilter: MarkLevelFilter = .default
+
     // Volume visibility
     @State private var showVolume: Bool = true
 
@@ -92,6 +96,8 @@ struct BacktestChartView: View {
         .onAppear {
             // Load indicator settings from AppStorage
             indicatorSettings = IndicatorSettings.fromData(indicatorSettingsData)
+            // Load mark level filter from AppStorage
+            markLevelFilter = MarkLevelFilter.fromData(markLevelFilterData)
         }
         .onChange(of: backtestResultService.chartScrollRequest) { _, newRequest in
             guard let request = newRequest,
@@ -158,8 +164,12 @@ struct BacktestChartView: View {
             title: "Price Chart",
             showVolume: $showVolume,
             indicatorSettings: $indicatorSettings,
+            markLevelFilter: $markLevelFilter,
             onIndicatorsChange: { newSettings in
                 indicatorSettingsData = newSettings.toData()
+            },
+            onMarkLevelFilterChange: { newFilter in
+                markLevelFilterData = newFilter.toData()
             }
         )
     }
@@ -183,7 +193,8 @@ struct BacktestChartView: View {
                     chartType: chartType,
                     isLoading: vm.isLoading,
                     totalDataCount: vm.totalCount,
-                    markers: vm.tradeOverlays.map { $0.toMarkerDataJS() } + vm.markOverlays.map { $0.toMarkerDataJS() },
+                    markers: vm.trades.map { $0.toMarkerDataJS() }
+                        + vm.marks.filter { markLevelFilter.shouldShow(level: $0.level.rawValue) }.map { $0.toMarkerDataJS() },
                     showTrades: showTrades,
                     showVolume: showVolume,
                     scrollToTime: scrollToTime,
@@ -217,13 +228,13 @@ struct BacktestChartView: View {
         HStack {
             // Overlay info
             HStack(spacing: 12) {
-                if let vm = viewModel, !vm.tradeOverlays.isEmpty {
-                    Label("\(vm.tradeOverlays.count) trades", systemImage: "arrow.up.arrow.down")
+                if let vm = viewModel, !vm.trades.isEmpty {
+                    Label("\(vm.trades.count) trades", systemImage: "arrow.up.arrow.down")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                if let vm = viewModel, !vm.markOverlays.isEmpty {
-                    Label("\(vm.markOverlays.count) marks", systemImage: "mappin")
+                if let vm = viewModel, !vm.marks.isEmpty {
+                    Label("\(vm.marks.count) marks", systemImage: "mappin")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

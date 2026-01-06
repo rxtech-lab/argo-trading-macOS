@@ -29,37 +29,36 @@ struct HomeView: View {
             .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Group {
+                    Button {
                         if backtestService.isRunning {
-                            Button {
-                                backtestService.cancel()
-                            } label: {
-                                Label("Stop", systemImage: "square.fill")
+                            logger.info("Stopping backtest...")
+                            Task {
+                                await backtestService.cancel()
                             }
-                            .transition(.scale.combined(with: .opacity))
                         } else {
-                            Button {
-                                guard let schema = document.selectedSchema,
-                                      let datasetURL = document.selectedDatasetURL else { return }
-                                Task.detached {
-                                    await backtestService.runBacktest(
-                                        schema: schema,
-                                        datasetURL: datasetURL,
-                                        strategyFolder: document.strategyFolder,
-                                        resultFolder: document.resultFolder,
-                                        toolbarStatusService: toolbarStatusService,
-                                        strategyCacheService: strategyCacheService
-                                    )
-                                }
-                            } label: {
-                                Label("Start", systemImage: "play.fill")
+                            guard let schema = document.selectedSchema,
+                                  let datasetURL = document.selectedDatasetURL else { return }
+                            Task.detached {
+                                await backtestService.runBacktest(
+                                    schema: schema,
+                                    datasetURL: datasetURL,
+                                    strategyFolder: document.strategyFolder,
+                                    resultFolder: document.resultFolder,
+                                    toolbarStatusService: toolbarStatusService,
+                                    strategyCacheService: strategyCacheService
+                                )
                             }
-                            .disabled(!document.canRunBacktest)
-                            .transition(.scale.combined(with: .opacity))
-                            .keyboardShortcut("r", modifiers: .command)
                         }
+                    } label: {
+                        Label(
+                            backtestService.isRunning ? "Stop" : "Start",
+                            systemImage: backtestService.isRunning ? "square.fill" : "play.fill"
+                        )
+                        .contentTransition(.symbolEffect(.replace))
                     }
-                    .animation(.easeInOut(duration: 0.2), value: backtestService.isRunning)
+                    .disabled(!backtestService.isRunning && !document.canRunBacktest)
+                    .keyboardShortcut("r", modifiers: .command)
+                    .animation(.easeInOut(duration: 0.1), value: backtestService.isRunning)
                 }
             }
         } content: {

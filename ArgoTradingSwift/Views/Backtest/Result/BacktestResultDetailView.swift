@@ -49,6 +49,11 @@ struct BacktestResultDetailView: View {
                     filePath: URL(fileURLWithPath: result.marksFilePath),
                     dataFilePath: URL(fileURLWithPath: result.dataFilePath)
                 )
+            case .logs:
+                LogsTableView(
+                    filePath: URL(fileURLWithPath: result.logFilePath),
+                    dataFilePath: URL(fileURLWithPath: result.dataFilePath)
+                )
             }
         }
         .padding(.top, 8)

@@ -5,7 +5,41 @@
 //
 
 import Foundation
+import LightweightChart
 import SwiftUI
+
+enum MarkLevel: String, Codable, CaseIterable, Hashable, Comparable {
+    case info
+    case warning
+    case error
+
+    static func < (lhs: MarkLevel, rhs: MarkLevel) -> Bool {
+        func rank(_ level: MarkLevel) -> Int {
+            switch level {
+            case .info: return 0
+            case .warning: return 1
+            case .error: return 2
+            }
+        }
+        return rank(lhs) < rank(rhs)
+    }
+
+    var foregroundColor: Color {
+        switch self {
+        case .info: return .secondary
+        case .warning: return .orange
+        case .error: return .red
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .info: return "info.circle"
+        case .warning: return "exclamationmark.triangle"
+        case .error: return "xmark.circle"
+        }
+    }
+}
 
 enum MarkColor: Codable, Equatable, Hashable, Comparable {
     case red
@@ -37,24 +71,24 @@ enum MarkColor: Codable, Equatable, Hashable, Comparable {
 }
 
 struct Mark: Codable, Hashable, Identifiable {
-    let marketDataId: String
+    let id: String
     let color: MarkColor
     let shape: MarkShape
     let title: String
     let message: String
     let category: String
     let signal: Signal
-
-    var id: String { marketDataId }
+    let level: MarkLevel
 
     enum CodingKeys: String, CodingKey {
-        case marketDataId = "market_data_id"
+        case id
         case color
         case shape
         case title
         case message
         case category
         case signal
+        case level
     }
 }
 
@@ -132,5 +166,29 @@ extension MarkColor {
 
     func rawValue() -> String {
         toColor().description
+    }
+}
+
+// MARK: - LightweightChart Conversion
+
+extension Mark {
+    /// Convert Mark to MarkerDataJS for LightweightChart display
+    func toMarkerDataJS() -> MarkerDataJS {
+        var marker = MarkerDataJS(
+            time: signal.time.timeIntervalSince1970,
+            position: "belowBar",
+            color: color.toHexString(),
+            shape: shape.toJSShape(),
+            text: title,
+            id: id,
+            markerType: "mark"
+        )
+        marker.title = title
+        marker.category = category
+        marker.message = message
+        marker.signalType = signal.type.rawValue
+        marker.signalReason = signal.reason
+        marker.level = level.rawValue
+        return marker
     }
 }
