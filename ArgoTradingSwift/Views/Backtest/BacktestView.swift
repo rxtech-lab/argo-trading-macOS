@@ -20,6 +20,7 @@ struct BacktestContentView: View {
                     .frame(minWidth: 400)
             case .strategy(let url):
                 StrategyDetailView(url: url)
+                    .id(url)
                     .frame(minWidth: 400)
             case .result(let url):
                 if let resultItem = backtestResultService.getResultItem(for: url) {
@@ -64,12 +65,14 @@ struct BacktestDetailView: View {
             switch backtest {
             case .data(let url):
                 DataTableView(url: url)
+                    .id(url)
                     .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
             case .strategy(let url):
                 StrategyDetailNavigationView(
                     strategyURL: url,
                     navigationService: navigationService
                 )
+                .id(url)
                 .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
             case .result(let url):
                 if let resultItem = backtestResultService.getResultItem(for: url) {
