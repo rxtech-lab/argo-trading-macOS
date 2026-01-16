@@ -40,7 +40,7 @@ jobs:
         run: swift --version
 
       - name: Cache Xcode build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/Library/Developer/Xcode/DerivedData
@@ -65,7 +65,7 @@ jobs:
 
       - name: Upload test results (on failure)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-results-${{ github.run_number }}
           path: test-results/
@@ -133,7 +133,7 @@ jobs:
 
       - name: Comment PR with test failure (on failure)
         if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const runNumber = context.runNumber;
