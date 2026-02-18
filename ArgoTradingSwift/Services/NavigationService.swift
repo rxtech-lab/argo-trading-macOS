@@ -9,6 +9,7 @@ import SwiftUI
 
 enum NavigationPath: Hashable, Equatable {
     case backtest(backtest: BacktestSelection?)
+    case trading(trading: TradingSelection?)
 }
 
 @Observable
@@ -16,20 +17,40 @@ class NavigationService {
     /// Separate selection states for each tab
     var generalSelection: NavigationPath? = nil
     var resultsSelection: NavigationPath? = nil
+    var tradingSelection: NavigationPath? = nil
 
     /// Stack for push-based navigation (back button only works for push operations)
     private var pushStack: [NavigationPath] = []
 
-    var selectedMode: EditorMode = .Backtest
+    private let defaults: UserDefaults
+
+    var selectedMode: EditorMode = .Backtest {
+        didSet {
+            defaults.set(selectedMode.rawValue, forKey: "selectedEditorMode")
+        }
+    }
     var currentSelectedBacktestTab: BacktestTabs = .general
 
-    /// Current selection based on the active tab
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        if let raw = defaults.string(forKey: "selectedEditorMode"),
+           let mode = EditorMode(rawValue: raw) {
+            selectedMode = mode
+        }
+    }
+
+    /// Current selection based on the active mode and tab
     var currentSelection: NavigationPath? {
-        switch currentSelectedBacktestTab {
-        case .general:
-            return generalSelection
-        case .results:
-            return resultsSelection
+        switch selectedMode {
+        case .Trading:
+            return tradingSelection
+        case .Backtest:
+            switch currentSelectedBacktestTab {
+            case .general:
+                return generalSelection
+            case .results:
+                return resultsSelection
+            }
         }
     }
 
@@ -86,6 +107,11 @@ class NavigationService {
                         self.resultsSelection = path
                     }
                 }
+            }
+        case .trading:
+            tradingSelection = nil
+            DispatchQueue.main.async {
+                self.tradingSelection = path
             }
         }
     }

@@ -8,7 +8,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct BacktestSideBar: View {
+struct TradingAndBacktestSidebar: View {
     @Environment(DatasetDownloadService.self) var downloadService
     @Environment(StrategyService.self) var strategyService
     @Environment(BacktestService.self) private var backtestService
@@ -21,7 +21,9 @@ struct BacktestSideBar: View {
         @Bindable var strategyVM = strategyService
 
         VStack(spacing: 0) {
-            BacktestTabsView(navigationService: navigationService)
+            if navigationService.selectedMode == .Backtest {
+                BacktestTabsView(navigationService: navigationService)
+            }
 
             switch navigationService.selectedMode {
             case .Backtest:
@@ -36,8 +38,8 @@ struct BacktestSideBar: View {
                         ResultSection(document: $document, resultFolder: document.resultFolder)
                     }
                 }
-            default:
-                EmptyView()
+            case .Trading:
+                TradingSideBar(document: $document, navigationService: navigationService)
             }
         }
         .contextMenu {

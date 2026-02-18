@@ -419,10 +419,10 @@ class DuckDBService: DuckDBServiceProtocol {
             throw DuckDBError.connectionError
         }
 
-        // Check if file exists
+        // Return empty results if file doesn't exist (e.g. live trading before any trades occur)
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: filePath.path) else {
-            throw DuckDBError.missingDataset
+            return PaginationResult(items: [], total: 0, page: page, pageSize: pageSize)
         }
 
         // Validate sortColumn to prevent SQL injection
@@ -559,10 +559,10 @@ class DuckDBService: DuckDBServiceProtocol {
             throw DuckDBError.connectionError
         }
 
-        // Check if file exists
+        // Return empty results if file doesn't exist (e.g. live trading before any orders occur)
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: filePath.path) else {
-            throw DuckDBError.missingDataset
+            return PaginationResult(items: [], total: 0, page: page, pageSize: pageSize)
         }
 
         // Validate sortColumn to prevent SQL injection
@@ -680,10 +680,10 @@ class DuckDBService: DuckDBServiceProtocol {
             throw DuckDBError.connectionError
         }
 
-        // Check if file exists
+        // Return empty results if file doesn't exist (e.g. live trading before any marks occur)
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: filePath.path) else {
-            throw DuckDBError.missingDataset
+            return PaginationResult(items: [], total: 0, page: page, pageSize: pageSize)
         }
 
         // Validate sortColumn to prevent SQL injection
@@ -895,10 +895,10 @@ class DuckDBService: DuckDBServiceProtocol {
             throw DuckDBError.connectionError
         }
 
-        // Check if file exists
+        // Return empty results if file doesn't exist (e.g. live trading before any trades occur)
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: filePath.path) else {
-            throw DuckDBError.missingDataset
+            return []
         }
 
         let startTimeStr = Self.utcDateFormatter.string(from: startTime)
@@ -1006,10 +1006,10 @@ class DuckDBService: DuckDBServiceProtocol {
             throw DuckDBError.connectionError
         }
 
-        // Check if file exists
+        // Return empty results if file doesn't exist (e.g. live trading before any marks occur)
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: filePath.path) else {
-            throw DuckDBError.missingDataset
+            return []
         }
 
         // ISO8601 date formatter for signal_time (format: 2022-12-31T15:30:00.000Z)
@@ -1116,10 +1116,10 @@ class DuckDBService: DuckDBServiceProtocol {
             throw DuckDBError.connectionError
         }
 
-        // Check if file exists
+        // Return empty results if file doesn't exist (e.g. live trading before any logs occur)
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: filePath.path) else {
-            throw DuckDBError.missingDataset
+            return PaginationResult(items: [], total: 0, page: page, pageSize: pageSize)
         }
 
         // Validate sortColumn to prevent SQL injection

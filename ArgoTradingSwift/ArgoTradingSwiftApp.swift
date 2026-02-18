@@ -47,6 +47,9 @@ struct ArgoTradingSwiftApp: App {
     @State private var lightweightChartsService = LightweightChartService()
     @State private var strategyCacheService = StrategyCacheService()
     @State private var keychainService = KeychainService()
+    @State private var tradingProviderService = TradingProviderService()
+    @State private var tradingService = TradingService()
+    @State private var tradingResultService = TradingResultService()
 
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -79,6 +82,16 @@ struct ArgoTradingSwiftApp: App {
                 .sheet(isPresented: $schemaService.showManageSchemas) {
                     ManageSchemasView(document: document.$document)
                 }
+                .sheet(isPresented: $tradingProviderService.showProviderEditor) {
+                    TradingProviderEditorView(
+                        document: document.$document,
+                        isEditing: tradingProviderService.isEditing,
+                        existingProvider: tradingProviderService.editingProvider
+                    )
+                }
+                .sheet(isPresented: $tradingProviderService.showManageProviders) {
+                    ManageTradingProvidersView(document: document.$document)
+                }
                 .onAppear {
                     // Dismiss welcome window when document opens
                     dismissWindow(id: "welcome")
@@ -110,6 +123,9 @@ struct ArgoTradingSwiftApp: App {
         .environment(lightweightChartsService)
         .environment(strategyCacheService)
         .environment(keychainService)
+        .environment(tradingProviderService)
+        .environment(tradingService)
+        .environment(tradingResultService)
 
         // Define a custom About window that can be opened once
         Window("About My App", id: "about") {

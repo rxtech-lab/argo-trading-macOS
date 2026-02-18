@@ -20,7 +20,8 @@ struct ToolbarRunningSectionViewStatusTests {
             document: .constant(ArgoTradingDocument()),
             status: .idle,
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         let text = try sut.inspect().find(text: "Idle")
@@ -34,7 +35,8 @@ struct ToolbarRunningSectionViewStatusTests {
             document: .constant(ArgoTradingDocument()),
             status: .running(label: label),
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         let labelText = try sut.inspect().find(text: label)
@@ -49,7 +51,8 @@ struct ToolbarRunningSectionViewStatusTests {
             document: .constant(ArgoTradingDocument()),
             status: .downloading(label: label, progress: progress),
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         let downloadText = try sut.inspect().find(text: "Downloading \(label)")
@@ -64,7 +67,8 @@ struct ToolbarRunningSectionViewStatusTests {
             document: .constant(ArgoTradingDocument()),
             status: .backtesting(label: label, progress: progress),
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         // The view combines label and progress into a single Text: "Backtesting 45/100"
@@ -80,7 +84,8 @@ struct ToolbarRunningSectionViewStatusTests {
             document: .constant(ArgoTradingDocument()),
             status: .error(label: label, errors: ["Error"], at: Date()),
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         let images = try sut.inspect().findAll(ViewType.Image.self)
@@ -97,7 +102,8 @@ struct ToolbarRunningSectionViewStatusTests {
             document: .constant(ArgoTradingDocument()),
             status: .downloadCancelled(label: label),
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         let images = try sut.inspect().findAll(ViewType.Image.self)
@@ -114,7 +120,8 @@ struct ToolbarRunningSectionViewStatusTests {
             document: .constant(ArgoTradingDocument()),
             status: .finished(message: message, at: Date()),
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         let images = try sut.inspect().findAll(ViewType.Image.self)
@@ -138,7 +145,8 @@ struct ToolbarRunningSectionViewButtonTests {
             document: .constant(ArgoTradingDocument()),
             status: .idle,
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         let selectSchemaText = try sut.inspect().find(text: "Select schema")
@@ -156,7 +164,8 @@ struct ToolbarRunningSectionViewButtonTests {
             document: .constant(document),
             status: .idle,
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         let schemaNameText = try sut.inspect().find(text: "My Strategy")
@@ -169,7 +178,8 @@ struct ToolbarRunningSectionViewButtonTests {
             document: .constant(ArgoTradingDocument()),
             status: .idle,
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         let selectDatasetText = try sut.inspect().find(text: "Select dataset")
@@ -185,7 +195,8 @@ struct ToolbarRunningSectionViewButtonTests {
             document: .constant(document),
             status: .idle,
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         let datasetText = try sut.inspect().find(text: "BTCUSDT_1hour")
@@ -205,7 +216,8 @@ struct ToolbarRunningSectionViewDateTests {
             document: .constant(ArgoTradingDocument()),
             status: .finished(message: "Done", at: today),
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         let texts = try sut.inspect().findAll(ViewType.Text.self)
@@ -222,7 +234,8 @@ struct ToolbarRunningSectionViewDateTests {
             document: .constant(ArgoTradingDocument()),
             status: .error(label: "Build", errors: [], at: yesterday),
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         let texts = try sut.inspect().findAll(ViewType.Text.self)
@@ -239,7 +252,8 @@ struct ToolbarRunningSectionViewDateTests {
             document: .constant(ArgoTradingDocument()),
             status: .finished(message: "Done", at: oldDate),
             datasetFiles: [],
-            strategyFiles: []
+            strategyFiles: [],
+            selectedMode: .Backtest
         )
 
         let texts = try sut.inspect().findAll(ViewType.Text.self)

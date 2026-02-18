@@ -46,6 +46,10 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
         return schema
     }
 
+    func getLiveTradingEngineConfigSchema() -> String {
+        return SwiftargoGetLiveTradingEngineConfigSchema()
+    }
+
     // MARK: - SwiftArgoHelper Methods
 
     func runBacktest(

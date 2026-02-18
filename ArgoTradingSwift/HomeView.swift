@@ -18,6 +18,9 @@ struct HomeView: View {
     @Environment(BacktestResultService.self) var backtestResultService
     @Environment(StrategyCacheService.self) var strategyCacheService
     @Environment(KeychainService.self) var keychainService
+    @Environment(TradingService.self) var tradingService
+    @Environment(TradingProviderService.self) var tradingProviderService
+    @Environment(TradingResultService.self) var tradingResultService
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -25,42 +28,75 @@ struct HomeView: View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             // SIDEBAR (Left column) - shared across all modes
             VStack {
-                BacktestSideBar(navigationService: navigationService, document: $document)
+                TradingAndBacktestSidebar(navigationService: navigationService, document: $document)
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        if backtestService.isRunning {
-                            logger.info("Stopping backtest...")
-                            Task {
-                                await backtestService.cancel()
+                    switch navigationService.selectedMode {
+                    case .Backtest:
+                        Button {
+                            if backtestService.isRunning {
+                                logger.info("Stopping backtest...")
+                                Task {
+                                    await backtestService.cancel()
+                                }
+                            } else {
+                                guard let schema = document.selectedSchema,
+                                      let datasetURL = document.selectedDatasetURL else { return }
+                                Task.detached {
+                                    await backtestService.runBacktest(
+                                        schema: schema,
+                                        datasetURL: datasetURL,
+                                        strategyFolder: document.strategyFolder,
+                                        resultFolder: document.resultFolder,
+                                        toolbarStatusService: toolbarStatusService,
+                                        strategyCacheService: strategyCacheService,
+                                        keychainService: keychainService
+                                    )
+                                }
                             }
-                        } else {
-                            guard let schema = document.selectedSchema,
-                                  let datasetURL = document.selectedDatasetURL else { return }
-                            Task.detached {
-                                await backtestService.runBacktest(
-                                    schema: schema,
-                                    datasetURL: datasetURL,
-                                    strategyFolder: document.strategyFolder,
-                                    resultFolder: document.resultFolder,
-                                    toolbarStatusService: toolbarStatusService,
-                                    strategyCacheService: strategyCacheService,
-                                    keychainService: keychainService
-                                )
-                            }
+                        } label: {
+                            Label(
+                                backtestService.isRunning ? "Stop" : "Start",
+                                systemImage: backtestService.isRunning ? "square.fill" : "play.fill"
+                            )
+                            .contentTransition(.symbolEffect(.replace))
                         }
-                    } label: {
-                        Label(
-                            backtestService.isRunning ? "Stop" : "Start",
-                            systemImage: backtestService.isRunning ? "square.fill" : "play.fill"
-                        )
-                        .contentTransition(.symbolEffect(.replace))
+                        .disabled(!backtestService.isRunning && !document.canRunBacktest)
+                        .keyboardShortcut("r", modifiers: .command)
+                        .animation(.easeInOut(duration: 0.1), value: backtestService.isRunning)
+                    case .Trading:
+                        Button {
+                            if tradingService.isRunning {
+                                Task {
+                                    await tradingService.stopTrading(toolbarStatusService: toolbarStatusService)
+                                }
+                            } else {
+                                guard let provider = document.selectedTradingProvider,
+                                      let schema = document.selectedSchema else { return }
+                                Task {
+                                    await tradingService.startTrading(
+                                        provider: provider,
+                                        schema: schema,
+                                        strategyFolder: document.strategyFolder,
+                                        tradingResultFolder: document.tradingResultFolder,
+                                        keychainService: keychainService,
+                                        toolbarStatusService: toolbarStatusService
+                                    )
+                                }
+                            }
+                        } label: {
+                            Label(
+                                tradingService.isRunning ? "Stop" : "Start",
+                                systemImage: tradingService.isRunning ? "square.fill" : "play.fill"
+                            )
+                            .contentTransition(.symbolEffect(.replace))
+                        }
+                        .disabled(!tradingService.isRunning && (document.selectedTradingProvider == nil || document.selectedSchema == nil))
+                        .keyboardShortcut("r", modifiers: .command)
+                        .animation(.easeInOut(duration: 0.1), value: tradingService.isRunning)
                     }
-                    .disabled(!backtestService.isRunning && !document.canRunBacktest)
-                    .keyboardShortcut("r", modifiers: .command)
-                    .animation(.easeInOut(duration: 0.1), value: backtestService.isRunning)
                 }
             }
         } content: {
@@ -69,7 +105,7 @@ struct HomeView: View {
             case .Backtest:
                 BacktestContentView(navigationService: navigationService)
             case .Trading:
-                TradingContentView()
+                TradingContentView(navigationService: navigationService)
             }
         } detail: {
             // DETAIL (Right column)
@@ -77,7 +113,7 @@ struct HomeView: View {
             case .Backtest:
                 BacktestDetailView(navigationService: navigationService)
             case .Trading:
-                TradingDetailView()
+                TradingDetailView(navigationService: navigationService)
             }
         }
         .navigationSplitViewStyle(.balanced)
@@ -99,7 +135,8 @@ struct HomeView: View {
                     document: $document,
                     status: toolbarStatusService.toolbarRunningStatus,
                     datasetFiles: datasetService.datasetFiles,
-                    strategyFiles: strategyService.strategyFiles
+                    strategyFiles: strategyService.strategyFiles,
+                    selectedMode: navigationService.selectedMode
                 )
                 .padding(.horizontal, 8)
 
@@ -113,6 +150,8 @@ struct HomeView: View {
         .onAppear {
             datasetService.setDataFolder(document.dataFolder)
             backtestResultService.setResultFolder(document.resultFolder)
+            strategyService.setStrategyFolder(document.strategyFolder)
+            tradingResultService.setResultFolder(document.tradingResultFolder)
         }
         .onChange(of: document.dataFolder) { _, newFolder in
             datasetService.setDataFolder(newFolder)
@@ -120,37 +159,18 @@ struct HomeView: View {
         .onChange(of: document.resultFolder) { _, newFolder in
             backtestResultService.setResultFolder(newFolder)
         }
-    }
-}
-
-// MARK: - Trading Content Views
-
-private struct TradingContentView: View {
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "chart.line.uptrend.xyaxis")
-                .font(.system(size: 64))
-                .foregroundColor(.secondary.opacity(0.5))
-
-            Text("Trading Mode")
-                .font(.largeTitle)
-                .fontWeight(.semibold)
-
-            Text("Coming Soon")
-                .font(.title3)
-                .foregroundColor(.secondary)
+        .onChange(of: document.strategyFolder) { _, newFolder in
+            strategyService.setStrategyFolder(newFolder)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onChange(of: document.tradingResultFolder) { _, newFolder in
+            tradingResultService.setResultFolder(newFolder)
+        }
+        .onChange(of: tradingService.isRunning) { oldValue, newValue in
+            if oldValue && !newValue {
+                // Trading just stopped — reload to pick up final results
+                tradingResultService.reloadResults()
+            }
+        }
     }
 }
 
-private struct TradingDetailView: View {
-    var body: some View {
-        ContentUnavailableView(
-            "Trading Details",
-            systemImage: "info.circle",
-            description: Text("Trading details will appear here")
-        )
-        .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
-    }
-}

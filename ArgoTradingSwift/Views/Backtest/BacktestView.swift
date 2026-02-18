@@ -45,7 +45,7 @@ struct BacktestContentView: View {
                     description: Text("Select a dataset from the sidebar to view the price chart")
                 )
             }
-        case nil:
+        case .trading, nil:
             ContentUnavailableView(
                 "No Dataset Selected",
                 systemImage: "chart.xyaxis.line",
@@ -94,7 +94,7 @@ struct BacktestDetailView: View {
                 )
                 .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
             }
-        case nil:
+        case .trading, nil:
             ContentUnavailableView(
                 "No Dataset Selected",
                 systemImage: "tablecells",

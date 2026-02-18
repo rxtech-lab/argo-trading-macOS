@@ -107,6 +107,7 @@ class KeychainService {
         ]
 
         let status = SecItemAdd(addQuery as CFDictionary, nil)
+        logger.info("KeychainService.save: key=\(key), status=\(status)")
         return status == errSecSuccess
     }
 
@@ -123,9 +124,11 @@ class KeychainService {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
         guard status == errSecSuccess, let data = result as? Data else {
+            logger.info("KeychainService.read: key=\(key), found=false (status=\(status))")
             return nil
         }
 
+        logger.info("KeychainService.read: key=\(key), found=true")
         return String(data: data, encoding: .utf8)
     }
 
@@ -137,6 +140,7 @@ class KeychainService {
         ]
 
         let status = SecItemDelete(query as CFDictionary)
+        logger.info("KeychainService.delete: key=\(key), status=\(status)")
         return status == errSecSuccess || status == errSecItemNotFound
     }
 
@@ -154,13 +158,15 @@ class KeychainService {
                 values[fieldName] = value
             }
         }
+        logger.info("KeychainService.loadKeychainValues: identifier=\(identifier), requested=\(fieldNames.count), found=\(values.count)")
         return values
     }
 
     func saveKeychainValues(identifier: String, values: [String: String]) {
         for (fieldName, value) in values {
             let key = Self.keychainKey(identifier: identifier, fieldName: fieldName)
-            _ = save(key: key, value: value)
+            let success = save(key: key, value: value)
+            logger.info("KeychainService.saveKeychainValues: field=\(fieldName), success=\(success)")
         }
     }
 
