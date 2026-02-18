@@ -54,7 +54,8 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
         strategyFolder: URL,
         resultFolder: URL,
         toolbarStatusService: ToolbarStatusService,
-        strategyCacheService: StrategyCacheService?
+        strategyCacheService: StrategyCacheService?,
+        keychainService: KeychainService? = nil
     ) async {
         self.toolbarStatusService = toolbarStatusService
         self.strategyCacheService = strategyCacheService
@@ -80,9 +81,21 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
             // Set data path to the single selected dataset file
             let datasetURL = datasetURL.toPathStringWithoutFilePrefix()
             try argoEngine?.setDataPath(datasetURL)
+
+            // Resolve keychain placeholders in config before passing to engine
+            var configData = schema.parameters
+            if schema.hasKeychainFields, let keychainService = keychainService {
+                configData = await resolveKeychainPlaceholders(
+                    parameters: schema.parameters,
+                    schemaId: schema.id.uuidString,
+                    keychainFieldNames: schema.keychainFieldNames,
+                    keychainService: keychainService
+                )
+            }
+
             // Create config with strategy path and schema parameters
             let configs = SwiftargoStringArray()
-            if let configJSON = String(data: schema.parameters, encoding: .utf8) {
+            if let configJSON = String(data: configData, encoding: .utf8) {
                 _ = configs.add(configJSON)
             }
             try argoEngine?.setConfigContent(configs)
@@ -134,6 +147,33 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
                 }
             }
         }
+    }
+
+    private func resolveKeychainPlaceholders(
+        parameters: Data,
+        schemaId: String,
+        keychainFieldNames: [String],
+        keychainService: KeychainService
+    ) async -> Data {
+        let authenticated = await keychainService.authenticateWithBiometrics()
+        guard authenticated else { return parameters }
+
+        let values = keychainService.loadKeychainValues(
+            identifier: schemaId,
+            fieldNames: Set(keychainFieldNames)
+        )
+
+        guard !values.isEmpty,
+              var dict = try? JSONSerialization.jsonObject(with: parameters) as? [String: Any]
+        else { return parameters }
+
+        for (field, value) in values {
+            if let existing = dict[field] as? String, existing == "__KEYCHAIN__" {
+                dict[field] = value
+            }
+        }
+
+        return (try? JSONSerialization.data(withJSONObject: dict)) ?? parameters
     }
 
     @MainActor

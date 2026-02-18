@@ -23,13 +23,14 @@ enum SchemaRunningStatus: String, Codable, CaseIterable {
     }
 }
 
-struct Schema: Codable, Identifiable, Hashable {
+struct Schema: Identifiable, Hashable {
     var id: UUID
     var name: String
     var parameters: Data
     var backtestEngineConfig: Data
     var strategyPath: String
     var runningStatus: SchemaRunningStatus
+    var keychainFieldNames: [String]
     var createdAt: Date
     var updatedAt: Date
 
@@ -40,6 +41,7 @@ struct Schema: Codable, Identifiable, Hashable {
         backtestEngineConfig: Data = Data(),
         strategyPath: String = "",
         runningStatus: SchemaRunningStatus = .idle,
+        keychainFieldNames: [String] = [],
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -49,6 +51,7 @@ struct Schema: Codable, Identifiable, Hashable {
         self.backtestEngineConfig = backtestEngineConfig
         self.strategyPath = strategyPath
         self.runningStatus = runningStatus
+        self.keychainFieldNames = keychainFieldNames
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -56,5 +59,29 @@ struct Schema: Codable, Identifiable, Hashable {
     /// Returns true if the schema has a non-empty strategy path
     var hasValidStrategyPath: Bool {
         !strategyPath.isEmpty
+    }
+
+    var hasKeychainFields: Bool {
+        !keychainFieldNames.isEmpty
+    }
+}
+
+extension Schema: Codable {
+    enum CodingKeys: String, CodingKey {
+        case id, name, parameters, backtestEngineConfig, strategyPath
+        case runningStatus, keychainFieldNames, createdAt, updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        parameters = try container.decode(Data.self, forKey: .parameters)
+        backtestEngineConfig = try container.decode(Data.self, forKey: .backtestEngineConfig)
+        strategyPath = try container.decode(String.self, forKey: .strategyPath)
+        runningStatus = try container.decode(SchemaRunningStatus.self, forKey: .runningStatus)
+        keychainFieldNames = try container.decodeIfPresent([String].self, forKey: .keychainFieldNames) ?? []
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
     }
 }

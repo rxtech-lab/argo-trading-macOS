@@ -10,6 +10,7 @@ import SwiftUI
 struct ManageSchemasView: View {
     @Binding var document: ArgoTradingDocument
     @Environment(SchemaService.self) var schemaService
+    @Environment(KeychainService.self) var keychainService
     @Environment(\.dismiss) var dismiss
 
     @State private var schemaToDelete: Schema?
@@ -72,6 +73,12 @@ struct ManageSchemasView: View {
                 }
                 Button("Delete", role: .destructive) {
                     if let schema = schemaToDelete {
+                        if schema.hasKeychainFields {
+                            keychainService.deleteKeychainValues(
+                                identifier: schema.id.uuidString,
+                                fieldNames: schema.keychainFieldNames
+                            )
+                        }
                         document.deleteSchema(schema)
                     }
                     schemaToDelete = nil
@@ -173,6 +180,7 @@ struct SchemaRowView: View {
         ))
     )
     .environment(SchemaService())
+    .environment(KeychainService())
 }
 
 #Preview("Empty") {
@@ -180,4 +188,5 @@ struct SchemaRowView: View {
         document: .constant(ArgoTradingDocument())
     )
     .environment(SchemaService())
+    .environment(KeychainService())
 }

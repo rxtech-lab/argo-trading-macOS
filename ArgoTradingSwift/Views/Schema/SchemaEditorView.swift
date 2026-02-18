@@ -18,6 +18,7 @@ struct SchemaEditorView: View {
     @Environment(BacktestService.self) var backtestService
     @Environment(AlertManager.self) var alertManager
     @Environment(StrategyCacheService.self) var strategyCacheService
+    @Environment(KeychainService.self) var keychainService
 
     let isEditing: Bool
     let existingSchema: Schema?
@@ -34,6 +35,10 @@ struct SchemaEditorView: View {
     @State private var backtestError: String?
     @State private var strategyController = JSONSchemaFormController()
     @State private var backtestController = JSONSchemaFormController()
+
+    @State private var keychainFieldNames: Set<String> = []
+    @State private var keychainUiSchema: [String: Any]?
+    @State private var rawSchemaString: String?
 
     var body: some View {
         TabView {
@@ -90,6 +95,13 @@ struct SchemaEditorView: View {
             .onChange(of: selectedStrategyURL) { _, newURL in
                 loadStrategyMetadata(from: newURL)
             }
+            .onChange(of: keychainFieldNames) { _, newFields in
+                if !newFields.isEmpty && isEditing {
+                    Task {
+                        await authenticateAndLoadKeychain()
+                    }
+                }
+            }
     }
 
     @ViewBuilder
@@ -136,6 +148,7 @@ struct SchemaEditorView: View {
                 Section("Parameters") {
                     JSONSchemaForm(
                         schema: schema,
+                        uiSchema: keychainUiSchema,
                         formData: $strategyFormData,
                         showSubmitButton: false,
                         controller: strategyController
@@ -162,6 +175,9 @@ struct SchemaEditorView: View {
         guard let url else {
             strategyMetadata = nil
             strategySchema = nil
+            keychainFieldNames = []
+            keychainUiSchema = nil
+            rawSchemaString = nil
             return
         }
 
@@ -173,12 +189,54 @@ struct SchemaEditorView: View {
                 let metadata = try await strategyCacheService.getMetadata(for: url)
                 strategyMetadata = metadata
                 strategySchema = try? JSONSchema(jsonString: metadata.schema)
+                rawSchemaString = metadata.schema
+
+                // Parse keychain fields from raw schema
+                let fields = KeychainSchemaParser.keychainFieldNames(from: metadata.schema)
+                keychainFieldNames = fields
+                if !fields.isEmpty {
+                    keychainUiSchema = KeychainSchemaParser.buildUiSchema(keychainFields: fields)
+                } else {
+                    keychainUiSchema = nil
+                }
+
                 isLoadingMetadata = false
             } catch {
                 self.strategyError = error.localizedDescription
                 isLoadingMetadata = false
             }
         }
+    }
+
+    private func authenticateAndLoadKeychain() async {
+        guard let existingSchema = existingSchema else { return }
+        let success = await keychainService.authenticateWithBiometrics()
+        if success {
+            let values = keychainService.loadKeychainValues(
+                identifier: existingSchema.id.uuidString,
+                fieldNames: keychainFieldNames
+            )
+            injectKeychainValues(values)
+        }
+    }
+
+    private func injectKeychainValues(_ values: [String: String]) {
+        guard case .object(var properties) = strategyFormData else { return }
+        for (field, value) in values {
+            properties[field] = .string(value)
+        }
+        strategyFormData = .object(properties: properties)
+    }
+
+    private func extractKeychainValues() -> [String: String] {
+        guard case .object(let properties) = strategyFormData else { return [:] }
+        var values: [String: String] = [:]
+        for field in keychainFieldNames {
+            if case .string(let value) = properties[field], !value.isEmpty {
+                values[field] = value
+            }
+        }
+        return values
     }
 
     private func saveSchema() async {
@@ -203,7 +261,39 @@ struct SchemaEditorView: View {
         }
 
         do {
-            let dict = strategyFormData.toDictionary() ?? [:]
+            var dict: [String: Any] = (strategyFormData.toDictionary() as? [String: Any]) ?? [:]
+
+            // Handle keychain fields: save to keychain and replace with placeholder
+            var keychainFieldNamesList: [String] = []
+            if !keychainFieldNames.isEmpty {
+                let keychainValues = extractKeychainValues()
+                if !keychainValues.isEmpty {
+                    if !keychainService.isAuthenticated {
+                        let success = await keychainService.authenticateWithBiometrics()
+                        if !success {
+                            alertManager.showAlert(message: "Authentication required to save credentials.")
+                            return
+                        }
+                    }
+
+                    let schemaId: String
+                    if isEditing, let existing = existingSchema {
+                        schemaId = existing.id.uuidString
+                    } else {
+                        // Will use the new schema's ID after creation
+                        schemaId = UUID().uuidString
+                    }
+
+                    keychainService.saveKeychainValues(identifier: schemaId, values: keychainValues)
+
+                    // Replace keychain values with placeholder in saved data
+                    for field in keychainFieldNames {
+                        dict[field] = "__KEYCHAIN__"
+                    }
+                    keychainFieldNamesList = Array(keychainFieldNames)
+                }
+            }
+
             let parametersData = try JSONSerialization.data(withJSONObject: dict)
             let backtestDict = backtestFormData.toDictionary() ?? [:]
             let backtestData = try JSONSerialization.data(withJSONObject: backtestDict)
@@ -215,6 +305,7 @@ struct SchemaEditorView: View {
                 updated.strategyPath = strategyPath
                 updated.parameters = parametersData
                 updated.backtestEngineConfig = backtestData
+                updated.keychainFieldNames = keychainFieldNamesList.isEmpty ? existing.keychainFieldNames : keychainFieldNamesList
                 updated.updatedAt = Date()
                 document.updateSchema(updated)
             } else {
@@ -222,7 +313,8 @@ struct SchemaEditorView: View {
                     name: name,
                     parameters: parametersData,
                     backtestEngineConfig: backtestData,
-                    strategyPath: strategyPath
+                    strategyPath: strategyPath,
+                    keychainFieldNames: keychainFieldNamesList
                 )
                 document.addSchema(schema)
             }
@@ -267,6 +359,7 @@ struct SchemaEditorView: View {
     .environment(StrategyService())
     .environment(AlertManager())
     .environment(StrategyCacheService())
+    .environment(KeychainService())
 }
 
 #Preview("Edit") {
@@ -279,4 +372,5 @@ struct SchemaEditorView: View {
     .environment(StrategyService())
     .environment(AlertManager())
     .environment(StrategyCacheService())
+    .environment(KeychainService())
 }

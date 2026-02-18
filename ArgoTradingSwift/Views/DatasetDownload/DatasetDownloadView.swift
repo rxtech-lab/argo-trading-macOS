@@ -11,7 +11,6 @@ import JSONSchemaForm
 import SwiftUI
 
 struct DatasetDownloadView: View {
-    @AppStorage("config") private var configData: String = "{}"
     @AppStorage("data-provider") private var dataProvider: String = ""
 
     @Binding var document: ArgoTradingDocument
@@ -19,6 +18,7 @@ struct DatasetDownloadView: View {
     @Environment(DatasetDownloadService.self) var datasetDownloadService
     @Environment(AlertManager.self) var alertManager
     @Environment(ToolbarStatusService.self) var toolbarStatusService
+    @Environment(KeychainService.self) var keychainService
     @Environment(\.dismiss) var dismiss
 
     private let supportedProviders: [String]
@@ -26,10 +26,12 @@ struct DatasetDownloadView: View {
     @State private var formData: FormData = .object(properties: [:])
     @State private var controller = JSONSchemaFormController()
 
-    private var providerSchema: String {
-        let schema = SwiftargoGetDownloadClientSchema(dataProvider)
-        return schema
-    }
+    @State private var keychainFieldNames: Set<String> = []
+    @State private var uiSchema: [String: Any]?
+    @State private var keychainAuthenticated: Bool = false
+    @State private var keychainAuthError: String?
+    @State private var providerSchema: JSONSchema?
+    @State private var isLoadingKeychain: Bool = false
 
     init(document: Binding<ArgoTradingDocument>) {
         _document = document
@@ -69,11 +71,45 @@ struct DatasetDownloadView: View {
                     }
 
                     if !dataProvider.isEmpty {
-                        Section("Provider Configuration") {
-                            if let jsonSchema = try? JSONSchema(jsonString: providerSchema) {
-                                JSONSchemaForm(schema: jsonSchema, formData: $formData, showSubmitButton: false, controller: controller)
-                            } else {
-                                Text("Failed to load provider configuration schema.")
+                        if isLoadingKeychain {
+                            Section("Provider Configuration") {
+                                HStack {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                    Text("Loading saved credentials...")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        } else if !keychainFieldNames.isEmpty && !keychainAuthenticated {
+                            Section {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundStyle(.yellow)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Authentication required to load saved credentials")
+                                            .font(.callout)
+                                        if let error = keychainAuthError {
+                                            Text(error)
+                                                .font(.caption)
+                                                .foregroundStyle(.red)
+                                        }
+                                    }
+                                    Spacer()
+                                    Button("Authenticate") {
+                                        Task {
+                                            await authenticateAndLoadKeychain()
+                                        }
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                }
+                            }
+                        } else {
+                            Section("Provider Configuration") {
+                                if let jsonSchema = providerSchema {
+                                    JSONSchemaForm(schema: jsonSchema, uiSchema: uiSchema, formData: $formData, showSubmitButton: false, controller: controller)
+                                } else {
+                                    Text("Failed to load provider configuration schema.")
+                                }
                             }
                         }
                     }
@@ -107,6 +143,86 @@ struct DatasetDownloadView: View {
                 }
             }
         }
+        .onChange(of: dataProvider) { _, newProvider in
+            updateKeychainFields(for: newProvider)
+        }
+        .onAppear {
+            if !dataProvider.isEmpty {
+                updateKeychainFields(for: dataProvider)
+            }
+        }
+    }
+
+    private func updateKeychainFields(for provider: String) {
+        guard !provider.isEmpty else {
+            keychainFieldNames = []
+            uiSchema = nil
+            providerSchema = nil
+            return
+        }
+
+        // Cache the schema to prevent re-parsing on every render
+        let schemaString = SwiftargoGetDownloadClientSchema(provider)
+        providerSchema = try? JSONSchema(jsonString: schemaString)
+
+        // Extract property order from the raw schema string
+        let propertyOrder = KeychainSchemaParser.propertyOrder(from: schemaString)
+
+        if let fields = SwiftargoGetDownloadClientKeychainFields(provider),
+           let stringFields = fields as? SwiftargoStringCollection
+        {
+            keychainFieldNames = Set(stringFields.stringArray)
+        } else {
+            keychainFieldNames = []
+        }
+
+        // Always build uiSchema to preserve field order
+        uiSchema = KeychainSchemaParser.buildUiSchema(
+            keychainFields: keychainFieldNames,
+            propertyOrder: propertyOrder
+        )
+
+        if !keychainFieldNames.isEmpty {
+            Task {
+                await authenticateAndLoadKeychain()
+            }
+        }
+    }
+
+    private func authenticateAndLoadKeychain() async {
+        isLoadingKeychain = true
+        let success = await keychainService.authenticateWithBiometrics()
+        keychainAuthenticated = success
+        if success {
+            keychainAuthError = nil
+            let values = keychainService.loadKeychainValues(
+                identifier: dataProvider,
+                fieldNames: keychainFieldNames
+            )
+            injectKeychainValues(values)
+        } else {
+            keychainAuthError = keychainService.authError
+        }
+        isLoadingKeychain = false
+    }
+
+    private func injectKeychainValues(_ values: [String: String]) {
+        guard case .object(var properties) = formData else { return }
+        for (field, value) in values {
+            properties[field] = .string(value)
+        }
+        formData = .object(properties: properties)
+    }
+
+    private func extractKeychainValues() -> [String: String] {
+        guard case .object(let properties) = formData else { return [:] }
+        var values: [String: String] = [:]
+        for field in keychainFieldNames {
+            if case .string(let value) = properties[field], !value.isEmpty {
+                values[field] = value
+            }
+        }
+        return values
     }
 }
 
@@ -121,6 +237,21 @@ extension DatasetDownloadView {
             alertManager.showAlert(message: "Please fix the errors in the form before downloading.")
             return
         }
+
+        // Save keychain field values before downloading
+        if !keychainFieldNames.isEmpty {
+            if !keychainAuthenticated {
+                let success = await keychainService.authenticateWithBiometrics()
+                if !success {
+                    alertManager.showAlert(message: "Authentication required to save credentials.")
+                    return
+                }
+                keychainAuthenticated = true
+            }
+            let values = extractKeychainValues()
+            keychainService.saveKeychainValues(identifier: dataProvider, values: values)
+        }
+
         let marketDownloader = SwiftargoMarketDownloader(datasetDownloadService)
         datasetDownloadService.marketDownloader = marketDownloader
 
