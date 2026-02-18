@@ -9,21 +9,21 @@ import SwiftUI
 
 struct TradingDetailView: View {
     var navigationService: NavigationService
-    @Environment(TradingService.self) private var tradingService
+    @Environment(TradingResultService.self) private var tradingResultService
 
     var body: some View {
         switch navigationService.tradingSelection {
         case .trading(let trading):
             switch trading {
-            case .session(let id):
-                if let session = tradingService.sessions.first(where: { $0.id == id }) {
-                    TradingSessionDetailView(session: session)
+            case .run(let url):
+                if let resultItem = tradingResultService.getResultItem(for: url) {
+                    TradingRunDetailView(resultItem: resultItem)
                         .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
                 } else {
                     ContentUnavailableView(
-                        "Session Not Found",
+                        "Run Not Found",
                         systemImage: "exclamationmark.triangle",
-                        description: Text("The selected session could not be found")
+                        description: Text("The selected trading run could not be found")
                     )
                     .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
                 }
@@ -39,91 +39,108 @@ struct TradingDetailView: View {
         ContentUnavailableView(
             "Trading Details",
             systemImage: "info.circle",
-            description: Text("Select a trading session to view details")
+            description: Text("Select a trading run to view details")
         )
         .navigationSplitViewColumnWidth(min: 350, ideal: 400, max: 500)
     }
 }
 
-// MARK: - Trading Session Detail
+// MARK: - Trading Run Detail
 
-private enum TradingSessionTab: String, CaseIterable, Identifiable {
+private enum TradingRunTab: String, CaseIterable, Identifiable {
     case general = "General"
     case trades = "Trades"
+    case orders = "Orders"
     case marks = "Marks"
+    case logs = "Logs"
 
     var id: String { rawValue }
 }
 
-struct TradingSessionDetailView: View {
-    let session: TradingSession
-    @State private var selectedTab: TradingSessionTab = .general
+struct TradingRunDetailView: View {
+    let resultItem: TradingResultItem
+    @State private var selectedTab: TradingRunTab = .general
+
+    private var result: TradingResult { resultItem.result }
+
+    private var dataFileURL: URL {
+        URL(fileURLWithPath: result.marketDataFilePath.isEmpty ? result.tradesFilePath : result.marketDataFilePath)
+    }
 
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
             Picker("Select Tab", selection: $selectedTab) {
-                ForEach(TradingSessionTab.allCases) { tab in
+                ForEach(TradingRunTab.allCases) { tab in
                     Text(tab.rawValue).tag(tab)
                 }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            .padding(.horizontal)
+            .padding(.top, 8)
 
             switch selectedTab {
             case .general:
                 buildGeneralTab()
             case .trades:
-                if let tradesFilePath = session.tradesFilePath,
-                   let dataFilePath = session.dataFilePath
-                {
-                    TradesTableView(
-                        filePath: URL(fileURLWithPath: tradesFilePath),
-                        dataFilePath: URL(fileURLWithPath: dataFilePath)
-                    )
-                } else {
-                    ContentUnavailableView(
-                        "No Trades Data",
-                        systemImage: "tablecells",
-                        description: Text("Trade data will appear here during an active session")
-                    )
-                }
+                TradesTableView(
+                    filePath: URL(fileURLWithPath: result.tradesFilePath),
+                    dataFilePath: dataFileURL
+                )
+            case .orders:
+                OrdersTableView(
+                    filePath: URL(fileURLWithPath: result.ordersFilePath),
+                    dataFilePath: dataFileURL
+                )
             case .marks:
-                if let marksFilePath = session.marksFilePath,
-                   let dataFilePath = session.dataFilePath
-                {
-                    MarksTableView(
-                        filePath: URL(fileURLWithPath: marksFilePath),
-                        dataFilePath: URL(fileURLWithPath: dataFilePath)
-                    )
-                } else {
-                    ContentUnavailableView(
-                        "No Marks Data",
-                        systemImage: "tablecells",
-                        description: Text("Mark data will appear here during an active session")
-                    )
-                }
+                MarksTableView(
+                    filePath: URL(fileURLWithPath: result.marksFilePath),
+                    dataFilePath: dataFileURL
+                )
+            case .logs:
+                LogsTableView(
+                    filePath: URL(fileURLWithPath: result.logsFilePath),
+                    dataFilePath: dataFileURL
+                )
             }
         }
-        .padding(.top, 8)
     }
 
     @ViewBuilder
     private func buildGeneralTab() -> some View {
         Form {
             Section("Session Info") {
-                LabeledContent("Provider", value: session.providerName)
-                LabeledContent("Status", value: session.status.title)
-                if let startedAt = session.startedAt {
-                    LabeledContent("Started", value: startedAt.formatted(date: .abbreviated, time: .shortened))
-                }
-                if let stoppedAt = session.stoppedAt {
-                    LabeledContent("Stopped", value: stoppedAt.formatted(date: .abbreviated, time: .shortened))
-                }
+                LabeledContent("Strategy", value: result.strategy.name)
+                LabeledContent("Date", value: result.date)
+                LabeledContent("Started", value: result.sessionStart.formatted(date: .abbreviated, time: .shortened))
+                LabeledContent("Last Updated", value: result.lastUpdated.formatted(date: .abbreviated, time: .shortened))
+                LabeledContent("Symbols", value: result.symbols.joined(separator: ", "))
             }
 
-            Section("Performance") {
-                LabeledContent("PnL", value: formatCurrency(session.pnl))
-                LabeledContent("Trade Count", value: "\(session.tradeCount)")
+            Section("PnL") {
+                LabeledContent("Total PnL", value: formatCurrency(result.tradePnl.totalPnl))
+                LabeledContent("Realized PnL", value: formatCurrency(result.tradePnl.realizedPnl))
+                LabeledContent("Unrealized PnL", value: formatCurrency(result.tradePnl.unrealizedPnl))
+                LabeledContent("Maximum Profit", value: formatCurrency(result.tradePnl.maximumProfit))
+                LabeledContent("Maximum Loss", value: formatCurrency(result.tradePnl.maximumLoss))
+            }
+
+            Section("Trade Results") {
+                LabeledContent("Number of Trades", value: "\(result.tradeResult.numberOfTrades)")
+                LabeledContent("Winning Trades", value: "\(result.tradeResult.numberOfWinningTrades)")
+                LabeledContent("Losing Trades", value: "\(result.tradeResult.numberOfLosingTrades)")
+                LabeledContent("Win Rate", value: String(format: "%.1f%%", result.tradeResult.winRate * 100))
+                LabeledContent("Max Drawdown", value: formatCurrency(result.tradeResult.maxDrawdown))
+            }
+
+            Section("Holding Time") {
+                LabeledContent("Min", value: String(format: "%.1f min", result.tradeHoldingTime.min))
+                LabeledContent("Max", value: String(format: "%.1f min", result.tradeHoldingTime.max))
+                LabeledContent("Average", value: String(format: "%.1f min", result.tradeHoldingTime.avg))
+            }
+
+            Section("Fees") {
+                LabeledContent("Total Fees", value: formatCurrency(result.totalFees))
             }
         }
         .formStyle(.grouped)

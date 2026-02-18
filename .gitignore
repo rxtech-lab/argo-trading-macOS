@@ -7,3 +7,4 @@ ArgoTradingSwift.xcodeproj/xcuserdata/qiweili.xcuserdatad/xcdebugger/Breakpoints
 Packages/*/Build/
 DerivedData/
 *.xcworkspace/xcuserdata/
+.vscode/settings.json

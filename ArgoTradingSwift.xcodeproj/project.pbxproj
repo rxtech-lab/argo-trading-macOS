@@ -7,12 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DF0FEF672F45CC12002CCE53 /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DF0FEF662F45CC12002CCE53 /* ArgoTrading */; };
+		DF0FEF6A2F45CF95002CCE53 /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DF0FEF692F45CF95002CCE53 /* ArgoTrading */; };
+		DF0FEF6D2F45D1FD002CCE53 /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DF0FEF6C2F45D1FD002CCE53 /* ArgoTrading */; };
+		DF0FEF762F460003002CCE53 /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DF0FEF752F460003002CCE53 /* ArgoTrading */; };
+		DF0FEF822F463099002CCE53 /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DF0FEF812F463099002CCE53 /* ArgoTrading */; };
 		DF2B0C662F0C7E6100F8C799 /* LightweightChart in Frameworks */ = {isa = PBXBuildFile; productRef = DF2B0C652F0C7E6100F8C799 /* LightweightChart */; };
 		DFA92FB92EFA9C400002E178 /* JSONSchemaForm in Frameworks */ = {isa = PBXBuildFile; productRef = DFA92FB82EFA9C400002E178 /* JSONSchemaForm */; };
 		DFA92FBB2EFAA1ED0002E178 /* icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = DFA92FBA2EFAA1ED0002E178 /* icon.icon */; };
 		DFA92FBE2EFAA5400002E178 /* ViewInspector in Frameworks */ = {isa = PBXBuildFile; productRef = DFA92FBD2EFAA5400002E178 /* ViewInspector */; };
 		DFA934172F00392C0002E178 /* Yams in Frameworks */ = {isa = PBXBuildFile; productRef = DFA934162F00392C0002E178 /* Yams */; };
-		DFA935692F01723A0002E178 /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DFA935682F01723A0002E178 /* ArgoTrading */; };
 		DFBEFC442F06E6BE00F7CE2D /* InMemoryLogging in Frameworks */ = {isa = PBXBuildFile; productRef = DFBEFC432F06E6BE00F7CE2D /* InMemoryLogging */; };
 		DFBEFC462F06E6BE00F7CE2D /* Logging in Frameworks */ = {isa = PBXBuildFile; productRef = DFBEFC452F06E6BE00F7CE2D /* Logging */; };
 		DFD3A5482EF822EC0020D062 /* DuckDB in Frameworks */ = {isa = PBXBuildFile; productRef = DFD3A5472EF822EC0020D062 /* DuckDB */; };
@@ -91,12 +95,16 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DFA935692F01723A0002E178 /* ArgoTrading in Frameworks */,
+				DF0FEF672F45CC12002CCE53 /* ArgoTrading in Frameworks */,
 				DFD3A5482EF822EC0020D062 /* DuckDB in Frameworks */,
 				DF2B0C662F0C7E6100F8C799 /* LightweightChart in Frameworks */,
 				DFBEFC462F06E6BE00F7CE2D /* Logging in Frameworks */,
 				DFA934172F00392C0002E178 /* Yams in Frameworks */,
+				DF0FEF762F460003002CCE53 /* ArgoTrading in Frameworks */,
+				DF0FEF6A2F45CF95002CCE53 /* ArgoTrading in Frameworks */,
+				DF0FEF6D2F45D1FD002CCE53 /* ArgoTrading in Frameworks */,
 				DFBEFC442F06E6BE00F7CE2D /* InMemoryLogging in Frameworks */,
+				DF0FEF822F463099002CCE53 /* ArgoTrading in Frameworks */,
 				DFA92FB92EFA9C400002E178 /* JSONSchemaForm in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -164,10 +172,14 @@
 				DFD3A5472EF822EC0020D062 /* DuckDB */,
 				DFA92FB82EFA9C400002E178 /* JSONSchemaForm */,
 				DFA934162F00392C0002E178 /* Yams */,
-				DFA935682F01723A0002E178 /* ArgoTrading */,
 				DFBEFC432F06E6BE00F7CE2D /* InMemoryLogging */,
 				DFBEFC452F06E6BE00F7CE2D /* Logging */,
 				DF2B0C652F0C7E6100F8C799 /* LightweightChart */,
+				DF0FEF662F45CC12002CCE53 /* ArgoTrading */,
+				DF0FEF692F45CF95002CCE53 /* ArgoTrading */,
+				DF0FEF6C2F45D1FD002CCE53 /* ArgoTrading */,
+				DF0FEF752F460003002CCE53 /* ArgoTrading */,
+				DF0FEF812F463099002CCE53 /* ArgoTrading */,
 			);
 			productName = ArgoTradingSwift;
 			productReference = DFEACDD02DB4D9150099025F /* ArgoTradingSwift.app */;
@@ -257,9 +269,9 @@
 				DFA92FB72EFA9C400002E178 /* XCRemoteSwiftPackageReference "swift-jsonschema-form" */,
 				DFA92FBC2EFAA5400002E178 /* XCRemoteSwiftPackageReference "ViewInspector" */,
 				DFA934152F00392C0002E178 /* XCRemoteSwiftPackageReference "Yams" */,
-				DFA935672F0172390002E178 /* XCRemoteSwiftPackageReference "argo-trading" */,
 				DFBEFC422F06E6BE00F7CE2D /* XCRemoteSwiftPackageReference "swift-log" */,
 				DF2B0C642F0C7E6100F8C799 /* XCLocalSwiftPackageReference "packages/lightweight-chart" */,
+				DF0FEF802F463099002CCE53 /* XCRemoteSwiftPackageReference "argo-trading" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DFEACDD12DB4D9150099025F /* Products */;
@@ -470,6 +482,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ArgoTradingSwift/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -504,6 +517,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ArgoTradingSwift/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -639,11 +653,19 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		DF0FEF802F463099002CCE53 /* XCRemoteSwiftPackageReference "argo-trading" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/rxtech-lab/argo-trading";
+			requirement = {
+				kind = exactVersion;
+				version = 1.15.1;
+			};
+		};
 		DFA92FB72EFA9C400002E178 /* XCRemoteSwiftPackageReference "swift-jsonschema-form" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sirily11/swift-jsonschema-form";
 			requirement = {
-				branch = v1.0.2;
+				branch = v1.0.4;
 				kind = branch;
 			};
 		};
@@ -661,14 +683,6 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 6.2.0;
-			};
-		};
-		DFA935672F0172390002E178 /* XCRemoteSwiftPackageReference "argo-trading" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/rxtech-lab/argo-trading";
-			requirement = {
-				kind = exactVersion;
-				version = 1.13.0;
 			};
 		};
 		DFBEFC422F06E6BE00F7CE2D /* XCRemoteSwiftPackageReference "swift-log" */ = {
@@ -690,6 +704,27 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		DF0FEF662F45CC12002CCE53 /* ArgoTrading */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ArgoTrading;
+		};
+		DF0FEF692F45CF95002CCE53 /* ArgoTrading */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ArgoTrading;
+		};
+		DF0FEF6C2F45D1FD002CCE53 /* ArgoTrading */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ArgoTrading;
+		};
+		DF0FEF752F460003002CCE53 /* ArgoTrading */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ArgoTrading;
+		};
+		DF0FEF812F463099002CCE53 /* ArgoTrading */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DF0FEF802F463099002CCE53 /* XCRemoteSwiftPackageReference "argo-trading" */;
+			productName = ArgoTrading;
+		};
 		DF2B0C652F0C7E6100F8C799 /* LightweightChart */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LightweightChart;
@@ -708,11 +743,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = DFA934152F00392C0002E178 /* XCRemoteSwiftPackageReference "Yams" */;
 			productName = Yams;
-		};
-		DFA935682F01723A0002E178 /* ArgoTrading */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = DFA935672F0172390002E178 /* XCRemoteSwiftPackageReference "argo-trading" */;
-			productName = ArgoTrading;
 		};
 		DFBEFC432F06E6BE00F7CE2D /* InMemoryLogging */ = {
 			isa = XCSwiftPackageProductDependency;

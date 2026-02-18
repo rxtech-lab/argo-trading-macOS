@@ -8,12 +8,12 @@
 import Foundation
 
 enum TradingSelection: Identifiable, Hashable, Equatable {
-    case session(id: UUID)
+    case run(url: URL)
 
     var key: String {
         switch self {
-        case .session(let id):
-            return "session-\(id.uuidString)"
+        case .run(let url):
+            return "run-\(url.path)"
         }
     }
 

@@ -10,6 +10,20 @@ import JSONSchema
 import JSONSchemaForm
 import SwiftUI
 
+enum TradingProviderSection: String, CaseIterable, Identifiable {
+    case liveDataProvider = "Live Trading Provider"
+    case liveTradingProvider = "Live Data Provider"
+
+    var id: String { rawValue }
+
+    var systemImage: String {
+        switch self {
+        case .liveDataProvider: return "network"
+        case .liveTradingProvider: return "gearshape.2.fill"
+        }
+    }
+}
+
 struct TradingProviderEditorView: View {
     @Binding var document: ArgoTradingDocument
     @Environment(TradingProviderService.self) var tradingProviderService
@@ -23,6 +37,9 @@ struct TradingProviderEditorView: View {
     // General
     @State private var name: String = ""
 
+    // Navigation
+    @State private var selectedSection: TradingProviderSection? = .liveDataProvider
+
     // Trading System tab
     @State private var selectedTradingSystemProvider: String = ""
     @State private var tradingSystemSchema: JSONSchema?
@@ -30,12 +47,16 @@ struct TradingProviderEditorView: View {
     @State private var tradingSystemController = JSONSchemaFormController()
     @State private var keychainFieldNames: Set<String> = []
     @State private var keychainUiSchema: [String: Any]?
+    @State private var isLoadingTradingKeychain = false
 
-    // Live Trading Engine tab
+    // Live Trading Provider tab
     @State private var selectedMarketDataProvider: String = ""
-    @State private var engineSchema: JSONSchema?
-    @State private var engineFormData: FormData = .object(properties: [:])
-    @State private var engineController = JSONSchemaFormController()
+    @State private var marketDataProviderSchema: JSONSchema?
+    @State private var marketDataProviderFormData: FormData = .object(properties: [:])
+    @State private var marketDataProviderController = JSONSchemaFormController()
+    @State private var marketDataKeychainFieldNames: Set<String> = []
+    @State private var marketDataKeychainUiSchema: [String: Any]?
+    @State private var isLoadingMarketDataKeychain = false
 
     // Providers lists
     private let supportedTradingProviders: [String]
@@ -68,19 +89,27 @@ struct TradingProviderEditorView: View {
     }
 
     var body: some View {
-        TabView {
-            Tab("Trading System", systemImage: "network") {
-                buildTradingSystemView()
+        NavigationSplitView {
+            List(TradingProviderSection.allCases, selection: $selectedSection) { section in
+                Label(section.rawValue, systemImage: section.systemImage)
+                    .tag(section)
             }
-            Tab("Live Trading Engine", systemImage: "gearshape.2.fill") {
-                buildEngineView()
+            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 250)
+        } detail: {
+            if let section = selectedSection {
+                switch section {
+                case .liveDataProvider:
+                    buildTradingSystemView()
+                case .liveTradingProvider:
+                    buildMarketDataProviderView()
+                }
+            } else {
+                ContentUnavailableView("Select a Section", systemImage: "sidebar.left")
             }
         }
-        .tabViewStyle(.sidebarAdaptable)
-        .alertManager(alertManager)
         .frame(minWidth: 600, minHeight: 700)
+        .alertManager(alertManager)
         .onAppear {
-            loadEngineSchema()
             if isEditing, let provider = existingProvider {
                 name = provider.name
                 selectedTradingSystemProvider = provider.tradingSystemProvider
@@ -89,7 +118,19 @@ struct TradingProviderEditorView: View {
                     tradingSystemFormData = formDataFromAny(dict)
                 }
                 if let dict = try? JSONSerialization.jsonObject(with: provider.liveTradingEngineConfig) {
-                    engineFormData = formDataFromAny(dict)
+                    marketDataProviderFormData = formDataFromAny(dict)
+                }
+                // Load schemas directly so keychain field names are populated synchronously
+                updateTradingSystemSchema(for: provider.tradingSystemProvider)
+                updateMarketDataProviderSchema(for: provider.marketDataProvider)
+
+                // Set loading flags synchronously so the form never flashes __KEYCHAIN__
+                if !keychainFieldNames.isEmpty { isLoadingTradingKeychain = true }
+                if !marketDataKeychainFieldNames.isEmpty { isLoadingMarketDataKeychain = true }
+
+                // Authenticate once and load all keychain values
+                Task {
+                    await loadAllKeychainValues(for: provider)
                 }
             }
         }
@@ -112,12 +153,8 @@ struct TradingProviderEditorView: View {
         .onChange(of: selectedTradingSystemProvider) { _, newProvider in
             updateTradingSystemSchema(for: newProvider)
         }
-        .onChange(of: keychainFieldNames) { _, newFields in
-            if !newFields.isEmpty && isEditing {
-                Task {
-                    await authenticateAndLoadKeychain()
-                }
-            }
+        .onChange(of: selectedMarketDataProvider) { _, newProvider in
+            updateMarketDataProviderSchema(for: newProvider)
         }
     }
 
@@ -138,24 +175,30 @@ struct TradingProviderEditorView: View {
             }
 
             if let schema = tradingSystemSchema {
-                Section("Configuration") {
-                    JSONSchemaForm(
-                        schema: schema,
-                        uiSchema: keychainUiSchema,
-                        formData: $tradingSystemFormData,
-                        showSubmitButton: false,
-                        controller: tradingSystemController
-                    )
+                if isLoadingTradingKeychain {
+                    Section("Configuration") {
+                        ProgressView("Loading credentials...")
+                    }
+                } else {
+                    Section("Configuration") {
+                        JSONSchemaForm(
+                            schema: schema,
+                            uiSchema: keychainUiSchema,
+                            formData: $tradingSystemFormData,
+                            showSubmitButton: false,
+                            controller: tradingSystemController
+                        )
+                    }
                 }
             }
         }
         .formStyle(.grouped)
     }
 
-    // MARK: - Live Trading Engine Tab
+    // MARK: - Live Trading Provider Tab
 
     @ViewBuilder
-    private func buildEngineView() -> some View {
+    private func buildMarketDataProviderView() -> some View {
         Form {
             Section("Market Data") {
                 Picker("Market Data Provider", selection: $selectedMarketDataProvider) {
@@ -166,15 +209,22 @@ struct TradingProviderEditorView: View {
                 }
             }
 
-            if let schema = engineSchema {
-                Section("Engine Configuration") {
-                    JSONSchemaForm(
-                        schema: schema,
-                        formData: $engineFormData,
-                        showErrorList: false,
-                        showSubmitButton: false,
-                        controller: engineController
-                    )
+            if let schema = marketDataProviderSchema {
+                if isLoadingMarketDataKeychain {
+                    Section("Provider Configuration") {
+                        ProgressView("Loading credentials...")
+                    }
+                } else {
+                    Section("Provider Configuration") {
+                        JSONSchemaForm(
+                            schema: schema,
+                            uiSchema: marketDataKeychainUiSchema,
+                            formData: $marketDataProviderFormData,
+                            showErrorList: false,
+                            showSubmitButton: false,
+                            controller: marketDataProviderController
+                        )
+                    }
                 }
             }
         }
@@ -183,9 +233,31 @@ struct TradingProviderEditorView: View {
 
     // MARK: - Schema Loading
 
-    private func loadEngineSchema() {
-        let schemaString = SwiftargoGetLiveTradingEngineConfigSchema()
-        engineSchema = try? JSONSchema(jsonString: schemaString)
+    private func updateMarketDataProviderSchema(for provider: String) {
+        guard !provider.isEmpty else {
+            marketDataProviderSchema = nil
+            marketDataKeychainFieldNames = []
+            marketDataKeychainUiSchema = nil
+            return
+        }
+
+        let schemaString = SwiftargoGetMarketDataProviderSchema(provider)
+        marketDataProviderSchema = try? JSONSchema(jsonString: schemaString)
+
+        let propertyOrder = KeychainSchemaParser.propertyOrder(from: schemaString)
+
+        if let fields = SwiftargoGetMarketDataProviderKeychainFields(provider),
+           let stringFields = fields as? SwiftargoStringCollection
+        {
+            marketDataKeychainFieldNames = Set(stringFields.stringArray)
+        } else {
+            marketDataKeychainFieldNames = []
+        }
+
+        marketDataKeychainUiSchema = KeychainSchemaParser.buildUiSchema(
+            keychainFields: marketDataKeychainFieldNames,
+            propertyOrder: propertyOrder
+        )
     }
 
     private func updateTradingSystemSchema(for provider: String) {
@@ -217,19 +289,43 @@ struct TradingProviderEditorView: View {
 
     // MARK: - Keychain
 
-    private func authenticateAndLoadKeychain() async {
-        guard let existingProvider = existingProvider else { return }
+    private func loadAllKeychainValues(for provider: TradingProvider) async {
+        let hasTradingKeychain = !keychainFieldNames.isEmpty
+        let hasMarketDataKeychain = !marketDataKeychainFieldNames.isEmpty
+
+        guard hasTradingKeychain || hasMarketDataKeychain else { return }
+
+        defer {
+            isLoadingTradingKeychain = false
+            isLoadingMarketDataKeychain = false
+        }
+
+        // Authenticate once for both
         let success = await keychainService.authenticateWithBiometrics()
-        if success {
+        logger.info("loadAllKeychainValues: auth result=\(success)")
+        guard success else { return }
+
+        if hasTradingKeychain {
             let values = keychainService.loadKeychainValues(
-                identifier: existingProvider.id.uuidString,
+                identifier: provider.id.uuidString,
                 fieldNames: keychainFieldNames
             )
+            logger.info("loadAllKeychainValues: trading loaded \(values.count) values")
             injectKeychainValues(values)
+        }
+
+        if hasMarketDataKeychain {
+            let values = keychainService.loadKeychainValues(
+                identifier: "\(provider.id.uuidString)-marketdata",
+                fieldNames: marketDataKeychainFieldNames
+            )
+            logger.info("loadAllKeychainValues: marketData loaded \(values.count) values")
+            injectMarketDataKeychainValues(values)
         }
     }
 
     private func injectKeychainValues(_ values: [String: String]) {
+        logger.info("injectKeychainValues: injecting \(values.count) fields")
         guard case .object(var properties) = tradingSystemFormData else { return }
         for (field, value) in values {
             properties[field] = .string(value)
@@ -241,7 +337,33 @@ struct TradingProviderEditorView: View {
         guard case .object(let properties) = tradingSystemFormData else { return [:] }
         var values: [String: String] = [:]
         for field in keychainFieldNames {
-            if case .string(let value) = properties[field], !value.isEmpty {
+            if case .string(let value) = properties[field], 
+               !value.isEmpty,
+               value != "__KEYCHAIN__" {
+                values[field] = value
+            }
+        }
+        return values
+    }
+
+    // MARK: - Market Data Provider Keychain
+
+    private func injectMarketDataKeychainValues(_ values: [String: String]) {
+        logger.info("injectMarketDataKeychainValues: injecting \(values.count) fields")
+        guard case .object(var properties) = marketDataProviderFormData else { return }
+        for (field, value) in values {
+            properties[field] = .string(value)
+        }
+        marketDataProviderFormData = .object(properties: properties)
+    }
+
+    private func extractMarketDataKeychainValues() -> [String: String] {
+        guard case .object(let properties) = marketDataProviderFormData else { return [:] }
+        var values: [String: String] = [:]
+        for field in marketDataKeychainFieldNames {
+            if case .string(let value) = properties[field], 
+               !value.isEmpty,
+               value != "__KEYCHAIN__" {
                 values[field] = value
             }
         }
@@ -258,10 +380,12 @@ struct TradingProviderEditorView: View {
                 alertManager.showAlert(message: "Please fix the errors in the trading system form before saving.")
                 return
             }
-            let engineValid = try await engineController.submit()
-            if !engineValid {
-                alertManager.showAlert(message: "Please fix the errors in the engine form before saving.")
-                return
+            if marketDataProviderSchema != nil {
+                let providerValid = try await marketDataProviderController.submit()
+                if !providerValid {
+                    alertManager.showAlert(message: "Please fix the errors in the market data provider form before saving.")
+                    return
+                }
             }
         } catch {
             alertManager.showAlert(message: "Please fix the errors in the form before saving.")
@@ -271,10 +395,21 @@ struct TradingProviderEditorView: View {
         do {
             var dict: [String: Any] = (tradingSystemFormData.toDictionary() as? [String: Any]) ?? [:]
 
-            // Handle keychain fields
+            let providerId: String
+            if isEditing, let existing = existingProvider {
+                providerId = existing.id.uuidString
+            } else {
+                providerId = UUID().uuidString
+            }
+
+            // Handle trading system keychain fields
             var keychainFieldNamesList: [String] = []
             if !keychainFieldNames.isEmpty {
                 let keychainValues = extractKeychainValues()
+                logger.info("Trading system keychain fields: \(keychainFieldNames)")
+                logger.info("Extracted keychain values count: \(keychainValues.count)")
+                logger.info("Extracted keychain values: \(keychainValues)")
+                
                 if !keychainValues.isEmpty {
                     if !keychainService.isAuthenticated {
                         let success = await keychainService.authenticateWithBiometrics()
@@ -284,26 +419,42 @@ struct TradingProviderEditorView: View {
                         }
                     }
 
-                    let providerId: String
-                    if isEditing, let existing = existingProvider {
-                        providerId = existing.id.uuidString
-                    } else {
-                        providerId = UUID().uuidString
-                    }
-
                     keychainService.saveKeychainValues(identifier: providerId, values: keychainValues)
+                    logger.info("Saved keychain values for identifier: \(providerId)")
 
                     // Replace keychain values with placeholder
                     for field in keychainFieldNames {
                         dict[field] = "__KEYCHAIN__"
                     }
                     keychainFieldNamesList = Array(keychainFieldNames)
+                } else {
+                    logger.warning("No keychain values extracted - credentials may not be saved!")
+                }
+            }
+
+            // Handle market data provider keychain fields
+            var marketDataDict: [String: Any] = (marketDataProviderFormData.toDictionary() as? [String: Any]) ?? [:]
+            if !marketDataKeychainFieldNames.isEmpty {
+                let keychainValues = extractMarketDataKeychainValues()
+                if !keychainValues.isEmpty {
+                    if !keychainService.isAuthenticated {
+                        let success = await keychainService.authenticateWithBiometrics()
+                        if !success {
+                            alertManager.showAlert(message: "Authentication required to save credentials.")
+                            return
+                        }
+                    }
+
+                    keychainService.saveKeychainValues(identifier: "\(providerId)-marketdata", values: keychainValues)
+
+                    for field in marketDataKeychainFieldNames {
+                        marketDataDict[field] = "__KEYCHAIN__"
+                    }
                 }
             }
 
             let tradingConfigData = try JSONSerialization.data(withJSONObject: dict)
-            let engineDict = engineFormData.toDictionary() ?? [:]
-            let engineConfigData = try JSONSerialization.data(withJSONObject: engineDict)
+            let marketDataConfigData = try JSONSerialization.data(withJSONObject: marketDataDict)
 
             if isEditing, let existing = existingProvider {
                 var updated = existing
@@ -311,17 +462,18 @@ struct TradingProviderEditorView: View {
                 updated.tradingSystemProvider = selectedTradingSystemProvider
                 updated.marketDataProvider = selectedMarketDataProvider
                 updated.tradingSystemConfig = tradingConfigData
-                updated.liveTradingEngineConfig = engineConfigData
+                updated.liveTradingEngineConfig = marketDataConfigData
                 updated.keychainFieldNames = keychainFieldNamesList.isEmpty ? existing.keychainFieldNames : keychainFieldNamesList
                 updated.updatedAt = Date()
                 document.updateTradingProvider(updated)
             } else {
                 let provider = TradingProvider(
+                    id: UUID(uuidString: providerId)!,
                     name: name,
                     marketDataProvider: selectedMarketDataProvider,
                     tradingSystemProvider: selectedTradingSystemProvider,
                     tradingSystemConfig: tradingConfigData,
-                    liveTradingEngineConfig: engineConfigData,
+                    liveTradingEngineConfig: marketDataConfigData,
                     keychainFieldNames: keychainFieldNamesList
                 )
                 document.addTradingProvider(provider)
@@ -333,26 +485,4 @@ struct TradingProviderEditorView: View {
         }
     }
 
-    private func formDataFromAny(_ value: Any) -> FormData {
-        switch value {
-        case let dict as [String: Any]:
-            var properties: [String: FormData] = [:]
-            for (key, val) in dict {
-                properties[key] = formDataFromAny(val)
-            }
-            return .object(properties: properties)
-        case let array as [Any]:
-            return .array(items: array.map { formDataFromAny($0) })
-        case let string as String:
-            return .string(string)
-        case let number as Double:
-            return .number(number)
-        case let number as Int:
-            return .number(Double(number))
-        case let bool as Bool:
-            return .boolean(bool)
-        default:
-            return .null
-        }
-    }
 }

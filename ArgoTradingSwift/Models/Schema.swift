@@ -28,6 +28,7 @@ struct Schema: Identifiable, Hashable {
     var name: String
     var parameters: Data
     var backtestEngineConfig: Data
+    var liveTradingEngineConfig: Data
     var strategyPath: String
     var runningStatus: SchemaRunningStatus
     var keychainFieldNames: [String]
@@ -39,6 +40,7 @@ struct Schema: Identifiable, Hashable {
         name: String,
         parameters: Data = Data(),
         backtestEngineConfig: Data = Data(),
+        liveTradingEngineConfig: Data = Data(),
         strategyPath: String = "",
         runningStatus: SchemaRunningStatus = .idle,
         keychainFieldNames: [String] = [],
@@ -49,6 +51,7 @@ struct Schema: Identifiable, Hashable {
         self.name = name
         self.parameters = parameters
         self.backtestEngineConfig = backtestEngineConfig
+        self.liveTradingEngineConfig = liveTradingEngineConfig
         self.strategyPath = strategyPath
         self.runningStatus = runningStatus
         self.keychainFieldNames = keychainFieldNames
@@ -68,7 +71,7 @@ struct Schema: Identifiable, Hashable {
 
 extension Schema: Codable {
     enum CodingKeys: String, CodingKey {
-        case id, name, parameters, backtestEngineConfig, strategyPath
+        case id, name, parameters, backtestEngineConfig, liveTradingEngineConfig, strategyPath
         case runningStatus, keychainFieldNames, createdAt, updatedAt
     }
 
@@ -78,6 +81,7 @@ extension Schema: Codable {
         name = try container.decode(String.self, forKey: .name)
         parameters = try container.decode(Data.self, forKey: .parameters)
         backtestEngineConfig = try container.decode(Data.self, forKey: .backtestEngineConfig)
+        liveTradingEngineConfig = try container.decodeIfPresent(Data.self, forKey: .liveTradingEngineConfig) ?? Data()
         strategyPath = try container.decode(String.self, forKey: .strategyPath)
         runningStatus = try container.decode(SchemaRunningStatus.self, forKey: .runningStatus)
         keychainFieldNames = try container.decodeIfPresent([String].self, forKey: .keychainFieldNames) ?? []

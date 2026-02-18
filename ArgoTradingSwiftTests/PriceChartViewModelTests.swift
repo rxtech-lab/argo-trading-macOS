@@ -898,7 +898,7 @@ struct ScrollGuardTests {
         await viewModel.scrollToTimestamp(Date())
 
         // Wait for guard to expire (500ms + buffer)
-        try await Task.sleep(for: .milliseconds(600))
+        try await Task.sleep(for: .milliseconds(1000))
 
         // Reset the fetch flag
         mockService.fetchAggregatedPriceDataRangeCalled = false

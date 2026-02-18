@@ -77,9 +77,11 @@ extension ProjectCreationScreen {
                         let dataFolder = parentDirectory.appending(path: "data")
                         let strategyFolder = parentDirectory.appending(path: "strategy")
                         let resultFolder = parentDirectory.appending(path: "result")
+                        let tradingResultFolder = parentDirectory.appending(path: "trading")
 
                         let document = ArgoTradingDocument(
-                            dataFolder: dataFolder, strategyFolder: strategyFolder, resultFolder: resultFolder
+                            dataFolder: dataFolder, strategyFolder: strategyFolder, resultFolder: resultFolder,
+                            tradingResultFolder: tradingResultFolder
                         )
                         // serialize the document to the URL
                         let data = try JSONEncoder().encode(document)

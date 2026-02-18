@@ -49,6 +49,7 @@ struct ArgoTradingSwiftApp: App {
     @State private var keychainService = KeychainService()
     @State private var tradingProviderService = TradingProviderService()
     @State private var tradingService = TradingService()
+    @State private var tradingResultService = TradingResultService()
 
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -124,6 +125,7 @@ struct ArgoTradingSwiftApp: App {
         .environment(keychainService)
         .environment(tradingProviderService)
         .environment(tradingService)
+        .environment(tradingResultService)
 
         // Define a custom About window that can be opened once
         Window("About My App", id: "about") {

@@ -46,6 +46,14 @@ echo -e "${GREEN}Running ArgoTradingSwift tests${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
+# Check if xcpretty is available
+if command -v xcpretty &> /dev/null; then
+    FORMATTER="xcpretty"
+else
+    echo -e "${YELLOW}xcpretty not found, using raw xcodebuild output${NC}"
+    FORMATTER="cat"
+fi
+
 # Store the exit code to handle artifacts even on failure
 set +e  # Don't exit on error for test command
 xcodebuild test \
@@ -56,7 +64,7 @@ xcodebuild test \
     CODE_SIGN_IDENTITY="" \
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGNING_ALLOWED=NO \
-    | tee "$TEST_RESULTS_DIR/xcodebuild.log"
+    2>&1 | tee "$TEST_RESULTS_DIR/xcodebuild.log" | $FORMATTER
 
 TEST_EXIT_CODE=${PIPESTATUS[0]}
 set -e  # Re-enable exit on error

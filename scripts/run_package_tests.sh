@@ -18,6 +18,14 @@ NC='\033[0m' # No Color
 FAILED_PACKAGES=()
 PASSED_PACKAGES=()
 
+# Check if xcpretty is available
+if command -v xcpretty &> /dev/null; then
+    FORMATTER="xcpretty"
+else
+    echo -e "${YELLOW}xcpretty not found, using raw output${NC}"
+    FORMATTER="cat"
+fi
+
 echo -e "${BLUE}=== Running Package Tests ===${NC}"
 echo "Packages directory: $PACKAGES_DIR"
 echo ""
@@ -45,7 +53,7 @@ for package_file in "$PACKAGES_DIR"/*/Package.swift; do
     echo "----------------------------------------"
 
     cd "$package_dir"
-    if swift test 2>&1; then
+    if swift test 2>&1 | $FORMATTER; then
         echo -e "${GREEN}PASSED: ${package_name}${NC}"
         PASSED_PACKAGES+=("$package_name")
     else

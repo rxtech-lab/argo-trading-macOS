@@ -1,13 +1,13 @@
 {
-  "originHash" : "9a6fdaf69ca4de471d4e1f13c68f17aef0fb9b79676186563eb76c379054be87",
+  "originHash" : "82fe538f745d99b53585c80e4f336de2265f71800d0f834da0eb7a675a813388",
   "pins" : [
     {
       "identity" : "argo-trading",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/rxtech-lab/argo-trading",
       "state" : {
-        "revision" : "523744674bd98d001ecc99641a135c764b8629fa",
-        "version" : "1.13.0"
+        "revision" : "d7812c9f30bc39c1b7b1530fb115263e6d41f45f",
+        "version" : "1.15.1"
       }
     },
     {
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sirily11/swift-jsonschema-form",
       "state" : {
-        "branch" : "v1.0.2",
-        "revision" : "aa77d98a7ae8385fd431b152719f4257e6872c64"
+        "branch" : "v1.0.4",
+        "revision" : "a4feb400a0bca57bc39b8ea95544c71aa768fbfd"
       }
     },
     {
@@ -51,8 +51,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log",
       "state" : {
-        "revision" : "bc386b95f2a16ccd0150a8235e7c69eab2b866ca",
-        "version" : "1.8.0"
+        "revision" : "bbd81b6725ae874c69e9b8c8804d462356b55523",
+        "version" : "1.10.1"
       }
     },
     {
@@ -69,8 +69,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jpsim/Yams",
       "state" : {
-        "revision" : "51b5127c7fb6ffac106ad6d199aaa33c5024895f",
-        "version" : "6.2.0"
+        "revision" : "deaf82e867fa2cbd3cd865978b079bfcf384ac28",
+        "version" : "6.2.1"
       }
     }
   ],

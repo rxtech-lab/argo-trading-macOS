@@ -22,8 +22,22 @@ class NavigationService {
     /// Stack for push-based navigation (back button only works for push operations)
     private var pushStack: [NavigationPath] = []
 
-    var selectedMode: EditorMode = .Backtest
+    private let defaults: UserDefaults
+
+    var selectedMode: EditorMode = .Backtest {
+        didSet {
+            defaults.set(selectedMode.rawValue, forKey: "selectedEditorMode")
+        }
+    }
     var currentSelectedBacktestTab: BacktestTabs = .general
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        if let raw = defaults.string(forKey: "selectedEditorMode"),
+           let mode = EditorMode(rawValue: raw) {
+            selectedMode = mode
+        }
+    }
 
     /// Current selection based on the active mode and tab
     var currentSelection: NavigationPath? {

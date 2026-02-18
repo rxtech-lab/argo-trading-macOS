@@ -134,29 +134,30 @@ class FolderMonitor {
                 let path = paths[i]
                 let flags = eventFlags[i]
                 let fileURL = URL(fileURLWithPath: path)
+                let shouldLog = !path.contains("stream_data_live")
 
                 DispatchQueue.main.async {
                     if flags & UInt32(kFSEventStreamEventFlagItemRemoved) != 0 {
-                        print("File deleted: \(path)")
+                        if shouldLog { print("File deleted: \(path)") }
                         monitor.continuation?.yield(.fileDeleted(fileURL))
                     } else if flags & UInt32(kFSEventStreamEventFlagItemCreated) != 0 {
-                        print("File created: \(path)")
+                        if shouldLog { print("File created: \(path)") }
                         monitor.continuation?.yield(.fileCreated(fileURL))
                     } else if flags & UInt32(kFSEventStreamEventFlagItemModified) != 0 {
-                        print("File modified: \(path)")
+                        if shouldLog { print("File modified: \(path)") }
                         monitor.continuation?.yield(.fileModified(fileURL))
                     } else if flags & UInt32(kFSEventStreamEventFlagItemRenamed) != 0 {
                         // Renamed can mean created or deleted depending on context
                         if FileManager.default.fileExists(atPath: path) {
-                            print("File renamed/created: \(path)")
+                            if shouldLog { print("File renamed/created: \(path)") }
                             monitor.continuation?.yield(.fileCreated(fileURL))
                         } else {
-                            print("File renamed/deleted: \(path)")
+                            if shouldLog { print("File renamed/deleted: \(path)") }
                             monitor.continuation?.yield(.fileDeleted(fileURL))
                         }
                     } else {
                         // Generic change
-                        print("Folder changed: \(path)")
+                        if shouldLog { print("Folder changed: \(path)") }
                         monitor.continuation?.yield(.folderChanged)
                     }
                 }

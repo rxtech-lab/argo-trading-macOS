@@ -15,7 +15,7 @@ struct ToolbarRunningSectionView: View {
     @State private var isHoveringTradingProviderButton = false
 
     private var isSchemaStrategyMissing: Bool {
-        document.isSchemaStrategyMissing(strategyFiles: strategyFiles)
+        selectedMode == .Backtest && document.isSchemaStrategyMissing(strategyFiles: strategyFiles)
     }
 
     var body: some View {

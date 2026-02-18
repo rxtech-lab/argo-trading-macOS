@@ -12,6 +12,6 @@ extension URL {
         Converts the URL to a path string without the "file://" prefix.
      */
     func toPathStringWithoutFilePrefix() -> String {
-        self.absoluteString.replacingOccurrences(of: "file://", with: "")
+        self.path
     }
 }

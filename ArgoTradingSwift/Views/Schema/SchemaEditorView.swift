@@ -33,8 +33,11 @@ struct SchemaEditorView: View {
     @State private var isLoadingMetadata = false
     @State private var strategyError: String?
     @State private var backtestError: String?
+    @State private var liveTradingSchema: JSONSchema?
+    @State private var liveTradingFormData: FormData = .object(properties: [:])
     @State private var strategyController = JSONSchemaFormController()
     @State private var backtestController = JSONSchemaFormController()
+    @State private var liveTradingController = JSONSchemaFormController()
 
     @State private var keychainFieldNames: Set<String> = []
     @State private var keychainUiSchema: [String: Any]?
@@ -47,6 +50,9 @@ struct SchemaEditorView: View {
             }
             Tab("Strategy", systemImage: "app.fill") {
                 buildStrategyView()
+            }
+            Tab("Live Trading", systemImage: "bolt.fill") {
+                buildLiveTradingView()
             }
 
         }.tabViewStyle(.sidebarAdaptable)
@@ -62,6 +68,12 @@ struct SchemaEditorView: View {
                     self.backtestError = error.localizedDescription
                 }
 
+                // Load live trading engine schema
+                let liveTradingSchemaString = backtestService.getLiveTradingEngineConfigSchema()
+                if !liveTradingSchemaString.isEmpty {
+                    liveTradingSchema = try? JSONSchema(jsonString: liveTradingSchemaString)
+                }
+
                 if isEditing, let schema = existingSchema {
                     name = schema.name
                     selectedStrategyURL = strategyService.strategyFiles.first {
@@ -73,6 +85,9 @@ struct SchemaEditorView: View {
                     }
                     if let dict = try? JSONSerialization.jsonObject(with: schema.backtestEngineConfig) {
                         backtestFormData = formDataFromAny(dict)
+                    }
+                    if let dict = try? JSONSerialization.jsonObject(with: schema.liveTradingEngineConfig) {
+                        liveTradingFormData = formDataFromAny(dict)
                     }
                 }
             }
@@ -114,6 +129,21 @@ struct SchemaEditorView: View {
 
                 if let error = backtestError {
                     Text(error)
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    @ViewBuilder
+    private func buildLiveTradingView() -> some View {
+        Form {
+            Section("Live Trading Engine Configuration") {
+                if let liveTradingSchema = liveTradingSchema {
+                    JSONSchemaForm(schema: liveTradingSchema, formData: $liveTradingFormData, showErrorList: false, showSubmitButton: false, controller: liveTradingController)
+                } else {
+                    Text("No live trading engine configuration available")
+                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -255,6 +285,14 @@ struct SchemaEditorView: View {
                 alertManager.showAlert(message: "Please fix the errors in the backtest form before saving.")
                 return
             }
+
+            if liveTradingSchema != nil {
+                let liveTradingValid = try await liveTradingController.submit()
+                if !liveTradingValid {
+                    alertManager.showAlert(message: "Please fix the errors in the live trading form before saving.")
+                    return
+                }
+            }
         } catch {
             alertManager.showAlert(message: "Please fix the errors in the form before saving.")
             return
@@ -297,6 +335,8 @@ struct SchemaEditorView: View {
             let parametersData = try JSONSerialization.data(withJSONObject: dict)
             let backtestDict = backtestFormData.toDictionary() ?? [:]
             let backtestData = try JSONSerialization.data(withJSONObject: backtestDict)
+            let liveTradingDict = liveTradingFormData.toDictionary() ?? [:]
+            let liveTradingData = try JSONSerialization.data(withJSONObject: liveTradingDict)
             let strategyPath = strategyURL.lastPathComponent
 
             if isEditing, let existing = existingSchema {
@@ -305,6 +345,7 @@ struct SchemaEditorView: View {
                 updated.strategyPath = strategyPath
                 updated.parameters = parametersData
                 updated.backtestEngineConfig = backtestData
+                updated.liveTradingEngineConfig = liveTradingData
                 updated.keychainFieldNames = keychainFieldNamesList.isEmpty ? existing.keychainFieldNames : keychainFieldNamesList
                 updated.updatedAt = Date()
                 document.updateSchema(updated)
@@ -313,6 +354,7 @@ struct SchemaEditorView: View {
                     name: name,
                     parameters: parametersData,
                     backtestEngineConfig: backtestData,
+                    liveTradingEngineConfig: liveTradingData,
                     strategyPath: strategyPath,
                     keychainFieldNames: keychainFieldNamesList
                 )
@@ -325,28 +367,6 @@ struct SchemaEditorView: View {
         }
     }
 
-    private func formDataFromAny(_ value: Any) -> FormData {
-        switch value {
-        case let dict as [String: Any]:
-            var properties: [String: FormData] = [:]
-            for (key, val) in dict {
-                properties[key] = formDataFromAny(val)
-            }
-            return .object(properties: properties)
-        case let array as [Any]:
-            return .array(items: array.map { formDataFromAny($0) })
-        case let string as String:
-            return .string(string)
-        case let number as Double:
-            return .number(number)
-        case let number as Int:
-            return .number(Double(number))
-        case let bool as Bool:
-            return .boolean(bool)
-        default:
-            return .null
-        }
-    }
 }
 
 #Preview("Create") {

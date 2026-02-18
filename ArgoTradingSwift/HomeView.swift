@@ -20,6 +20,7 @@ struct HomeView: View {
     @Environment(KeychainService.self) var keychainService
     @Environment(TradingService.self) var tradingService
     @Environment(TradingProviderService.self) var tradingProviderService
+    @Environment(TradingResultService.self) var tradingResultService
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -27,7 +28,7 @@ struct HomeView: View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             // SIDEBAR (Left column) - shared across all modes
             VStack {
-                BacktestSideBar(navigationService: navigationService, document: $document)
+                TradingAndBacktestSidebar(navigationService: navigationService, document: $document)
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
             .toolbar {
@@ -78,6 +79,8 @@ struct HomeView: View {
                                     await tradingService.startTrading(
                                         provider: provider,
                                         schema: schema,
+                                        strategyFolder: document.strategyFolder,
+                                        tradingResultFolder: document.tradingResultFolder,
                                         keychainService: keychainService,
                                         toolbarStatusService: toolbarStatusService
                                     )
@@ -147,12 +150,26 @@ struct HomeView: View {
         .onAppear {
             datasetService.setDataFolder(document.dataFolder)
             backtestResultService.setResultFolder(document.resultFolder)
+            strategyService.setStrategyFolder(document.strategyFolder)
+            tradingResultService.setResultFolder(document.tradingResultFolder)
         }
         .onChange(of: document.dataFolder) { _, newFolder in
             datasetService.setDataFolder(newFolder)
         }
         .onChange(of: document.resultFolder) { _, newFolder in
             backtestResultService.setResultFolder(newFolder)
+        }
+        .onChange(of: document.strategyFolder) { _, newFolder in
+            strategyService.setStrategyFolder(newFolder)
+        }
+        .onChange(of: document.tradingResultFolder) { _, newFolder in
+            tradingResultService.setResultFolder(newFolder)
+        }
+        .onChange(of: tradingService.isRunning) { oldValue, newValue in
+            if oldValue && !newValue {
+                // Trading just stopped — reload to pick up final results
+                tradingResultService.reloadResults()
+            }
         }
     }
 }

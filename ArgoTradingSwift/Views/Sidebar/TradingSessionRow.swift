@@ -7,62 +7,49 @@
 
 import SwiftUI
 
-struct TradingSessionRow: View {
-    let session: TradingSession
+struct TradingRunRow: View {
+    let resultItem: TradingResultItem
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(session.providerName)
+                Text(resultItem.result.strategy.name.isEmpty ? resultItem.result.id : resultItem.result.strategy.name)
                     .font(.body)
                     .lineLimit(1)
 
                 Spacer()
 
-                statusBadge
+                Text(resultItem.result.name)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
 
             HStack(spacing: 8) {
-                if let startedAt = session.startedAt {
-                    Text(startedAt.formatted(date: .omitted, time: .shortened))
+                Text(resultItem.displayTime)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if !resultItem.displaySymbols.isEmpty {
+                    Text(resultItem.displaySymbols)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                if resultItem.result.tradeResult.numberOfTrades > 0 {
+                    Text("\(resultItem.result.tradeResult.numberOfTrades) trades")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
-                if session.tradeCount > 0 {
-                    Text("\(session.tradeCount) trades")
+                if resultItem.result.tradePnl.totalPnl != 0 {
+                    Text(formatPnl(resultItem.result.tradePnl.totalPnl))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                if session.pnl != 0 {
-                    Text(formatPnl(session.pnl))
-                        .font(.caption)
-                        .foregroundStyle(session.pnl >= 0 ? .green : .red)
+                        .foregroundStyle(resultItem.result.tradePnl.totalPnl >= 0 ? .green : .red)
                 }
             }
         }
         .padding(.vertical, 2)
-    }
-
-    private var statusBadge: some View {
-        Text(session.status.title)
-            .font(.caption2)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(statusColor.opacity(0.2))
-            .foregroundStyle(statusColor)
-            .cornerRadius(4)
-    }
-
-    private var statusColor: Color {
-        switch session.status {
-        case .idle: return .secondary
-        case .prefetching, .connecting: return .orange
-        case .running: return .green
-        case .stopped: return .secondary
-        case .error: return .red
-        }
     }
 
     private func formatPnl(_ value: Double) -> String {

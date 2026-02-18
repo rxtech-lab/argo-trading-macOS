@@ -15,37 +15,45 @@ let testURL = URL(fileURLWithPath: "/tmp/test.parquet")
 let testURL2 = URL(fileURLWithPath: "/tmp/test2.parquet")
 let testURL3 = URL(fileURLWithPath: "/tmp/test3.parquet")
 
+/// Creates a NavigationService with a fresh, empty UserDefaults for test isolation.
+private func makeService() -> NavigationService {
+    let suiteName = "com.test.NavigationServiceTests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+    return NavigationService(defaults: defaults)
+}
+
 // MARK: - Initial State Tests
 
 struct InitialStateTests {
     @Test func initialGeneralSelectionIsNil() {
-        let service = NavigationService()
+        let service = makeService()
         #expect(service.generalSelection == nil)
     }
 
     @Test func initialResultsSelectionIsNil() {
-        let service = NavigationService()
+        let service = makeService()
         #expect(service.resultsSelection == nil)
     }
 
     @Test func initialSelectedModeIsBacktest() {
-        let service = NavigationService()
+        let service = makeService()
         #expect(service.selectedMode == .Backtest)
     }
 
     @Test func initialSelectedTabIsGeneral() {
-        let service = NavigationService()
+        let service = makeService()
         #expect(service.currentSelectedBacktestTab == .general)
     }
 
     @Test func initialCurrentSelectionIsNil() {
-        let service = NavigationService()
+        let service = makeService()
         // currentSelection returns generalSelection when tab is .general
         #expect(service.currentSelection == nil)
     }
 
     @Test func initialCanGoBackIsFalse() {
-        let service = NavigationService()
+        let service = makeService()
         #expect(service.canGoBack == false)
     }
 }
@@ -54,7 +62,7 @@ struct InitialStateTests {
 
 struct CurrentSelectionTests {
     @Test func currentSelectionReturnsGeneralSelectionWhenTabIsGeneral() {
-        let service = NavigationService()
+        let service = makeService()
         service.currentSelectedBacktestTab = .general
         service.generalSelection = .backtest(backtest: .data(url: testURL))
         service.resultsSelection = .backtest(backtest: .result(url: testURL2))
@@ -63,7 +71,7 @@ struct CurrentSelectionTests {
     }
 
     @Test func currentSelectionReturnsResultsSelectionWhenTabIsResults() {
-        let service = NavigationService()
+        let service = makeService()
         service.currentSelectedBacktestTab = .results
         service.generalSelection = .backtest(backtest: .data(url: testURL))
         service.resultsSelection = .backtest(backtest: .result(url: testURL2))
@@ -72,7 +80,7 @@ struct CurrentSelectionTests {
     }
 
     @Test func currentSelectionUpdatesWhenSwitchingTabs() {
-        let service = NavigationService()
+        let service = makeService()
         service.generalSelection = .backtest(backtest: .data(url: testURL))
         service.resultsSelection = .backtest(backtest: .result(url: testURL2))
 
@@ -84,7 +92,7 @@ struct CurrentSelectionTests {
     }
 
     @Test func currentSelectionReturnsNilWhenActiveTabSelectionIsNil() {
-        let service = NavigationService()
+        let service = makeService()
         service.generalSelection = .backtest(backtest: .data(url: testURL))
         service.resultsSelection = nil
 
@@ -97,7 +105,7 @@ struct CurrentSelectionTests {
 
 struct PushTests {
     @Test func pushSavesCurrentSelectionToStack() {
-        let service = NavigationService()
+        let service = makeService()
         service.generalSelection = .backtest(backtest: .data(url: testURL))
 
         service.push(.backtest(backtest: .strategy(url: testURL2)))
@@ -107,7 +115,7 @@ struct PushTests {
     }
 
     @Test func pushDoesNotSaveToStackWhenCurrentSelectionIsNil() {
-        let service = NavigationService()
+        let service = makeService()
         // Initial state: generalSelection is nil
 
         service.push(.backtest(backtest: .data(url: testURL)))
@@ -117,7 +125,7 @@ struct PushTests {
     }
 
     @Test func pushWithDataSelectionSetsTabToGeneral() {
-        let service = NavigationService()
+        let service = makeService()
         service.currentSelectedBacktestTab = .results // Start on results tab
 
         service.push(.backtest(backtest: .data(url: testURL)))
@@ -126,7 +134,7 @@ struct PushTests {
     }
 
     @Test func pushWithStrategySelectionSetsTabToGeneral() {
-        let service = NavigationService()
+        let service = makeService()
         service.currentSelectedBacktestTab = .results // Start on results tab
 
         service.push(.backtest(backtest: .strategy(url: testURL)))
@@ -135,7 +143,7 @@ struct PushTests {
     }
 
     @Test func pushWithResultUrlSetsTabToResults() {
-        let service = NavigationService()
+        let service = makeService()
         service.currentSelectedBacktestTab = .general // Start on general tab
 
         service.push(.backtest(backtest: .result(url: testURL)))
@@ -144,7 +152,7 @@ struct PushTests {
     }
 
     @Test func pushWithResultsNoUrlPreservesCurrentTab() {
-        let service = NavigationService()
+        let service = makeService()
         service.currentSelectedBacktestTab = .general
 
         service.push(.backtest(backtest: .results))
@@ -154,7 +162,7 @@ struct PushTests {
     }
 
     @Test func pushWithNilSelectionPreservesCurrentTab() {
-        let service = NavigationService()
+        let service = makeService()
         service.currentSelectedBacktestTab = .results
 
         service.push(.backtest(backtest: nil))
@@ -163,7 +171,7 @@ struct PushTests {
     }
 
     @Test func multiplePushesPreserveStackOrder() {
-        let service = NavigationService()
+        let service = makeService()
 
         // Set initial selection and push first item
         service.generalSelection = .backtest(backtest: .data(url: testURL))
@@ -185,7 +193,7 @@ struct PushTests {
     }
 
     @Test func canGoBackBecomesTrueAfterPushWithExistingSelection() {
-        let service = NavigationService()
+        let service = makeService()
         service.generalSelection = .backtest(backtest: .data(url: testURL))
 
         #expect(service.canGoBack == false)
@@ -200,7 +208,7 @@ struct PushTests {
 
 struct PopTests {
     @Test func popRestoresPreviousSelectionFromStack() {
-        let service = NavigationService()
+        let service = makeService()
         service.generalSelection = .backtest(backtest: .data(url: testURL))
 
         service.push(.backtest(backtest: .strategy(url: testURL2)))
@@ -211,7 +219,7 @@ struct PopTests {
     }
 
     @Test func popOnEmptyStackIsNoOp() {
-        let service = NavigationService()
+        let service = makeService()
 
         // Initial state with empty stack
         #expect(service.canGoBack == false)
@@ -225,7 +233,7 @@ struct PopTests {
     }
 
     @Test func multiplePopTraverseStackInReverseOrder() {
-        let service = NavigationService()
+        let service = makeService()
 
         // Build up stack: data -> strategy -> result
         // Note: Due to async setSelection, we need to manually set the selection
@@ -247,7 +255,7 @@ struct PopTests {
     }
 
     @Test func canGoBackBecomesFalseWhenStackIsEmpty() {
-        let service = NavigationService()
+        let service = makeService()
         service.generalSelection = .backtest(backtest: .data(url: testURL))
 
         service.push(.backtest(backtest: .strategy(url: testURL2)))
@@ -258,7 +266,7 @@ struct PopTests {
     }
 
     @Test func popSwitchesTabBasedOnRestoredSelection() {
-        let service = NavigationService()
+        let service = makeService()
 
         // Start on general tab with data selection
         service.generalSelection = .backtest(backtest: .data(url: testURL))
@@ -278,7 +286,7 @@ struct PopTests {
 
 struct TabSwitchingTests {
     @Test func dataSelectionSwitchesToGeneralTab() {
-        let service = NavigationService()
+        let service = makeService()
         service.currentSelectedBacktestTab = .results
 
         service.push(.backtest(backtest: .data(url: testURL)))
@@ -287,7 +295,7 @@ struct TabSwitchingTests {
     }
 
     @Test func strategySelectionSwitchesToGeneralTab() {
-        let service = NavigationService()
+        let service = makeService()
         service.currentSelectedBacktestTab = .results
 
         service.push(.backtest(backtest: .strategy(url: testURL)))
@@ -296,7 +304,7 @@ struct TabSwitchingTests {
     }
 
     @Test func resultWithUrlSwitchesToResultsTab() {
-        let service = NavigationService()
+        let service = makeService()
         service.currentSelectedBacktestTab = .general
 
         service.push(.backtest(backtest: .result(url: testURL)))
@@ -305,7 +313,7 @@ struct TabSwitchingTests {
     }
 
     @Test func resultsWithoutUrlPreservesCurrentTab() {
-        let service = NavigationService()
+        let service = makeService()
         service.currentSelectedBacktestTab = .general
 
         service.push(.backtest(backtest: .results))
@@ -314,7 +322,7 @@ struct TabSwitchingTests {
     }
 
     @Test func nilSelectionPreservesCurrentTabWhenGeneral() {
-        let service = NavigationService()
+        let service = makeService()
         service.currentSelectedBacktestTab = .general
 
         service.push(.backtest(backtest: nil))
@@ -323,7 +331,7 @@ struct TabSwitchingTests {
     }
 
     @Test func nilSelectionPreservesCurrentTabWhenResults() {
-        let service = NavigationService()
+        let service = makeService()
         service.currentSelectedBacktestTab = .results
 
         service.push(.backtest(backtest: nil))
@@ -332,7 +340,7 @@ struct TabSwitchingTests {
     }
 
     @Test func tabSwitchingPreservesBothSelections() {
-        let service = NavigationService()
+        let service = makeService()
 
         // Set general selection
         service.generalSelection = .backtest(backtest: .data(url: testURL))
@@ -350,7 +358,7 @@ struct TabSwitchingTests {
 
 struct EdgeCaseTests {
     @Test func popWhenPushStackIsEmptyDoesNothing() {
-        let service = NavigationService()
+        let service = makeService()
 
         service.pop()
         service.pop()
@@ -362,7 +370,7 @@ struct EdgeCaseTests {
     }
 
     @Test func multipleConsecutivePopsAtMinimumStackDepth() {
-        let service = NavigationService()
+        let service = makeService()
         service.generalSelection = .backtest(backtest: .data(url: testURL))
 
         service.push(.backtest(backtest: .strategy(url: testURL2)))
@@ -378,7 +386,7 @@ struct EdgeCaseTests {
     }
 
     @Test func pushPopCycleReturnsToOriginalState() {
-        let service = NavigationService()
+        let service = makeService()
         service.generalSelection = .backtest(backtest: .data(url: testURL))
         let originalTab = service.currentSelectedBacktestTab
 
@@ -390,7 +398,7 @@ struct EdgeCaseTests {
     }
 
     @Test func pushDifferentSelectionTypesInSequence() {
-        let service = NavigationService()
+        let service = makeService()
 
         // Start with data
         service.generalSelection = .backtest(backtest: .data(url: testURL))
@@ -418,7 +426,7 @@ struct EdgeCaseTests {
     }
 
     @Test func directAssignmentToGeneralSelectionBypassesStack() {
-        let service = NavigationService()
+        let service = makeService()
 
         // Direct assignment doesn't use push
         service.generalSelection = .backtest(backtest: .data(url: testURL))
@@ -429,7 +437,7 @@ struct EdgeCaseTests {
     }
 
     @Test func directAssignmentToResultsSelectionBypassesStack() {
-        let service = NavigationService()
+        let service = makeService()
 
         // Direct assignment doesn't use push
         service.resultsSelection = .backtest(backtest: .result(url: testURL))
@@ -440,7 +448,7 @@ struct EdgeCaseTests {
     }
 
     @Test func rapidPushPopOperations() {
-        let service = NavigationService()
+        let service = makeService()
         service.generalSelection = .backtest(backtest: .data(url: testURL))
 
         // Rapid pushes
@@ -458,7 +466,7 @@ struct EdgeCaseTests {
     }
 
     @Test func switchingModesDoesNotAffectBacktestSelections() {
-        let service = NavigationService()
+        let service = makeService()
         service.generalSelection = .backtest(backtest: .data(url: testURL))
         service.resultsSelection = .backtest(backtest: .result(url: testURL2))
 
@@ -471,7 +479,7 @@ struct EdgeCaseTests {
     }
 
     @Test func pushWithSameSelectionStillAddsToStack() {
-        let service = NavigationService()
+        let service = makeService()
         service.generalSelection = .backtest(backtest: .data(url: testURL))
 
         // Push the same selection
