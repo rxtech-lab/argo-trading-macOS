@@ -36,8 +36,8 @@ struct BacktestSideBar: View {
                         ResultSection(document: $document, resultFolder: document.resultFolder)
                     }
                 }
-            default:
-                EmptyView()
+            case .Trading:
+                TradingSideBar(document: $document, navigationService: navigationService)
             }
         }
         .contextMenu {

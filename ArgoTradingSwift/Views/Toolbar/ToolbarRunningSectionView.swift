@@ -5,11 +5,14 @@ struct ToolbarRunningSectionView: View {
     let status: ToolbarRunningStatus
     let datasetFiles: [URL]
     let strategyFiles: [URL]
+    let selectedMode: EditorMode
 
     @State private var showDatasetPicker = false
     @State private var showSchemaPicker = false
+    @State private var showTradingProviderPicker = false
     @State private var isHoveringDatasetButton = false
     @State private var isHoveringSchemaButton = false
+    @State private var isHoveringTradingProviderButton = false
 
     private var isSchemaStrategyMissing: Bool {
         document.isSchemaStrategyMissing(strategyFiles: strategyFiles)
@@ -49,33 +52,64 @@ struct ToolbarRunningSectionView: View {
 
             Image(systemName: "chevron.compact.forward")
 
-            Button {
-                showDatasetPicker.toggle()
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "cylinder")
-                    Text(document.selectedDatasetURL?.deletingPathExtension().lastPathComponent ?? "Select dataset")
-                        .lineLimit(1)
-                    Image(systemName: "chevron.down")
-                        .font(.caption2)
+            switch selectedMode {
+            case .Backtest:
+                Button {
+                    showDatasetPicker.toggle()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "cylinder")
+                        Text(document.selectedDatasetURL?.deletingPathExtension().lastPathComponent ?? "Select dataset")
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.caption2)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(isHoveringDatasetButton ? Color.accentColor.opacity(0.1) : Color.clear)
+                    .cornerRadius(12)
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(isHoveringDatasetButton ? Color.accentColor.opacity(0.1) : Color.clear)
-                .cornerRadius(12)
-            }
-            .frame(maxWidth: 150, alignment: .leading)
-            .buttonStyle(.plain)
-            .controlSize(.small)
-            .onHover { hovering in
-                isHoveringDatasetButton = hovering
-            }
-            .popover(isPresented: $showDatasetPicker, arrowEdge: .bottom) {
-                DatasetPickerPopover(
-                    document: $document,
-                    isPresented: $showDatasetPicker,
-                    datasetFiles: datasetFiles
-                )
+                .frame(maxWidth: 150, alignment: .leading)
+                .buttonStyle(.plain)
+                .controlSize(.small)
+                .onHover { hovering in
+                    isHoveringDatasetButton = hovering
+                }
+                .popover(isPresented: $showDatasetPicker, arrowEdge: .bottom) {
+                    DatasetPickerPopover(
+                        document: $document,
+                        isPresented: $showDatasetPicker,
+                        datasetFiles: datasetFiles
+                    )
+                }
+            case .Trading:
+                Button {
+                    showTradingProviderPicker.toggle()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "network")
+                        Text(document.selectedTradingProvider?.name ?? "Select provider")
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.caption2)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(isHoveringTradingProviderButton ? Color.accentColor.opacity(0.1) : Color.clear)
+                    .cornerRadius(12)
+                }
+                .frame(maxWidth: 150, alignment: .leading)
+                .buttonStyle(.plain)
+                .controlSize(.small)
+                .onHover { hovering in
+                    isHoveringTradingProviderButton = hovering
+                }
+                .popover(isPresented: $showTradingProviderPicker, arrowEdge: .bottom) {
+                    TradingProviderPickerPopover(
+                        document: $document,
+                        isPresented: $showTradingProviderPicker
+                    )
+                }
             }
 
             Spacer()
@@ -161,6 +195,17 @@ struct ToolbarRunningSectionView: View {
             }
             .id("downloadCancelled-\(label)")
 
+        case .trading(let label):
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(.green)
+                    .frame(width: 8, height: 8)
+                Text(label)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            .id("trading-\(label)")
+
         case .finished(let message, let date):
             HStack(spacing: 6) {
                 Image(systemName: "checkmark.circle.fill")
@@ -200,7 +245,8 @@ struct ToolbarRunningSectionView: View {
         document: .constant(ArgoTradingDocument()),
         status: .idle,
         datasetFiles: [],
-        strategyFiles: []
+        strategyFiles: [],
+        selectedMode: .Backtest
     )
     .padding()
 }
@@ -210,7 +256,8 @@ struct ToolbarRunningSectionView: View {
         document: .constant(ArgoTradingDocument()),
         status: .running(label: "Building..."),
         datasetFiles: [],
-        strategyFiles: []
+        strategyFiles: [],
+        selectedMode: .Backtest
     )
     .padding()
 }
@@ -220,7 +267,8 @@ struct ToolbarRunningSectionView: View {
         document: .constant(ArgoTradingDocument()),
         status: .backtesting(label: "Backtesting", progress: Progress(current: 45, total: 100)),
         datasetFiles: [],
-        strategyFiles: []
+        strategyFiles: [],
+        selectedMode: .Backtest
     )
     .padding()
 }
@@ -230,7 +278,8 @@ struct ToolbarRunningSectionView: View {
         document: .constant(ArgoTradingDocument()),
         status: .error(label: "", errors: ["Something went wrong"], at: Date()),
         datasetFiles: [],
-        strategyFiles: []
+        strategyFiles: [],
+        selectedMode: .Backtest
     )
     .padding()
 }
@@ -240,7 +289,8 @@ struct ToolbarRunningSectionView: View {
         document: .constant(ArgoTradingDocument()),
         status: .finished(message: "Build Succeeded", at: Date()),
         datasetFiles: [],
-        strategyFiles: []
+        strategyFiles: [],
+        selectedMode: .Backtest
     )
     .padding()
 }
@@ -254,7 +304,8 @@ struct ToolbarRunningSectionView: View {
         )),
         status: .idle,
         datasetFiles: [],
-        strategyFiles: []
+        strategyFiles: [],
+        selectedMode: .Backtest
     )
     .padding()
 }
