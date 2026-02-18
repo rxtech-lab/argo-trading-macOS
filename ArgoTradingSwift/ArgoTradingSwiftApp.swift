@@ -46,6 +46,7 @@ struct ArgoTradingSwiftApp: App {
     @State private var backtestResultService = BacktestResultService()
     @State private var lightweightChartsService = LightweightChartService()
     @State private var strategyCacheService = StrategyCacheService()
+    @State private var keychainService = KeychainService()
 
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -108,6 +109,7 @@ struct ArgoTradingSwiftApp: App {
         .environment(backtestResultService)
         .environment(lightweightChartsService)
         .environment(strategyCacheService)
+        .environment(keychainService)
 
         // Define a custom About window that can be opened once
         Window("About My App", id: "about") {

@@ -17,6 +17,7 @@ struct HomeView: View {
     @Environment(BacktestService.self) var backtestService
     @Environment(BacktestResultService.self) var backtestResultService
     @Environment(StrategyCacheService.self) var strategyCacheService
+    @Environment(KeychainService.self) var keychainService
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -45,7 +46,8 @@ struct HomeView: View {
                                     strategyFolder: document.strategyFolder,
                                     resultFolder: document.resultFolder,
                                     toolbarStatusService: toolbarStatusService,
-                                    strategyCacheService: strategyCacheService
+                                    strategyCacheService: strategyCacheService,
+                                    keychainService: keychainService
                                 )
                             }
                         }

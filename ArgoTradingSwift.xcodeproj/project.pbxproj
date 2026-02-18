@@ -65,19 +65,6 @@
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
-/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		DFEACE0B2DB4D98E0099025F /* Exceptions for "libs" folder in "Embed Frameworks" phase from "ArgoTradingSwift" target */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			attributesByRelativePath = {
-				libduckdb.dylib = (CodeSignOnCopy, );
-			};
-			buildPhase = DFEACE022DB4D94A0099025F /* Embed Frameworks */;
-			membershipExceptions = (
-				libduckdb.dylib,
-			);
-		};
-/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DFEACDD22DB4D9150099025F /* ArgoTradingSwift */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -95,14 +82,6 @@
 		DFEACDEE2DB4D9160099025F /* ArgoTradingSwiftUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ArgoTradingSwiftUITests;
-			sourceTree = "<group>";
-		};
-		DFEACE032DB4D9530099025F /* libs */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				DFEACE0B2DB4D98E0099025F /* Exceptions for "libs" folder in "Embed Frameworks" phase from "ArgoTradingSwift" target */,
-			);
-			path = libs;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -143,7 +122,6 @@
 		DFEACDC72DB4D9150099025F = {
 			isa = PBXGroup;
 			children = (
-				DFEACE032DB4D9530099025F /* libs */,
 				DFEACDD22DB4D9150099025F /* ArgoTradingSwift */,
 				DFEACDE42DB4D9160099025F /* ArgoTradingSwiftTests */,
 				DFEACDEE2DB4D9160099025F /* ArgoTradingSwiftUITests */,
@@ -180,7 +158,6 @@
 			);
 			fileSystemSynchronizedGroups = (
 				DFEACDD22DB4D9150099025F /* ArgoTradingSwift */,
-				DFEACE032DB4D9530099025F /* libs */,
 			);
 			name = ArgoTradingSwift;
 			packageProductDependencies = (
@@ -666,7 +643,7 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sirily11/swift-jsonschema-form";
 			requirement = {
-				branch = main;
+				branch = v1.0.2;
 				kind = branch;
 			};
 		};
@@ -691,7 +668,7 @@
 			repositoryURL = "https://github.com/rxtech-lab/argo-trading";
 			requirement = {
 				kind = exactVersion;
-				version = 1.10.0;
+				version = 1.13.0;
 			};
 		};
 		DFBEFC422F06E6BE00F7CE2D /* XCRemoteSwiftPackageReference "swift-log" */ = {
@@ -706,7 +683,7 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/duckdb/duckdb-swift";
 			requirement = {
-				branch = "v1.5.0-dev4120";
+				branch = "v1.5.0-dev6109";
 				kind = branch;
 			};
 		};

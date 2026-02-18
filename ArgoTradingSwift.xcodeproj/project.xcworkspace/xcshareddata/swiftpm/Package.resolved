@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/rxtech-lab/argo-trading",
       "state" : {
-        "revision" : "2c9ee3b0f300119f7ca90679bbd0daf06630f210",
-        "version" : "1.10.0"
+        "revision" : "523744674bd98d001ecc99641a135c764b8629fa",
+        "version" : "1.13.0"
       }
     },
     {
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/duckdb/duckdb-swift",
       "state" : {
-        "branch" : "v1.5.0-dev4120",
-        "revision" : "02e1e2c5d29b739b0c957fe86287a02ff90f88fc"
+        "branch" : "v1.5.0-dev6109",
+        "revision" : "69f5f1a9b0116ac796da4a00f9332bc552fa45d5"
       }
     },
     {
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sirily11/swift-jsonschema-form",
       "state" : {
-        "branch" : "main",
-        "revision" : "52f93ae06df4ef0454b114cb00514554901f5886"
+        "branch" : "v1.0.2",
+        "revision" : "aa77d98a7ae8385fd431b152719f4257e6872c64"
       }
     },
     {

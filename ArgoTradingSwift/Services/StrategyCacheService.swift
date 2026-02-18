@@ -125,7 +125,7 @@ class StrategyCacheService {
                 let fileHandle = try FileHandle(forReadingFrom: url)
                 defer { try? fileHandle.close() }
 
-                let chunkSize = 64 * 1024  // 64KB chunks
+                let chunkSize = 64 * 1024 // 64KB chunks
                 while let chunk = try fileHandle.read(upToCount: chunkSize), !chunk.isEmpty {
                     hasher.update(data: chunk)
                 }

@@ -1,12 +1,18 @@
 name: Tests
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
+
+
 
 jobs:
   test-packages:
     name: Test Swift Packages
-    runs-on: macos-26
+    runs-on: self-hosted
 
     steps:
       - name: Checkout code
@@ -25,7 +31,7 @@ jobs:
 
   test-xcode:
     name: Test Xcode App
-    runs-on: macos-26
+    runs-on: self-hosted
 
     steps:
       - name: Checkout code
