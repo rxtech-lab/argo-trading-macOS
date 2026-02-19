@@ -469,6 +469,14 @@ function setCandlestickData(data) {
   console.log("[Chart] First item:", JSON.stringify(data[0]));
   console.log("[Chart] Last item:", JSON.stringify(data[data.length - 1]));
 
+  // Save scroll position before replacing data
+  let savedRange = null;
+  try {
+    if (chart && dataMap.size > 0) {
+      savedRange = chart.timeScale().getVisibleRange();
+    }
+  } catch (e) {}
+
   dataMap.clear();
   const formattedData = data.map((d) => {
     dataMap.set(d.time, {
@@ -508,12 +516,30 @@ function setCandlestickData(data) {
     }));
     volumeSeries.setData(volumeData);
   }
+
+  // Restore scroll position (skip on first load when savedRange is null)
+  if (savedRange) {
+    try {
+      chart.timeScale().setVisibleRange(savedRange);
+    } catch (e) {
+      // Range no longer valid (e.g., switched to different file), let chart auto-fit
+    }
+  }
+
   console.log("[Chart] Data set complete");
 }
 
 // Set line data
 function setLineData(data) {
   if (!series) return;
+
+  // Save scroll position before replacing data
+  let savedRange = null;
+  try {
+    if (chart && dataMap.size > 0) {
+      savedRange = chart.timeScale().getVisibleRange();
+    }
+  } catch (e) {}
 
   dataMap.clear();
   const formattedData = data.map((d) => {
@@ -546,6 +572,15 @@ function setLineData(data) {
       color: "rgba(33, 150, 243, 0.5)",
     }));
     volumeSeries.setData(volumeData);
+  }
+
+  // Restore scroll position (skip on first load when savedRange is null)
+  if (savedRange) {
+    try {
+      chart.timeScale().setVisibleRange(savedRange);
+    } catch (e) {
+      // Range no longer valid, let chart auto-fit
+    }
   }
 }
 

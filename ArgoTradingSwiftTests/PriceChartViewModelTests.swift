@@ -935,6 +935,161 @@ struct ScrollGuardTests {
     }
 }
 
+// MARK: - Boundary Check Tests
+
+struct HasMoreDataTests {
+    @Test func hasMoreDataAtBeginning_emptyData_returnsFalse() {
+        let mockService = MockDuckDBService()
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService)
+
+        #expect(!viewModel.hasMoreDataAtBeginning)
+    }
+
+    @Test func hasMoreDataAtBeginning_dataStartsAtZero_returnsFalse() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 50
+        mockService.mockPriceData = createMockPriceData(count: 50)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        await viewModel.loadInitialData()
+        // Small dataset loads from index 0
+        #expect(viewModel.loadedData.first?.globalIndex == 0)
+        #expect(!viewModel.hasMoreDataAtBeginning)
+    }
+
+    @Test func hasMoreDataAtBeginning_dataStartsAtOffset_returnsTrue() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 1000
+        mockService.mockPriceData = createMockPriceData(count: 1000)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        await viewModel.loadInitialData()
+        // Loaded indices 500-999
+        #expect(viewModel.loadedData.first?.globalIndex == 500)
+        #expect(viewModel.hasMoreDataAtBeginning)
+    }
+
+    @Test func hasMoreDataAtEnd_emptyData_returnsFalse() {
+        let mockService = MockDuckDBService()
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService)
+
+        #expect(!viewModel.hasMoreDataAtEnd)
+    }
+
+    @Test func hasMoreDataAtEnd_allDataLoaded_returnsFalse() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 50
+        mockService.mockPriceData = createMockPriceData(count: 50)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        await viewModel.loadInitialData()
+        // Last index is 49, totalCount is 50 → 49 < 50-1 is false
+        #expect(viewModel.loadedData.last?.globalIndex == 49)
+        #expect(!viewModel.hasMoreDataAtEnd)
+    }
+
+    @Test func hasMoreDataAtEnd_moreDataExists_returnsTrue() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 2000
+        mockService.mockPriceData = createMockPriceData(count: 2000)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        await viewModel.loadInitialData()
+        // Loaded indices 1500-1999, totalCount=2000
+
+        // Load more at beginning so we're not at the end anymore
+        await viewModel.loadMoreAtBeginning()
+        // Now has data from 1000 to 1999, last index is 1999 = totalCount-1
+        #expect(!viewModel.hasMoreDataAtEnd)
+
+        // But if we scrolled to the middle...
+        mockService.mockOffsetForTimestamp = 500
+        await viewModel.scrollToTimestamp(Date())
+        // Now loaded around index 500, last index < 1999
+        #expect(viewModel.hasMoreDataAtEnd)
+    }
+}
+
+// MARK: - Short-circuit Scroll Tests
+
+struct ShortCircuitScrollTests {
+    @Test func handleScrollChange_nearStart_allDataLoaded_doesNotFetch() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 100
+        mockService.mockPriceData = createMockPriceData(count: 100)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        await viewModel.loadInitialData()
+        // All 100 items loaded starting from index 0
+        #expect(viewModel.loadedData.first?.globalIndex == 0)
+        #expect(!viewModel.hasMoreDataAtBeginning)
+
+        mockService.fetchAggregatedPriceDataRangeCalled = false
+
+        // Scroll near start — should NOT trigger a fetch since all data is loaded
+        let range = VisibleLogicalRange(localFromIndex: 10, localToIndex: 60)
+        await viewModel.handleScrollChange(range)
+
+        #expect(!mockService.fetchAggregatedPriceDataRangeCalled)
+    }
+
+    @Test func handleScrollChange_nearEnd_allDataLoaded_doesNotFetch() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 100
+        mockService.mockPriceData = createMockPriceData(count: 100)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        await viewModel.loadInitialData()
+        // All 100 items loaded, last index is 99 = totalCount - 1
+        #expect(viewModel.loadedData.last?.globalIndex == 99)
+        #expect(!viewModel.hasMoreDataAtEnd)
+
+        mockService.fetchAggregatedPriceDataRangeCalled = false
+
+        // Scroll near end — should NOT trigger a fetch since all data is loaded
+        let range = VisibleLogicalRange(localFromIndex: 60, localToIndex: 95)
+        await viewModel.handleScrollChange(range)
+
+        #expect(!mockService.fetchAggregatedPriceDataRangeCalled)
+    }
+
+    @Test func handleScrollChange_nearStart_moreDataAvailable_triggersFetch() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 2000
+        mockService.mockPriceData = createMockPriceData(count: 2000)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        await viewModel.loadInitialData()
+        // Loaded indices 1500-1999
+        #expect(viewModel.hasMoreDataAtBeginning)
+
+        let countBefore = viewModel.loadedData.count
+
+        // Scroll near start — should trigger a fetch
+        let range = VisibleLogicalRange(localFromIndex: 10, localToIndex: 110)
+        await viewModel.handleScrollChange(range)
+
+        // Data count should increase from prepended data
+        #expect(viewModel.loadedData.count > countBefore)
+    }
+}
+
 // MARK: - Overlay Loading Tests
 
 struct OverlayLoadingTests {
