@@ -1,5 +1,5 @@
 {
-  "originHash" : "82fe538f745d99b53585c80e4f336de2265f71800d0f834da0eb7a675a813388",
+  "originHash" : "22ff3608c9b6bd1c8d09d2171ccaceebc472a9341ee50bfe0ca3ef3a43f8ca7a",
   "pins" : [
     {
       "identity" : "argo-trading",
@@ -17,6 +17,15 @@
       "state" : {
         "branch" : "v1.5.0-dev6109",
         "revision" : "69f5f1a9b0116ac796da4a00f9332bc552fa45d5"
+      }
+    },
+    {
+      "identity" : "sparkle",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/sparkle-project/Sparkle",
+      "state" : {
+        "revision" : "5581748cef2bae787496fe6d61139aebe0a451f6",
+        "version" : "2.8.1"
       }
     },
     {

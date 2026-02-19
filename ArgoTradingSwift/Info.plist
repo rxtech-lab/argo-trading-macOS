@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://rxtech-lab.github.io/argo-trading-macOS/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>OOJs50Q9V9lpqBgeRi0ow0YBdiAlmc9uJ3B9hABDsqQ=</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Authenticate to access your secure API keys and credentials stored in Keychain.</string>
 	<key>CFBundleDocumentTypes</key>

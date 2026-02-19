@@ -6,7 +6,11 @@
 //
 
 import LightweightChart
+import Sparkle
 import SwiftUI
+
+var updaterController: SPUStandardUpdaterController?
+let updaterDelegate = UpdaterDelegate()
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -35,6 +39,13 @@ struct ArgoTradingSwiftApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     @State private var datasetDownloadService = DatasetDownloadService()
+
+    init() {
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: true, updaterDelegate: updaterDelegate, userDriverDelegate: nil)
+        updaterController?.updater.updateCheckInterval = 80
+        updaterController?.updater.automaticallyChecksForUpdates = true
+    }
     @State private var alertService = AlertManager()
     @State private var modePicker = NavigationService()
     @State private var duckDBService = DuckDBService()
@@ -107,6 +118,11 @@ struct ArgoTradingSwiftApp: App {
                     openWindow(id: "about")
                 } label: {
                     Text("About \(Bundle.main.appName ?? "")")
+                }
+            }
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates...") {
+                    updaterController?.checkForUpdates(nil)
                 }
             }
         }

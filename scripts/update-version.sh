@@ -9,7 +9,7 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-PROJECT_FILE="SmartContractApp.xcodeproj/project.pbxproj"
+PROJECT_FILE="ArgoTradingSwift.xcodeproj/project.pbxproj"
 
 if [ ! -f "$PROJECT_FILE" ]; then
   echo "Error: $PROJECT_FILE not found"
@@ -21,7 +21,7 @@ echo "Updating MARKETING_VERSION to $VERSION in $PROJECT_FILE"
 # Create a temporary file
 TMP_FILE=$(mktemp)
 
-# Use awk to update only SmartContractApp target (not test targets)
+# Use awk to update only ArgoTradingSwift target (not test targets)
 awk -v new_version="$VERSION" '
 /MARKETING_VERSION = / {
     # Store the current line
@@ -29,7 +29,7 @@ awk -v new_version="$VERSION" '
     # Read the next line
     getline
     # Check if this is the main app target (not Tests or UITests)
-    if ($0 ~ /PRODUCT_BUNDLE_IDENTIFIER = rxlab\.SmartContractApp;$/) {
+    if ($0 ~ /PRODUCT_BUNDLE_IDENTIFIER = rxlab\.ArgoTradingSwift;$/) {
         # Update MARKETING_VERSION
         gsub(/MARKETING_VERSION = [^;]+;/, "MARKETING_VERSION = " new_version ";", marketing_line)
         print marketing_line
