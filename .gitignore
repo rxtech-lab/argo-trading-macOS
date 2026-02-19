@@ -8,3 +8,11 @@ Packages/*/Build/
 DerivedData/
 *.xcworkspace/xcuserdata/
 .vscode/settings.json
+
+# Build artifacts
+output/
+*.dmg
+appcast.xml
+release_notes.html
+release_notes.md
+sparkle.key
