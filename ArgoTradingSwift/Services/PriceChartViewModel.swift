@@ -74,6 +74,18 @@ class PriceChartViewModel {
         self.trimSize = trimSize ?? (bufferSize * 2 / 3)
     }
 
+    // MARK: - Boundary Checks
+
+    var hasMoreDataAtBeginning: Bool {
+        guard let firstData = loadedData.first else { return false }
+        return firstData.globalIndex > 0
+    }
+
+    var hasMoreDataAtEnd: Bool {
+        guard let lastData = loadedData.last else { return false }
+        return lastData.globalIndex < totalCount - 1
+    }
+
     // MARK: - Public Methods
 
     func priceData(at index: Int) -> PriceData? {
@@ -304,14 +316,14 @@ class PriceChartViewModel {
         guard let lastData = loadedData.last else {
             return
         }
-        if range.isNearStart(threshold: 200) {
+        if range.isNearStart(threshold: 200), hasMoreDataAtBeginning {
             logger.debug("[PriceChartViewModel] Loading more data at beginning \(range.localFromIndex) - \(range.localToIndex), firstData=\(firstData.date), lastData=\(lastData.date)")
             await loadMoreAtBeginning()
             await loadVisibleOverlays()
             return
         }
 
-        if range.isNearEnd(threshold: 50, totalCount: loadedData.count) {
+        if range.isNearEnd(threshold: 50, totalCount: loadedData.count), hasMoreDataAtEnd {
             logger.debug("[PriceChartViewModel] Loading more data at end \(range.localFromIndex) - \(range.localToIndex), firstData=\(firstData.date), lastData=\(lastData.date), vmTotalCount=\(loadedData.count)")
             await loadMoreAtEnd()
             await loadVisibleOverlays()
