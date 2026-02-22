@@ -42,7 +42,7 @@ jobs:
         run: npm install --global create-dmg
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.x"
 
@@ -50,14 +50,14 @@ jobs:
         run: pip install markdown
 
       - name: Import code signing certificate
-        uses: apple-actions/import-codesign-certs@v3
+        uses: apple-actions/import-codesign-certs@v6
         with:
           p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.P12_PASSWORD }}
 
       - name: Bump version (release only)
         if: github.event_name == 'release'
-        uses: sirily11/ios-bump-version@master
+        uses: sirily11/ios-bump-version@v1.6.0
         with:
           version: ${{ github.ref_name }}
           build-number: ${{ github.run_number }}
@@ -142,12 +142,12 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download appcast from build job
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: appcast-${{ github.sha }}
 
       - name: Download release notes from build job
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: release_notes-${{ github.sha }}
 
@@ -161,7 +161,7 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Upload pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: "pages"
 
