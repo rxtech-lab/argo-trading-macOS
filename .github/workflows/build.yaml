@@ -98,7 +98,7 @@ jobs:
       # Upload artifact for Pull Requests (1 day retention)
       - name: Upload artifact for PR
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ArgoTradingSwift-PR-${{ github.event.pull_request.number }}
           path: ArgoTradingSwift.dmg
@@ -115,7 +115,7 @@ jobs:
       # Upload appcast as an artifact for the deploy job
       - name: Upload appcast for deploy job
         if: github.event_name == 'release'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: appcast-${{ github.sha }}
           path: appcast.xml
@@ -123,7 +123,7 @@ jobs:
 
       - name: Upload release notes for deploy job
         if: github.event_name == 'release'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release_notes-${{ github.sha }}
           path: release_notes.html
@@ -142,12 +142,12 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download appcast from build job
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: appcast-${{ github.sha }}
 
       - name: Download release notes from build job
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: release_notes-${{ github.sha }}
 
