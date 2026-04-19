@@ -157,16 +157,95 @@ extension ArgoTradingDocument: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        dataFolder = try container.decode(URL.self, forKey: .dataFolder)
-        strategyFolder = try container.decode(URL.self, forKey: .strategyFolder)
-        resultFolder = try container.decode(URL.self, forKey: .resultFolder)
+        dataFolder = try Self.decodePath(container, forKey: .dataFolder)
+        strategyFolder = try Self.decodePath(container, forKey: .strategyFolder)
+        resultFolder = try Self.decodePath(container, forKey: .resultFolder)
         // Fallback: derive trading folder as sibling of dataFolder
         let defaultTradingFolder = dataFolder.deletingLastPathComponent().appendingPathComponent("trading")
-        tradingResultFolder = try container.decodeIfPresent(URL.self, forKey: .tradingResultFolder) ?? defaultTradingFolder
+        tradingResultFolder = try Self.decodePathIfPresent(container, forKey: .tradingResultFolder) ?? defaultTradingFolder
         schemas = try container.decode([Schema].self, forKey: .schemas)
         selectedSchemaId = try container.decodeIfPresent(UUID.self, forKey: .selectedSchemaId)
-        selectedDatasetURL = try container.decodeIfPresent(URL.self, forKey: .selectedDatasetURL)
+        selectedDatasetURL = try Self.decodePathIfPresent(container, forKey: .selectedDatasetURL)
         tradingProviders = try container.decodeIfPresent([TradingProvider].self, forKey: .tradingProviders) ?? []
         selectedTradingProviderId = try container.decodeIfPresent(UUID.self, forKey: .selectedTradingProviderId)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try Self.encodePath(dataFolder, into: &container, forKey: .dataFolder)
+        try Self.encodePath(strategyFolder, into: &container, forKey: .strategyFolder)
+        try Self.encodePath(resultFolder, into: &container, forKey: .resultFolder)
+        try Self.encodePath(tradingResultFolder, into: &container, forKey: .tradingResultFolder)
+        try container.encode(schemas, forKey: .schemas)
+        try container.encodeIfPresent(selectedSchemaId, forKey: .selectedSchemaId)
+        if let selectedDatasetURL {
+            try Self.encodePath(selectedDatasetURL, into: &container, forKey: .selectedDatasetURL)
+        }
+        try container.encode(tradingProviders, forKey: .tradingProviders)
+        try container.encodeIfPresent(selectedTradingProviderId, forKey: .selectedTradingProviderId)
+    }
+
+    // MARK: - Path codec helpers (support both absolute and relative paths)
+
+    private static func decodePath(_ container: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys) throws -> URL {
+        let raw = try container.decode(String.self, forKey: key)
+        return try parsePath(raw, forKey: key, in: container)
+    }
+
+    private static func decodePathIfPresent(_ container: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys) throws -> URL? {
+        guard let raw = try container.decodeIfPresent(String.self, forKey: key) else { return nil }
+        return try parsePath(raw, forKey: key, in: container)
+    }
+
+    private static func parsePath(_ raw: String, forKey key: CodingKeys, in container: KeyedDecodingContainer<CodingKeys>) throws -> URL {
+        if raw.hasPrefix("/") {
+            return URL(fileURLWithPath: raw)
+        }
+        if raw.hasPrefix("file:") {
+            guard let url = URL(string: raw) else {
+                throw DecodingError.dataCorruptedError(forKey: key, in: container, debugDescription: "Invalid file URL: \(raw)")
+            }
+            return url
+        }
+        // Relative path — preserve raw string as schema-less URL for later resolution.
+        guard let url = URL(string: raw) else {
+            throw DecodingError.dataCorruptedError(forKey: key, in: container, debugDescription: "Invalid relative path: \(raw)")
+        }
+        return url
+    }
+
+    private static func encodePath(_ url: URL, into container: inout KeyedEncodingContainer<CodingKeys>, forKey key: CodingKeys) throws {
+        if url.baseURL != nil {
+            // Relative URL (schema-less, or resolved-but-still-rebaseable) — preserve
+            // the raw relative string so the fixture stays portable on re-save.
+            try container.encode(url.relativePath, forKey: key)
+        } else if url.isFileURL {
+            try container.encode(url.absoluteString, forKey: key)
+        } else {
+            try container.encode(url.relativePath, forKey: key)
+        }
+    }
+
+    // MARK: - Relative path resolution
+
+    /// Resolve any relative path fields (those stored as schema-less URLs) against the given base URL.
+    /// Absolute file URLs are left untouched. Safe to call multiple times.
+    mutating func resolvePaths(relativeTo baseURL: URL) {
+        dataFolder = Self.resolved(dataFolder, base: baseURL, isDirectory: true)
+        strategyFolder = Self.resolved(strategyFolder, base: baseURL, isDirectory: true)
+        resultFolder = Self.resolved(resultFolder, base: baseURL, isDirectory: true)
+        tradingResultFolder = Self.resolved(tradingResultFolder, base: baseURL, isDirectory: true)
+        if let dataset = selectedDatasetURL {
+            selectedDatasetURL = Self.resolved(dataset, base: baseURL, isDirectory: false)
+        }
+    }
+
+    private static func resolved(_ url: URL, base: URL, isDirectory: Bool) -> URL {
+        // Already absolute (no rebaseable base) — leave alone.
+        if url.isFileURL && url.baseURL == nil { return url }
+        // Build a file URL that retains `base` so filesystem access works while
+        // encoding can still recover the original relative string via `.relativePath`.
+        let raw = url.relativePath
+        return URL(fileURLWithPath: raw, isDirectory: isDirectory, relativeTo: base)
     }
 }

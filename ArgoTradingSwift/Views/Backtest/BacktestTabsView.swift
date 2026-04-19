@@ -12,7 +12,9 @@ struct BacktestTabsView: View {
     var body: some View {
         Picker("", selection: $navigationService.currentSelectedBacktestTab) {
             ForEach(BacktestTabs.allCases) { tab in
-                Text(tab.title).tag(tab)
+                Text(tab.title)
+                    .tag(tab)
+                    .accessibilityIdentifier("argo.backtestTab.\(tab.title)")
             }
         }
         .labelsHidden()

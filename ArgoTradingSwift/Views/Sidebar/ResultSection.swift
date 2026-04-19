@@ -38,6 +38,7 @@ struct ResultSection: View {
                                 NavigationLink(value: NavigationPath.backtest(backtest: .result(url: resultItem.statsFileURL))) {
                                     ResultFileRow(resultItem: resultItem)
                                         .id(resultItem.id)
+                                        .accessibilityIdentifier("argo.resultRow")
                                         .contextMenu {
                                             Button {
                                                 let folder = resultItem.statsFileURL.deletingLastPathComponent()

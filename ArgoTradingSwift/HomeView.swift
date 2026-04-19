@@ -10,6 +10,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Binding var document: ArgoTradingDocument
+    let fileURL: URL?
     @Environment(NavigationService.self) var navigationService
     @Environment(DatasetService.self) var datasetService
     @Environment(StrategyService.self) var strategyService
@@ -63,6 +64,7 @@ struct HomeView: View {
                             )
                             .contentTransition(.symbolEffect(.replace))
                         }
+                        .accessibilityIdentifier("argo.runBacktest")
                         .disabled(!backtestService.isRunning && !document.canRunBacktest)
                         .keyboardShortcut("r", modifiers: .command)
                         .animation(.easeInOut(duration: 0.1), value: backtestService.isRunning)
@@ -148,6 +150,9 @@ struct HomeView: View {
             }
         }
         .onAppear {
+            if let base = fileURL?.deletingLastPathComponent() {
+                document.resolvePaths(relativeTo: base)
+            }
             datasetService.setDataFolder(document.dataFolder)
             backtestResultService.setResultFolder(document.resultFolder)
             strategyService.setStrategyFolder(document.strategyFolder)

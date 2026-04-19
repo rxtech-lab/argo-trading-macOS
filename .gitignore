@@ -16,3 +16,8 @@ appcast.xml
 release_notes.html
 release_notes.md
 sparkle.key
+testdata/result/*
+!testdata/result/readme.md
+testdata/strategy/*.wasm
+testdata/data/*.parquet
+*.parquet

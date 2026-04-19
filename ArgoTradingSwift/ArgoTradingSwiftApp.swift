@@ -41,10 +41,59 @@ struct ArgoTradingSwiftApp: App {
     @State private var datasetDownloadService = DatasetDownloadService()
 
     init() {
+        // UI tests pass `-ArgoDisableUpdates` (or `ARGO_DISABLE_UPDATES=1` env var)
+        // to suppress the Sparkle update prompt, and `-ArgoResetState`
+        // (or `ARGO_RESET_STATE=1`) to wipe app-local state before launch.
+        let args = ProcessInfo.processInfo.arguments
+        let env = ProcessInfo.processInfo.environment
+        let updatesDisabled = args.contains("-ArgoDisableUpdates")
+            || env["ARGO_DISABLE_UPDATES"] == "1"
+
+        if args.contains("-ArgoResetState") || env["ARGO_RESET_STATE"] == "1" {
+            Self.resetAppState()
+        }
+
         updaterController = SPUStandardUpdaterController(
-            startingUpdater: true, updaterDelegate: updaterDelegate, userDriverDelegate: nil)
-        updaterController?.updater.updateCheckInterval = 80
-        updaterController?.updater.automaticallyChecksForUpdates = true
+            startingUpdater: !updatesDisabled,
+            updaterDelegate: updaterDelegate,
+            userDriverDelegate: nil
+        )
+        if !updatesDisabled {
+            updaterController?.updater.updateCheckInterval = 80
+            updaterController?.updater.automaticallyChecksForUpdates = true
+        } else {
+            updaterController?.updater.automaticallyChecksForUpdates = false
+        }
+    }
+
+    /// Wipes UserDefaults (including Sparkle's `SU*` keys) and common on-disk
+    /// state for this app — recent documents, saved state, Application Support,
+    /// Caches. Invoked early in `init()` so services observe a clean baseline.
+    private static func resetAppState() {
+        let bundleID = Bundle.main.bundleIdentifier ?? "ArgoTradingSwift"
+        let defaults = UserDefaults.standard
+        defaults.removePersistentDomain(forName: bundleID)
+        defaults.synchronize()
+
+        let fm = FileManager.default
+        let dirsToWipe: [FileManager.SearchPathDirectory] = [
+            .applicationSupportDirectory,
+            .cachesDirectory,
+        ]
+        for dir in dirsToWipe {
+            if let base = try? fm.url(for: dir, in: .userDomainMask, appropriateFor: nil, create: false) {
+                let appDir = base.appendingPathComponent(bundleID, isDirectory: true)
+                try? fm.removeItem(at: appDir)
+            }
+        }
+
+        // NSDocument saved-state dir: ~/Library/Saved Application State/<bundleID>.savedState
+        if let lib = try? fm.url(for: .libraryDirectory, in: .userDomainMask, appropriateFor: nil, create: false) {
+            let savedState = lib
+                .appendingPathComponent("Saved Application State", isDirectory: true)
+                .appendingPathComponent("\(bundleID).savedState", isDirectory: true)
+            try? fm.removeItem(at: savedState)
+        }
     }
     @State private var alertService = AlertManager()
     @State private var modePicker = NavigationService()
@@ -77,7 +126,7 @@ struct ArgoTradingSwiftApp: App {
 
         // Document Window
         DocumentGroup(viewing: ArgoTradingDocument.self) { document in
-            HomeView(document: document.$document)
+            HomeView(document: document.$document, fileURL: document.fileURL)
                 .alertManager(alertService)
                 .frame(minWidth: 1400, minHeight: 600)
                 .sheet(isPresented: $datasetDownloadService.showDownloadView) {

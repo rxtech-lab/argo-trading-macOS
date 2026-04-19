@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "97D59006-B305-484F-B4C6-DB665D8E9FBC",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:ArgoTradingSwift.xcodeproj",
+        "identifier" : "DFEACDEA2DB4D9160099025F",
+        "name" : "ArgoTradingSwiftUITests"
+      }
+    }
+  ],
+  "version" : 1
+}
