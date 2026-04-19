@@ -11,6 +11,7 @@ import Testing
 
 @testable import ArgoTradingSwift
 
+@MainActor
 struct StrategyCacheServiceTests {
 
     // MARK: - Initial State Tests
