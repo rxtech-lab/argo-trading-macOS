@@ -70,6 +70,7 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
         argoEngine = SwiftargoNewArgo(self, &argoError)
 
         if let argoError = argoError {
+            accumulatedErrors.append(argoError.localizedDescription)
             isRunning = false
             Task {
                 await toolbarStatusService.setStatus(.error(
@@ -104,6 +105,7 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
             }
             try argoEngine?.setConfigContent(configs)
         } catch {
+            accumulatedErrors.append(error.localizedDescription)
             isRunning = false
             Task {
                 await toolbarStatusService.setStatus(.error(
@@ -141,6 +143,7 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
             } catch {
                 if !error.isContextCancelled {
                     await MainActor.run {
+                        self.accumulatedErrors.append(error.localizedDescription)
                         self.isRunning = false
                     }
                     await self.toolbarStatusService?.setStatus(.error(
@@ -209,16 +212,15 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
 
     func onBacktestEnd(_ err: (any Error)?) {
         Task { @MainActor in
+            if let err = err, !err.isContextCancelled {
+                self.accumulatedErrors.append(err.localizedDescription)
+            }
             self.isRunning = false
             self.argoEngine = nil
             self.backtestTask = nil
             self.currentStrategyId = nil
 
-            // Combine passed error with accumulated errors
-            var allErrors = self.accumulatedErrors
-            if let err = err, !err.isContextCancelled {
-                allErrors.append(err.localizedDescription)
-            }
+            let allErrors = self.accumulatedErrors
 
             if !allErrors.isEmpty {
                 await self.toolbarStatusService?.setStatus(.error(
