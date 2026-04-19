@@ -185,11 +185,23 @@ class FolderMonitor {
     }
 
     private func stopFSEventsMonitor() {
-        if let streamRef = streamRef {
+        guard let streamRef = streamRef else { return }
+        self.streamRef = nil
+
+        // FSEventStream{Stop,Invalidate,Release} are not thread-safe and must run on
+        // the run loop the stream was scheduled on (the main run loop). `deinit` and
+        // AsyncStream `onTermination` can fire from background threads, causing an
+        // EXC_BREAKPOINT trap if we tear down from the wrong thread.
+        let teardown = {
             FSEventStreamStop(streamRef)
             FSEventStreamInvalidate(streamRef)
             FSEventStreamRelease(streamRef)
-            self.streamRef = nil
+        }
+
+        if Thread.isMainThread {
+            teardown()
+        } else {
+            DispatchQueue.main.async(execute: teardown)
         }
     }
 

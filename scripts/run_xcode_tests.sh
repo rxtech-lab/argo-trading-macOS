@@ -1,93 +1,112 @@
 #!/bin/bash
 
-# Script to run all Xcode tests for SmartContractApp
-# Usage: ./scripts/run_xcode_tests.sh
+# macOS Test Plan Script
+# Runs the ArgoTradingSwift UI test plan with retry-on-failure.
 
-set -e  # Exit on error
+set -e
+set -o pipefail
 
-# Color output
+echo "======================================"
+echo "ArgoTradingSwift UI Test Plan"
+echo "======================================"
+echo ""
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-# Get the script directory and project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_PATH="$PROJECT_ROOT/ArgoTradingSwift.xcodeproj"
+SCHEME="${SCHEME:-ArgoTradingSwift}"
+TEST_PLAN="${TEST_PLAN:-uitest}"
+CONFIGURATION="${CONFIGURATION:-Debug}"
+DESTINATION="${DESTINATION:-platform=macOS}"
+TEST_RESULTS_DIR="$PROJECT_ROOT/test-results"
+RESULT_BUNDLE_PATH="${RESULT_BUNDLE_PATH:-$TEST_RESULTS_DIR/TestResults.xcresult}"
+TEST_ITERATIONS="${TEST_ITERATIONS:-3}"
 
-echo -e "${GREEN}Running Xcode tests for ArgoTradingSwift...${NC}"
-echo "Project root: $PROJECT_ROOT"
-echo ""
-
-# Change to project root
-cd "$PROJECT_ROOT"
-
-# Check if the Xcode project exists
-if [ ! -f "ArgoTradingSwift.xcodeproj/project.pbxproj" ]; then
-    echo -e "${RED}Error: ArgoTradingSwift.xcodeproj not found${NC}"
+if [ ! -d "$PROJECT_PATH" ]; then
+    echo -e "${RED}Error: $PROJECT_PATH not found${NC}"
     exit 1
 fi
 
-# Create test results directory
-TEST_RESULTS_DIR="$PROJECT_ROOT/test-results"
 mkdir -p "$TEST_RESULTS_DIR"
+rm -rf "$RESULT_BUNDLE_PATH"
 
-# Define result bundle path
-RESULT_BUNDLE="$TEST_RESULTS_DIR/TestResults.xcresult"
-
-# Remove old result bundle if it exists
-if [ -d "$RESULT_BUNDLE" ]; then
-    rm -rf "$RESULT_BUNDLE"
-fi
-
-# Run tests
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Running ArgoTradingSwift tests${NC}"
-echo -e "${GREEN}========================================${NC}"
+echo -e "${BLUE}Project:${NC} $PROJECT_PATH"
+echo -e "${BLUE}Scheme:${NC} $SCHEME"
+echo -e "${BLUE}Test Plan:${NC} $TEST_PLAN"
+echo -e "${BLUE}Configuration:${NC} $CONFIGURATION"
+echo -e "${BLUE}Destination:${NC} $DESTINATION"
+echo -e "${BLUE}Result Bundle:${NC} $RESULT_BUNDLE_PATH"
+echo -e "${BLUE}Test Iterations:${NC} $TEST_ITERATIONS"
 echo ""
 
-# Check if xcpretty is available
-if command -v xcpretty &> /dev/null; then
+echo "Running tests..."
+echo ""
+
+set +e
+
+if command -v xcbeautify &> /dev/null; then
+    FORMATTER="xcbeautify"
+elif command -v xcpretty &> /dev/null; then
     FORMATTER="xcpretty"
 else
-    echo -e "${YELLOW}xcpretty not found, using raw xcodebuild output${NC}"
+    echo -e "${YELLOW}No formatter found, using raw xcodebuild output${NC}"
     FORMATTER="cat"
 fi
 
-# Store the exit code to handle artifacts even on failure
-set +e  # Don't exit on error for test command
-xcodebuild test \
-    -scheme ArgoTradingSwift \
-    -destination 'platform=macOS' \
-    -resultBundlePath "$RESULT_BUNDLE" \
-    -enableCodeCoverage YES \
-    CODE_SIGN_IDENTITY="" \
-    CODE_SIGNING_REQUIRED=NO \
-    CODE_SIGNING_ALLOWED=NO \
-    2>&1 | tee "$TEST_RESULTS_DIR/xcodebuild.log" | $FORMATTER
-
-TEST_EXIT_CODE=${PIPESTATUS[0]}
-set -e  # Re-enable exit on error
-
-# Check if result bundle was created
-if [ -d "$RESULT_BUNDLE" ]; then
-    echo ""
-    echo -e "${YELLOW}Test result bundle created at: $RESULT_BUNDLE${NC}"
-
-    # Extract human-readable test results
-    if command -v xcrun &> /dev/null; then
-        echo -e "${YELLOW}Extracting test summary...${NC}"
-        xcrun xcresulttool get --format json --path "$RESULT_BUNDLE" > "$TEST_RESULTS_DIR/test-summary.json" 2>/dev/null || true
+SIGNING_ARGS=()
+if [ -n "$SIGNING_CERTIFICATE_NAME" ]; then
+    echo -e "${BLUE}Signing:${NC} manual, identity=$SIGNING_CERTIFICATE_NAME"
+    SIGNING_ARGS+=(
+        CODE_SIGN_IDENTITY="$SIGNING_CERTIFICATE_NAME"
+        CODE_SIGN_STYLE=Manual
+    )
+    if [ -n "$DEVELOPMENT_TEAM" ]; then
+        SIGNING_ARGS+=(DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM")
     fi
 fi
 
-# Report results
+xcodebuild test \
+    -project "$PROJECT_PATH" \
+    -scheme "$SCHEME" \
+    -testPlan "$TEST_PLAN" \
+    -configuration "$CONFIGURATION" \
+    -destination "$DESTINATION" \
+    -resultBundlePath "$RESULT_BUNDLE_PATH" \
+    -enableCodeCoverage YES \
+    -allowProvisioningUpdates \
+    -skipPackagePluginValidation \
+    -skipMacroValidation \
+    -retry-tests-on-failure \
+    -test-iterations "$TEST_ITERATIONS" \
+    -test-repetition-relaunch-enabled YES \
+    "${SIGNING_ARGS[@]}" \
+    2>&1 | tee "$TEST_RESULTS_DIR/xcodebuild.log" | $FORMATTER
+
+TEST_EXIT_CODE=${PIPESTATUS[0]}
+set -e
+
+if [ -d "$RESULT_BUNDLE_PATH" ]; then
+    echo ""
+    echo -e "${YELLOW}Test result bundle: $RESULT_BUNDLE_PATH${NC}"
+    if command -v xcrun &> /dev/null; then
+        xcrun xcresulttool get --format json --path "$RESULT_BUNDLE_PATH" > "$TEST_RESULTS_DIR/test-summary.json" 2>/dev/null || true
+    fi
+fi
+
 echo ""
+echo "======================================"
+
 if [ $TEST_EXIT_CODE -eq 0 ]; then
-    echo -e "${GREEN}✓ All Xcode tests passed!${NC}"
+    echo -e "${GREEN}All tests passed!${NC}"
     exit 0
 else
-    echo -e "${RED}✗ Xcode tests failed${NC}"
-    echo -e "${YELLOW}Test artifacts available in: $TEST_RESULTS_DIR${NC}"
+    echo -e "${RED}Tests failed${NC}"
+    echo -e "${YELLOW}Artifacts: $TEST_RESULTS_DIR${NC}"
     exit 1
 fi

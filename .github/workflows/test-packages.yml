@@ -34,7 +34,10 @@ jobs:
 
   test-xcode:
     name: Test Xcode App
-    runs-on: self-hosted
+    runs-on: [self-hosted, ui-tests]
+    concurrency:
+      group: test-xcode
+      cancel-in-progress: false
 
     steps:
       - name: Checkout code
@@ -45,8 +48,8 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Install xcpretty
-        run: gem install xcpretty
+      - name: Install xcbeautify
+        run: brew install xcbeautify
 
       - name: Swift version
         run: swift --version
@@ -60,8 +63,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-xcode-
 
+      - name: Import code signing certificate
+        uses: apple-actions/import-codesign-certs@v6
+        with:
+          p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.P12_PASSWORD }}
+
+      - name: Prepare CI test fixtures
+        run: ./scripts/prepare_ci.sh
+
       - name: Run Xcode tests
         run: ./scripts/run_xcode_tests.sh
+        env:
+          SIGNING_CERTIFICATE_NAME: ${{ secrets.SIGNING_CERTIFICATE_NAME }}
+          DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Extract code coverage
         run: |
@@ -75,31 +90,61 @@ jobs:
           files: ./coverage.json
           fail_ci_if_error: false
 
-      - name: Upload test results (on failure)
-        if: failure()
+      - name: Upload test results
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ github.run_number }}
-          path: test-results/
-          retention-days: 1
+          path: test-results/TestResults.xcresult
+          retention-days: 7
+          if-no-files-found: ignore
 
-      - name: Extract screenshots from test bundle (on failure)
-        if: failure()
+      - name: Extract screenshots from xcresult
+        if: always()
         continue-on-error: true
         run: |
           if [ -d "test-results/TestResults.xcresult" ]; then
+            echo "Extracting screenshots from test-results/TestResults.xcresult..."
             mkdir -p test-results/screenshots
-            mkdir -p test-results/attachments
-
-            # Extract all attachments (screenshots, videos, logs) from the result bundle
-            xcrun xcresulttool export --type directory \
+            xcrun xcresulttool get test-results attachments \
               --path test-results/TestResults.xcresult \
-              --output-path test-results/attachments || true
+              --output-path test-results/screenshots || echo "No attachments found in result bundle"
+            SCREENSHOT_COUNT=$(find test-results/screenshots -type f 2>/dev/null | wc -l | tr -d ' ')
+            echo "Found $SCREENSHOT_COUNT attachment(s)"
+          else
+            echo "Result bundle not found at test-results/TestResults.xcresult"
+          fi
 
-            echo "Extracted test attachments to test-results/attachments/"
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-screenshots-${{ github.run_number }}
+          path: test-results/screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
 
-            # List what was extracted
-            find test-results/attachments -type f || true
+      - name: Upload xcodebuild log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: xcodebuild-log-${{ github.run_number }}
+          path: test-results/xcodebuild.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Generate Test Report Summary
+        if: always()
+        run: |
+          if [ -d "test-results/TestResults.xcresult" ]; then
+            echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Test plan: \`uitest\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Artifacts uploaded:" >> $GITHUB_STEP_SUMMARY
+            echo "- \`test-results-${{ github.run_number }}\` (xcresult bundle)" >> $GITHUB_STEP_SUMMARY
+            echo "- \`test-screenshots-${{ github.run_number }}\` (attachments)" >> $GITHUB_STEP_SUMMARY
+            echo "- \`xcodebuild-log-${{ github.run_number }}\` (raw log)" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Generate HTML test report (on failure)
