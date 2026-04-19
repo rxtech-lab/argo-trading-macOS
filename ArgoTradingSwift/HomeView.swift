@@ -22,8 +22,10 @@ struct HomeView: View {
     @Environment(TradingService.self) var tradingService
     @Environment(TradingProviderService.self) var tradingProviderService
     @Environment(TradingResultService.self) var tradingResultService
+    @Environment(SchemaService.self) var schemaService
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var documentHandleID: UUID?
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -157,6 +159,29 @@ struct HomeView: View {
             backtestResultService.setResultFolder(document.resultFolder)
             strategyService.setStrategyFolder(document.strategyFolder)
             tradingResultService.setResultFolder(document.tradingResultFolder)
+
+            let handle = DocumentHandle(
+                fileURL: fileURL,
+                binding: $document,
+                services: DocumentServices(
+                    backtest: backtestService,
+                    schema: schemaService,
+                    strategy: strategyService,
+                    dataset: datasetService,
+                    toolbar: toolbarStatusService,
+                    strategyCache: strategyCacheService,
+                    keychain: keychainService,
+                    backtestResult: backtestResultService
+                )
+            )
+            DocumentRegistry.shared.register(handle)
+            documentHandleID = handle.id
+        }
+        .onDisappear {
+            if let id = documentHandleID {
+                DocumentRegistry.shared.unregister(id: id)
+                documentHandleID = nil
+            }
         }
         .onChange(of: document.dataFolder) { _, newFolder in
             datasetService.setDataFolder(newFolder)
