@@ -110,6 +110,7 @@ struct ArgoTradingSwiftApp: App {
     @State private var tradingProviderService = TradingProviderService()
     @State private var tradingService = TradingService()
     @State private var tradingResultService = TradingResultService()
+    @State private var mcpServerService = MCPServerService()
 
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -118,8 +119,10 @@ struct ArgoTradingSwiftApp: App {
         WindowGroup(id: "welcome") {
             NewDocumentView()
                 .alertManager(alertService)
+                .task { await mcpServerService.startIfAutostartEnabledAwait() }
         }
         .environment(alertService)
+        .environment(mcpServerService)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .defaultPosition(.center)
@@ -157,6 +160,7 @@ struct ArgoTradingSwiftApp: App {
                     dismissWindow(id: "welcome")
                     logger.logLevel = .debug
                 }
+                .task { await mcpServerService.startIfAutostartEnabledAwait() }
                 .toolbar(removing: .title)
         }
         .commands {
@@ -191,6 +195,7 @@ struct ArgoTradingSwiftApp: App {
         .environment(tradingProviderService)
         .environment(tradingService)
         .environment(tradingResultService)
+        .environment(mcpServerService)
 
         // Define a custom About window that can be opened once
         Window("About My App", id: "about") {
@@ -198,5 +203,11 @@ struct ArgoTradingSwiftApp: App {
         }
         .windowResizability(.contentSize) // Make it non-resizable
         .restorationBehavior(.disabled) // Prevent state restoration
+
+        Settings {
+            SettingsView()
+                .environment(mcpServerService)
+                .environment(alertService)
+        }
     }
 }

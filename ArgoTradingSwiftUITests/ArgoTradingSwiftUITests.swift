@@ -29,9 +29,7 @@ final class ArgoTradingSwiftUITests: XCTestCase {
         XCTAssertTrue(app/*@START_MENU_TOKEN@*/ .staticTexts["PlaceOrderStrategy"]/*[[".groups.staticTexts[\"PlaceOrderStrategy\"]",".staticTexts[\"PlaceOrderStrategy\"]"],[[[-1,1],[-1,0]]],[0]]@END_MENU_TOKEN@*/ .waitForExistence(timeout: 20), "PlaceOrderStrategy not found after clicking plugin — it may take a while to load")
 
         // full screen
-        if app.buttons["_XCUI:FullScreenWindow"].firstMatch.exists {
-            app/*@START_MENU_TOKEN@*/ .buttons["_XCUI:FullScreenWindow"]/*[[".buttons.containing(.group, identifier: nil)",".windows.buttons[\"_XCUI:FullScreenWindow\"]",".buttons[\"_XCUI:FullScreenWindow\"]"],[[[-1,2],[-1,1],[-1,0]]],[0]]@END_MENU_TOKEN@*/ .firstMatch.click()
-        }
+        app.fullScreen()
         // Use firstMatch: SwiftUI toolbar buttons can expose nested accessibility elements
         // that inherit the same identifier from the parent.
         let runButton = app.buttons.matching(identifier: "argo.runBacktest").firstMatch

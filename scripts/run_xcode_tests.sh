@@ -27,6 +27,7 @@ DESTINATION="${DESTINATION:-platform=macOS}"
 TEST_RESULTS_DIR="$PROJECT_ROOT/test-results"
 RESULT_BUNDLE_PATH="${RESULT_BUNDLE_PATH:-$TEST_RESULTS_DIR/TestResults.xcresult}"
 TEST_ITERATIONS="${TEST_ITERATIONS:-3}"
+PARALLEL_WORKERS="${PARALLEL_WORKERS:-3}"
 
 if [ ! -d "$PROJECT_PATH" ]; then
     echo -e "${RED}Error: $PROJECT_PATH not found${NC}"
@@ -43,6 +44,7 @@ echo -e "${BLUE}Configuration:${NC} $CONFIGURATION"
 echo -e "${BLUE}Destination:${NC} $DESTINATION"
 echo -e "${BLUE}Result Bundle:${NC} $RESULT_BUNDLE_PATH"
 echo -e "${BLUE}Test Iterations:${NC} $TEST_ITERATIONS"
+echo -e "${BLUE}Parallel Workers:${NC} $PARALLEL_WORKERS"
 echo ""
 
 echo "Running tests..."
@@ -85,6 +87,8 @@ xcodebuild test \
     -retry-tests-on-failure \
     -test-iterations "$TEST_ITERATIONS" \
     -test-repetition-relaunch-enabled YES \
+    -parallel-testing-enabled YES \
+    -parallel-testing-worker-count "$PARALLEL_WORKERS" \
     "${SIGNING_ARGS[@]}" \
     2>&1 | tee "$TEST_RESULTS_DIR/xcodebuild.log" | $FORMATTER
 

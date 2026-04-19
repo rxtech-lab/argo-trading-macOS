@@ -39,6 +39,12 @@ private struct CacheEntry {
 
 /// Service that caches strategy metadata in memory using SHA256 content hash as the cache key.
 /// Cache is cleared on app restart.
+///
+/// `@MainActor`-isolated: `getMetadata` is called concurrently from multiple SwiftUI views and
+/// async services. `Dictionary` is not thread-safe, and prior non-isolated access produced
+/// `EXC_BAD_ACCESS` when two callers raced on the cache write. Heavy work (SHA256 hashing, metadata
+/// load) still runs via `Task.detached` so the main thread isn't blocked.
+@MainActor
 @Observable
 class StrategyCacheService {
     /// Cache storage: keyed by file path for quick lookup
@@ -56,7 +62,9 @@ class StrategyCacheService {
         cache.count
     }
 
-    private let fileManager: FileManager
+    // `FileManager` isn't `Sendable`, but the methods we call (`fileExists`) are thread-safe in
+    // practice. `nonisolated(unsafe)` lets the detached hash task read it without a MainActor hop.
+    nonisolated(unsafe) private let fileManager: FileManager
 
     init(fileManager: FileManager = .default) {
         self.fileManager = fileManager

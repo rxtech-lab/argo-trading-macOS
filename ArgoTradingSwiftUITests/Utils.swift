@@ -8,10 +8,12 @@
 import XCTest
 
 enum UITestUtils {
-    /// Resolve `testdata/Test project.rxtrading` by walking up from the source file to the repo root.
+    /// Resolve a `.rxtrading` fixture under `testdata/` by walking up from the
+    /// source file to the repo root. Pass `name` (without extension) to select
+    /// a specific fixture; defaults to the shared "Test project".
     /// `#filePath` is baked in at compile time, so this works on any machine that built the test bundle.
-    static func testProjectURL(filePath: String = #filePath) -> URL {
-        testdataDir(filePath: filePath).appendingPathComponent("Test project.rxtrading")
+    static func testProjectURL(name: String = "Test project", filePath: String = #filePath) -> URL {
+        self.testdataDir(filePath: filePath).appendingPathComponent("\(name).rxtrading")
     }
 
     private static func testdataDir(filePath: String) -> URL {
@@ -64,5 +66,18 @@ extension XCUIElement {
             Thread.sleep(forTimeInterval: 0.25)
         }
         return exists && isEnabled
+    }
+}
+
+extension XCUIApplication {
+    func fullScreen() {
+        let zoomButton = self.buttons["_XCUI:ZoomWindow"].firstMatch
+        let fullscreenButton = self.buttons["XCUI:FullScreenWindow"].firstMatch
+
+        if zoomButton.waitForExistence(timeout: 5) {
+            zoomButton.click()
+        } else if fullscreenButton.waitForExistence(timeout: 5) {
+            fullscreenButton.click()
+        }
     }
 }
