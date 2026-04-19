@@ -57,7 +57,7 @@ All tools require a `.rxtrading` document to be open. The server always targets 
 
 ## Server endpoint
 
-Default: `http://127.0.0.1:33321` (probes upward if the port is taken). Change or stop the server from **Settings → MCP**. Transport is Stateless HTTP JSON-RPC 2.0 — send `POST /` with:
+Default: `http://127.0.0.1:33321` (probes upward if the port is taken). Change or stop the server from **Settings → MCP**. Transport is Streamable HTTP JSON-RPC 2.0 — send `POST /` with:
 
 ```
 Content-Type: application/json
