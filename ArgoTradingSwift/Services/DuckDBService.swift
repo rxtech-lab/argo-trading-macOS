@@ -430,7 +430,7 @@ class DuckDBService: DuckDBServiceProtocol {
             "order_id", "symbol", "order_type", "quantity", "price",
             "timestamp", "is_completed", "reason", "message",
             "strategy_name", "executed_at", "executed_qty", "executed_price",
-            "commission", "pnl", "position_type",
+            "commission", "pnl", "cumulative_pnl", "position_type",
         ]
         let column = validColumns.contains(sortColumn) ? sortColumn : "timestamp"
 
@@ -467,6 +467,7 @@ class DuckDBService: DuckDBServiceProtocol {
             executed_price,
             commission,
             pnl,
+            cumulative_pnl,
             position_type
         FROM read_parquet('\(filePath.path)')
         ORDER BY \(column) \(direction)
@@ -490,7 +491,8 @@ class DuckDBService: DuckDBServiceProtocol {
         let executedPriceColumn = result[12].cast(to: Double.self)
         let commissionColumn = result[13].cast(to: Double.self)
         let pnlColumn = result[14].cast(to: Double.self)
-        let positionTypeColumn = result[15].cast(to: String.self)
+        let cumulativePnlColumn = result[15].cast(to: Double.self)
+        let positionTypeColumn = result[16].cast(to: String.self)
 
         let dataFrame = DataFrame(columns: [
             TabularData.Column(orderIdColumn).eraseToAnyColumn(),
@@ -508,6 +510,7 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(executedPriceColumn).eraseToAnyColumn(),
             TabularData.Column(commissionColumn).eraseToAnyColumn(),
             TabularData.Column(pnlColumn).eraseToAnyColumn(),
+            TabularData.Column(cumulativePnlColumn).eraseToAnyColumn(),
             TabularData.Column(positionTypeColumn).eraseToAnyColumn(),
         ])
 
@@ -535,7 +538,8 @@ class DuckDBService: DuckDBServiceProtocol {
                 executedPrice: row[12, Double.self] ?? 0.0,
                 commission: row[13, Double.self] ?? 0.0,
                 pnl: row[14, Double.self] ?? 0.0,
-                positionType: row[15, String.self] ?? ""
+                cumulativePnl: row[15, Double.self] ?? 0.0,
+                positionType: row[16, String.self] ?? ""
             )
         }
 
@@ -922,6 +926,7 @@ class DuckDBService: DuckDBServiceProtocol {
             executed_price,
             commission,
             pnl,
+            cumulative_pnl,
             position_type
         FROM read_parquet('\(filePath.path)')
         WHERE timestamp >= '\(startTimeStr)' AND timestamp <= '\(endTimeStr)'
@@ -945,7 +950,8 @@ class DuckDBService: DuckDBServiceProtocol {
         let executedPriceColumn = result[12].cast(to: Double.self)
         let commissionColumn = result[13].cast(to: Double.self)
         let pnlColumn = result[14].cast(to: Double.self)
-        let positionTypeColumn = result[15].cast(to: String.self)
+        let cumulativePnlColumn = result[15].cast(to: Double.self)
+        let positionTypeColumn = result[16].cast(to: String.self)
 
         let dataFrame = DataFrame(columns: [
             TabularData.Column(orderIdColumn).eraseToAnyColumn(),
@@ -963,6 +969,7 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(executedPriceColumn).eraseToAnyColumn(),
             TabularData.Column(commissionColumn).eraseToAnyColumn(),
             TabularData.Column(pnlColumn).eraseToAnyColumn(),
+            TabularData.Column(cumulativePnlColumn).eraseToAnyColumn(),
             TabularData.Column(positionTypeColumn).eraseToAnyColumn(),
         ])
 
@@ -991,7 +998,8 @@ class DuckDBService: DuckDBServiceProtocol {
                 executedPrice: row[12, Double.self] ?? 0.0,
                 commission: row[13, Double.self] ?? 0.0,
                 pnl: row[14, Double.self] ?? 0.0,
-                positionType: row[15, String.self] ?? ""
+                cumulativePnl: row[15, Double.self] ?? 0.0,
+                positionType: row[16, String.self] ?? ""
             )
         }
     }

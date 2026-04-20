@@ -105,6 +105,7 @@ struct TradesTableView: View {
             .init(label: "Executed Qty", value: String(format: "%.4f", trade.executedQty)),
             .init(label: "Executed Price", value: String(format: "%.2f", trade.executedPrice)),
             .init(label: "PnL", value: String(format: "%.2f", trade.pnl)),
+            .init(label: "Cumulative PnL", value: String(format: "%.2f", trade.cumulativePnl)),
             .init(label: "Commission", value: String(format: "%.4f", trade.commission)),
             .init(label: "Executed At", value: trade.executedAt.map { $0.formatted(date: .abbreviated, time: .standard) } ?? ""),
             .init(label: "Completed", value: trade.isCompleted ? "Yes" : "No"),
@@ -165,6 +166,12 @@ struct TradesTableView: View {
                 .foregroundStyle(trade.pnl >= 0 ? .green : .red)
         }
         .width(min: 60, ideal: 80)
+
+        TableColumn("Cumulative PnL", value: \.cumulativePnl) { trade in
+            Text("\(trade.cumulativePnl, format: .number.precision(.fractionLength(2)))")
+                .foregroundStyle(trade.cumulativePnl >= 0 ? .green : .red)
+        }
+        .width(min: 80, ideal: 100)
 
         TableColumn("Commission", value: \.commission) { trade in
             Text("\(trade.commission, format: .number.precision(.fractionLength(4)))")
@@ -253,6 +260,7 @@ extension TradesTableView {
         case \Trade.executedPrice: column = "executed_price"
         case \Trade.executedQty: column = "executed_qty"
         case \Trade.pnl: column = "pnl"
+        case \Trade.cumulativePnl: column = "cumulative_pnl"
         case \Trade.commission: column = "commission"
         case \Trade.strategyName: column = "strategy_name"
         case \Trade.reason: column = "reason"

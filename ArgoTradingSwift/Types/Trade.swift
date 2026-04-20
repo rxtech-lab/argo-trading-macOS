@@ -34,6 +34,7 @@ struct Trade: Codable, Hashable, Identifiable {
     let executedPrice: Double
     let commission: Double
     let pnl: Double
+    let cumulativePnl: Double
     let positionType: String
 
     var id: String { orderId }
