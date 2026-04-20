@@ -20,6 +20,7 @@ struct LogsTableView: View {
     @State private var sortOrder: [KeyPathComparator<Log>] = [KeyPathComparator(\.timestamp, order: .reverse)]
     @State private var isLoading: Bool = false
     @State private var selectedLogForDetail: Log?
+    @State private var selectedLogForSurrounding: Log?
     @State private var levelFilter: LogLevel?
 
     var body: some View {
@@ -73,6 +74,7 @@ struct LogsTableView: View {
 
             TableColumn("Symbol", value: \.symbol) { log in
                 Text(log.symbol)
+                    .help(log.symbol)
             }
             .width(min: 60, ideal: 80)
 
@@ -89,6 +91,7 @@ struct LogsTableView: View {
             TableColumn("Message", value: \.message) { log in
                 Text(log.message)
                     .lineLimit(2)
+                    .help(log.message)
             }
             .width(min: 200, ideal: 400)
 
@@ -97,6 +100,7 @@ struct LogsTableView: View {
                     .lineLimit(1)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .help(log.fields)
             }
             .width(min: 100, ideal: 200)
         }
@@ -107,8 +111,18 @@ struct LogsTableView: View {
                 Button {
                     selectedLogForDetail = log
                 } label: {
+                    Label("Show Detail", systemImage: "info.circle")
+                }
+                Button {
+                    selectedLogForSurrounding = log
+                } label: {
                     Label("View Surrounding Price Data", systemImage: "chart.bar.xaxis")
                 }
+            }
+        } primaryAction: { selectedIds in
+            if let firstId = selectedIds.first,
+               let log = data.items.first(where: { $0.id == firstId }) {
+                selectedLogForDetail = log
             }
         }
         .overlay {
@@ -119,12 +133,30 @@ struct LogsTableView: View {
             }
         }
         .sheet(item: $selectedLogForDetail) { log in
+            RowDetailSheet(
+                title: "\(log.level.rawValue.uppercased()) \(log.symbol)",
+                subtitle: log.timestamp.formatted(date: .abbreviated, time: .standard),
+                fields: logDetailFields(log)
+            )
+        }
+        .sheet(item: $selectedLogForSurrounding) { log in
             SurroundingPriceDataSheet(
                 timestamp: log.timestamp,
                 dataFilePath: dataFilePath,
                 title: "\(log.symbol) - \(log.level.rawValue)"
             )
         }
+    }
+
+    private func logDetailFields(_ log: Log) -> [RowDetailField] {
+        [
+            .init(label: "ID", value: String(log.id)),
+            .init(label: "Symbol", value: log.symbol),
+            .init(label: "Level", value: log.level.rawValue),
+            .init(label: "Timestamp", value: log.timestamp.formatted(date: .abbreviated, time: .standard)),
+            .init(label: "Message", value: log.message, isLong: true),
+            .init(label: "Fields", value: log.fields, isLong: true),
+        ]
     }
 
     private var footerView: some View {

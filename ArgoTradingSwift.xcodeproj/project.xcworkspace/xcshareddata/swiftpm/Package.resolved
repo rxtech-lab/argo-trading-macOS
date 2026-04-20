@@ -1,22 +1,13 @@
 {
-  "originHash" : "027e45ea2c68c03ddbca7088ecae6ea8b85b1589c86d8ddc171778b89abeb4f6",
+  "originHash" : "9e175bf08518ef14e99f1276e3e21421f168fb8679136c3c004d9fd7b87997e9",
   "pins" : [
-    {
-      "identity" : "argo-trading",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/rxtech-lab/argo-trading",
-      "state" : {
-        "revision" : "d7812c9f30bc39c1b7b1530fb115263e6d41f45f",
-        "version" : "1.15.1"
-      }
-    },
     {
       "identity" : "duckdb-swift",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/duckdb/duckdb-swift",
       "state" : {
-        "branch" : "v1.5.0-dev6109",
-        "revision" : "69f5f1a9b0116ac796da4a00f9332bc552fa45d5"
+        "branch" : "v1.6.0-dev3343",
+        "revision" : "c16c4b253a2a13c85725a9296ddcb0e29c9d626b"
       }
     },
     {

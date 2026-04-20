@@ -20,6 +20,7 @@ struct MarksTableView: View {
     @State private var sortOrder: [KeyPathComparator<Mark>] = [KeyPathComparator(\.title, order: .forward)]
     @State private var isLoading: Bool = false
     @State private var selectedMarkForDetail: Mark?
+    @State private var selectedMarkForSurrounding: Mark?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -60,8 +61,18 @@ struct MarksTableView: View {
                 Button {
                     selectedMarkForDetail = mark
                 } label: {
+                    Label("Show Detail", systemImage: "info.circle")
+                }
+                Button {
+                    selectedMarkForSurrounding = mark
+                } label: {
                     Label("View Surrounding Price Data", systemImage: "chart.bar.xaxis")
                 }
+            }
+        } primaryAction: { selectedIds in
+            if let firstId = selectedIds.first,
+               let mark = data.items.first(where: { $0.id == firstId }) {
+                selectedMarkForDetail = mark
             }
         }
         .overlay {
@@ -72,12 +83,37 @@ struct MarksTableView: View {
             }
         }
         .sheet(item: $selectedMarkForDetail) { mark in
+            RowDetailSheet(
+                title: mark.title,
+                subtitle: mark.signal.time.formatted(date: .abbreviated, time: .standard),
+                fields: markDetailFields(mark)
+            )
+        }
+        .sheet(item: $selectedMarkForSurrounding) { mark in
             SurroundingPriceDataSheet(
                 timestamp: mark.signal.time,
                 dataFilePath: dataFilePath,
                 title: "\(mark.title) - \(mark.category)"
             )
         }
+    }
+
+    private func markDetailFields(_ mark: Mark) -> [RowDetailField] {
+        [
+            .init(label: "Title", value: mark.title),
+            .init(label: "Category", value: mark.category),
+            .init(label: "Level", value: mark.level.rawValue),
+            .init(label: "Shape", value: mark.shape.rawValue.capitalized),
+            .init(label: "Color", value: mark.color.rawValue().capitalized),
+            .init(label: "Signal Time", value: mark.signal.time.formatted(date: .abbreviated, time: .standard)),
+            .init(label: "Signal Type", value: mark.signal.type.rawValue),
+            .init(label: "Signal Name", value: mark.signal.name),
+            .init(label: "Signal Symbol", value: mark.signal.symbol),
+            .init(label: "Signal Indicator", value: mark.signal.indicator),
+            .init(label: "Signal Raw Value", value: mark.signal.rawValue ?? ""),
+            .init(label: "Signal Reason", value: mark.signal.reason, isLong: true),
+            .init(label: "Message", value: mark.message, isLong: true),
+        ]
     }
 
     @TableColumnBuilder<Mark, KeyPathComparator<Mark>>
@@ -99,11 +135,13 @@ struct MarksTableView: View {
 
         TableColumn("Title", value: \.title) { mark in
             Text(mark.title)
+                .help(mark.title)
         }
         .width(min: 100, ideal: 120)
 
         TableColumn("Category", value: \.category) { mark in
             Text(mark.category)
+                .help(mark.category)
         }
         .width(min: 80, ideal: 100)
 
@@ -126,6 +164,7 @@ struct MarksTableView: View {
         TableColumn("Message", value: \.message) { mark in
             Text(mark.message)
                 .lineLimit(1)
+                .help(mark.message)
         }
         .width(min: 120, ideal: 180)
     }
@@ -141,12 +180,14 @@ struct MarksTableView: View {
         TableColumn("Signal Name") { mark in
             Text(mark.signal.name)
                 .foregroundStyle(.primary)
+                .help(mark.signal.name)
         }
         .width(min: 80, ideal: 100)
 
         TableColumn("Symbol") { mark in
             Text(mark.signal.symbol)
                 .foregroundStyle(.primary)
+                .help(mark.signal.symbol)
         }
         .width(min: 60, ideal: 80)
     }

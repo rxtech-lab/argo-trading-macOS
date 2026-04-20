@@ -20,6 +20,7 @@ struct TradesTableView: View {
     @State private var sortOrder: [KeyPathComparator<Trade>] = [KeyPathComparator(\.timestamp, order: .reverse)]
     @State private var isLoading: Bool = false
     @State private var selectedTradeForDetail: Trade?
+    @State private var selectedTradeForSurrounding: Trade?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -55,8 +56,18 @@ struct TradesTableView: View {
                 Button {
                     selectedTradeForDetail = trade
                 } label: {
+                    Label("Show Detail", systemImage: "info.circle")
+                }
+                Button {
+                    selectedTradeForSurrounding = trade
+                } label: {
                     Label("View Surrounding Price Data", systemImage: "chart.bar.xaxis")
                 }
+            }
+        } primaryAction: { selectedIds in
+            if let firstId = selectedIds.first,
+               let trade = data.items.first(where: { $0.id == firstId }) {
+                selectedTradeForDetail = trade
             }
         }
         .overlay {
@@ -67,12 +78,39 @@ struct TradesTableView: View {
             }
         }
         .sheet(item: $selectedTradeForDetail) { trade in
+            RowDetailSheet(
+                title: "\(trade.side.rawValue) \(trade.symbol)",
+                subtitle: trade.timestamp.formatted(date: .abbreviated, time: .standard),
+                fields: tradeDetailFields(trade)
+            )
+        }
+        .sheet(item: $selectedTradeForSurrounding) { trade in
             SurroundingPriceDataSheet(
                 timestamp: trade.timestamp,
                 dataFilePath: dataFilePath,
                 title: "\(trade.symbol) - \(trade.side.rawValue.capitalized)"
             )
         }
+    }
+
+    private func tradeDetailFields(_ trade: Trade) -> [RowDetailField] {
+        [
+            .init(label: "Order ID", value: trade.orderId),
+            .init(label: "Symbol", value: trade.symbol),
+            .init(label: "Side", value: trade.side.rawValue),
+            .init(label: "Position", value: trade.positionType),
+            .init(label: "Strategy", value: trade.strategyName),
+            .init(label: "Quantity", value: String(format: "%.4f", trade.quantity)),
+            .init(label: "Price", value: String(format: "%.2f", trade.price)),
+            .init(label: "Executed Qty", value: String(format: "%.4f", trade.executedQty)),
+            .init(label: "Executed Price", value: String(format: "%.2f", trade.executedPrice)),
+            .init(label: "PnL", value: String(format: "%.2f", trade.pnl)),
+            .init(label: "Commission", value: String(format: "%.4f", trade.commission)),
+            .init(label: "Executed At", value: trade.executedAt.map { $0.formatted(date: .abbreviated, time: .standard) } ?? ""),
+            .init(label: "Completed", value: trade.isCompleted ? "Yes" : "No"),
+            .init(label: "Reason", value: trade.reason, isLong: true),
+            .init(label: "Message", value: trade.message, isLong: true),
+        ]
     }
 
     @TableColumnBuilder<Trade, KeyPathComparator<Trade>>
@@ -84,6 +122,7 @@ struct TradesTableView: View {
 
         TableColumn("Symbol", value: \.symbol) { trade in
             Text(trade.symbol)
+                .help(trade.symbol)
         }
         .width(min: 60, ideal: 80)
 
@@ -137,17 +176,20 @@ struct TradesTableView: View {
     private var metadataColumns: some TableColumnContent<Trade, KeyPathComparator<Trade>> {
         TableColumn("Strategy", value: \.strategyName) { trade in
             Text(trade.strategyName)
+                .help(trade.strategyName)
         }
         .width(min: 80, ideal: 100)
 
         TableColumn("Reason", value: \.reason) { trade in
             Text(trade.reason)
+                .help(trade.reason)
         }
         .width(min: 80, ideal: 120)
 
         TableColumn("Message", value: \.message) { trade in
             Text(trade.message)
                 .lineLimit(1)
+                .help(trade.message)
         }
         .width(min: 100, ideal: 150)
 

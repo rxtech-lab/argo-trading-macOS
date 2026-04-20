@@ -146,6 +146,16 @@ private struct TradeMarkerSection: View {
                     .lineSpacing(2)
                     .padding(.top, 8)
             }
+
+            // Message
+            if let message = marker.message, !message.isEmpty {
+                Text("Message: \(message)")
+                    .font(.system(size: 11))
+                    .italic()
+                    .foregroundColor(Color(white: 0.56))
+                    .lineSpacing(2)
+                    .padding(.top, (marker.reason?.isEmpty ?? true) ? 8 : 4)
+            }
         }
     }
 }

@@ -61,6 +61,7 @@ extension Trade {
         marker.executedPrice = executedPrice
         marker.pnl = pnl
         marker.reason = reason
+        marker.message = message
         return marker
     }
 }

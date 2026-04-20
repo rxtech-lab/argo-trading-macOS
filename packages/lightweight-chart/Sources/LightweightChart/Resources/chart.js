@@ -368,6 +368,9 @@ function showMarkerTooltip(markers, point) {
       if (markerData.reason) {
         html += `<div class="tooltip-reason">${markerData.reason}</div>`;
       }
+      if (markerData.message) {
+        html += `<div class="tooltip-reason">${markerData.message}</div>`;
+      }
       html += `</div>`; // Close tooltip-section
     } else if (markerData.markerType === "mark") {
       html += `<div class="tooltip-section mark">`;
