@@ -431,6 +431,7 @@ class DuckDBService: DuckDBServiceProtocol {
             "timestamp", "is_completed", "reason", "message",
             "strategy_name", "executed_at", "executed_qty", "executed_price",
             "commission", "pnl", "cumulative_pnl", "position_type",
+            "open_position_qty", "balance",
         ]
         let column = validColumns.contains(sortColumn) ? sortColumn : "timestamp"
 
@@ -468,7 +469,9 @@ class DuckDBService: DuckDBServiceProtocol {
             commission,
             pnl,
             cumulative_pnl,
-            position_type
+            position_type,
+            open_position_qty,
+            balance
         FROM read_parquet('\(filePath.path)')
         ORDER BY \(column) \(direction)
         LIMIT \(pageSize) OFFSET \(offset)
@@ -493,6 +496,8 @@ class DuckDBService: DuckDBServiceProtocol {
         let pnlColumn = result[14].cast(to: Double.self)
         let cumulativePnlColumn = result[15].cast(to: Double.self)
         let positionTypeColumn = result[16].cast(to: String.self)
+        let openPositionQtyColumn = result[17].cast(to: Double.self)
+        let balanceColumn = result[18].cast(to: Double.self)
 
         let dataFrame = DataFrame(columns: [
             TabularData.Column(orderIdColumn).eraseToAnyColumn(),
@@ -512,6 +517,8 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(pnlColumn).eraseToAnyColumn(),
             TabularData.Column(cumulativePnlColumn).eraseToAnyColumn(),
             TabularData.Column(positionTypeColumn).eraseToAnyColumn(),
+            TabularData.Column(openPositionQtyColumn).eraseToAnyColumn(),
+            TabularData.Column(balanceColumn).eraseToAnyColumn(),
         ])
 
         let trades = dataFrame.rows.map { row in
@@ -539,7 +546,9 @@ class DuckDBService: DuckDBServiceProtocol {
                 commission: row[13, Double.self] ?? 0.0,
                 pnl: row[14, Double.self] ?? 0.0,
                 cumulativePnl: row[15, Double.self] ?? 0.0,
-                positionType: row[16, String.self] ?? ""
+                positionType: row[16, String.self] ?? "",
+                openPositionQty: row[17, Double.self] ?? 0.0,
+                balance: row[18, Double.self] ?? 0.0
             )
         }
 
@@ -927,7 +936,9 @@ class DuckDBService: DuckDBServiceProtocol {
             commission,
             pnl,
             cumulative_pnl,
-            position_type
+            position_type,
+            open_position_qty,
+            balance
         FROM read_parquet('\(filePath.path)')
         WHERE timestamp >= '\(startTimeStr)' AND timestamp <= '\(endTimeStr)'
         ORDER BY timestamp ASC
@@ -952,6 +963,8 @@ class DuckDBService: DuckDBServiceProtocol {
         let pnlColumn = result[14].cast(to: Double.self)
         let cumulativePnlColumn = result[15].cast(to: Double.self)
         let positionTypeColumn = result[16].cast(to: String.self)
+        let openPositionQtyColumn = result[17].cast(to: Double.self)
+        let balanceColumn = result[18].cast(to: Double.self)
 
         let dataFrame = DataFrame(columns: [
             TabularData.Column(orderIdColumn).eraseToAnyColumn(),
@@ -971,6 +984,8 @@ class DuckDBService: DuckDBServiceProtocol {
             TabularData.Column(pnlColumn).eraseToAnyColumn(),
             TabularData.Column(cumulativePnlColumn).eraseToAnyColumn(),
             TabularData.Column(positionTypeColumn).eraseToAnyColumn(),
+            TabularData.Column(openPositionQtyColumn).eraseToAnyColumn(),
+            TabularData.Column(balanceColumn).eraseToAnyColumn(),
         ])
 
         return dataFrame.rows.map { row in
@@ -999,7 +1014,9 @@ class DuckDBService: DuckDBServiceProtocol {
                 commission: row[13, Double.self] ?? 0.0,
                 pnl: row[14, Double.self] ?? 0.0,
                 cumulativePnl: row[15, Double.self] ?? 0.0,
-                positionType: row[16, String.self] ?? ""
+                positionType: row[16, String.self] ?? "",
+                openPositionQty: row[17, Double.self] ?? 0.0,
+                balance: row[18, Double.self] ?? 0.0
             )
         }
     }

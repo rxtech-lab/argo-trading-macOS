@@ -36,6 +36,8 @@ struct Trade: Codable, Hashable, Identifiable {
     let pnl: Double
     let cumulativePnl: Double
     let positionType: String
+    let openPositionQty: Double
+    let balance: Double
 
     var id: String { orderId }
 }
@@ -61,6 +63,9 @@ extension Trade {
         marker.executedQty = executedQty
         marker.executedPrice = executedPrice
         marker.pnl = pnl
+        marker.cumulativePnl = cumulativePnl
+        marker.openPositionQty = openPositionQty
+        marker.balance = balance
         marker.reason = reason
         marker.message = message
         return marker

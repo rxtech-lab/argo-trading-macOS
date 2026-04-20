@@ -365,6 +365,43 @@ function showMarkerTooltip(markers, point) {
               `;
       }
 
+      if (markerData.cumulativePnl !== undefined && markerData.cumulativePnl !== null) {
+        const cumClass = markerData.cumulativePnl >= 0 ? "pnl-positive" : "pnl-negative";
+        html += `
+                  <div class="tooltip-row">
+                      <span class="tooltip-label">Cum. PnL</span>
+                      <span class="tooltip-value ${cumClass}">${formatNumber(
+          markerData.cumulativePnl,
+          2
+        )}</span>
+                  </div>
+              `;
+      }
+
+      if (markerData.openPositionQty !== undefined && markerData.openPositionQty !== null) {
+        html += `
+                  <div class="tooltip-row">
+                      <span class="tooltip-label">Open Pos Qty</span>
+                      <span class="tooltip-value">${formatNumber(
+                        markerData.openPositionQty,
+                        4
+                      )}</span>
+                  </div>
+              `;
+      }
+
+      if (markerData.balance !== undefined && markerData.balance !== null) {
+        html += `
+                  <div class="tooltip-row">
+                      <span class="tooltip-label">Balance</span>
+                      <span class="tooltip-value">${formatNumber(
+                        markerData.balance,
+                        2
+                      )}</span>
+                  </div>
+              `;
+      }
+
       if (markerData.reason) {
         html += `<div class="tooltip-reason">${markerData.reason}</div>`;
       }
@@ -450,6 +487,7 @@ function formatDate(timestamp) {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "UTC",
   });
 }
 

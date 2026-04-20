@@ -22,6 +22,7 @@ struct LogsTableView: View {
     @State private var selectedLogForDetail: Log?
     @State private var selectedLogForSurrounding: Log?
     @State private var levelFilter: LogLevel?
+    @State private var columnCustomization: TableColumnCustomization<Log> = TableColumnCustomization<Log>()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -66,17 +67,19 @@ struct LogsTableView: View {
     }
 
     private var tableView: some View {
-        Table(data.items, selection: $selectedRows, sortOrder: $sortOrder) {
+        Table(data.items, selection: $selectedRows, sortOrder: $sortOrder, columnCustomization: $columnCustomization) {
             TableColumn("Timestamp", value: \.timestamp) { log in
-                Text(log.timestamp, format: .dateTime.year().month().day().hour().minute().second())
+                Text(log.timestamp.formattedUTC())
             }
             .width(min: 140, ideal: 160)
+            .customizationID("timestamp")
 
             TableColumn("Symbol", value: \.symbol) { log in
                 Text(log.symbol)
                     .help(log.symbol)
             }
             .width(min: 60, ideal: 80)
+            .customizationID("symbol")
 
             TableColumn("Level", value: \.level) { log in
                 HStack(spacing: 4) {
@@ -87,6 +90,7 @@ struct LogsTableView: View {
                 }
             }
             .width(min: 80, ideal: 100)
+            .customizationID("level")
 
             TableColumn("Message", value: \.message) { log in
                 Text(log.message)
@@ -94,6 +98,7 @@ struct LogsTableView: View {
                     .help(log.message)
             }
             .width(min: 200, ideal: 400)
+            .customizationID("message")
 
             TableColumn("Fields", value: \.fields) { log in
                 Text(log.fields)
@@ -103,6 +108,7 @@ struct LogsTableView: View {
                     .help(log.fields)
             }
             .width(min: 100, ideal: 200)
+            .customizationID("fields")
         }
         .contextMenu(forSelectionType: Int64.self) { selectedIds in
             if let firstId = selectedIds.first,
@@ -135,7 +141,7 @@ struct LogsTableView: View {
         .sheet(item: $selectedLogForDetail) { log in
             RowDetailSheet(
                 title: "\(log.level.rawValue.uppercased()) \(log.symbol)",
-                subtitle: log.timestamp.formatted(date: .abbreviated, time: .standard),
+                subtitle: log.timestamp.formattedUTC(),
                 fields: logDetailFields(log)
             )
         }
@@ -153,7 +159,7 @@ struct LogsTableView: View {
             .init(label: "ID", value: String(log.id)),
             .init(label: "Symbol", value: log.symbol),
             .init(label: "Level", value: log.level.rawValue),
-            .init(label: "Timestamp", value: log.timestamp.formatted(date: .abbreviated, time: .standard)),
+            .init(label: "Timestamp", value: log.timestamp.formattedUTC()),
             .init(label: "Message", value: log.message, isLong: true),
             .init(label: "Fields", value: log.fields, isLong: true),
         ]

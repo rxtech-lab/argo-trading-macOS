@@ -24,7 +24,7 @@ struct DataView: View {
     var body: some View {
         Table(data.items, selection: $selectedRows, sortOrder: $sortOrder) {
             TableColumn("Date", value: \.date) { price in
-                Text(price.date, format: .dateTime.year().month().day().hour().minute().second())
+                Text(price.date.formattedUTC())
             }
             .width(200)
             TableColumn("Ticker", value: \.ticker) { price in

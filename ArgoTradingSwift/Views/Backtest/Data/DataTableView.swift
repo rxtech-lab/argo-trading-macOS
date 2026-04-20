@@ -37,7 +37,7 @@ struct DataTableView: View {
             // Table
             Table(data.items, selection: $selectedRows, sortOrder: $sortOrder) {
                 TableColumn("Date", value: \.date) { price in
-                    Text(price.date, format: .dateTime.month().day().hour().minute().second())
+                    Text(price.date.formattedUTC())
                 }
                 .width(min: 100, ideal: 120)
 

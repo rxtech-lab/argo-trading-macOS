@@ -21,6 +21,7 @@ struct OrdersTableView: View {
     @State private var isLoading: Bool = false
     @State private var selectedOrderForDetail: Order?
     @State private var selectedOrderForSurrounding: Order?
+    @State private var columnCustomization: TableColumnCustomization<Order> = TableColumnCustomization<Order>()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -45,7 +46,7 @@ struct OrdersTableView: View {
     }
 
     private var tableView: some View {
-        Table(data.items, selection: $selectedRows, sortOrder: $sortOrder) {
+        Table(data.items, selection: $selectedRows, sortOrder: $sortOrder, columnCustomization: $columnCustomization) {
             basicColumns
             metadataColumns
         }
@@ -80,7 +81,7 @@ struct OrdersTableView: View {
         .sheet(item: $selectedOrderForDetail) { order in
             RowDetailSheet(
                 title: "\(order.orderType.uppercased()) \(order.symbol)",
-                subtitle: order.timestamp.formatted(date: .abbreviated, time: .standard),
+                subtitle: order.timestamp.formattedUTC(),
                 fields: orderDetailFields(order)
             )
         }
@@ -112,41 +113,48 @@ struct OrdersTableView: View {
     @TableColumnBuilder<Order, KeyPathComparator<Order>>
     private var basicColumns: some TableColumnContent<Order, KeyPathComparator<Order>> {
         TableColumn("Timestamp", value: \.timestamp) { order in
-            Text(order.timestamp, format: .dateTime.year().month().day().hour().minute().second())
+            Text(order.timestamp.formattedUTC())
         }
         .width(min: 140, ideal: 160)
+        .customizationID("timestamp")
 
         TableColumn("Symbol", value: \.symbol) { order in
             Text(order.symbol)
                 .help(order.symbol)
         }
         .width(min: 60, ideal: 80)
+        .customizationID("symbol")
 
         TableColumn("Status", value: \.status) { order in
             Text(order.status.rawValue)
                 .foregroundStyle(order.status.forgroundColor)
         }
+        .customizationID("status")
 
         TableColumn("Type", value: \.orderType) { order in
             Text(order.orderType)
         }
         .width(min: 50, ideal: 60)
+        .customizationID("type")
 
         TableColumn("Position", value: \.positionType) { order in
             Text(order.positionType)
                 .foregroundStyle(order.positionType == "long" ? .green : .red)
         }
         .width(min: 60, ideal: 70)
+        .customizationID("position")
 
         TableColumn("Qty", value: \.quantity) { order in
             Text("\(order.quantity, format: .number.precision(.fractionLength(4)))")
         }
         .width(min: 60, ideal: 80)
+        .customizationID("qty")
 
         TableColumn("Price", value: \.price) { order in
             Text("\(order.price, format: .number.precision(.fractionLength(2)))")
         }
         .width(min: 60, ideal: 80)
+        .customizationID("price")
     }
 
     @TableColumnBuilder<Order, KeyPathComparator<Order>>
