@@ -136,7 +136,6 @@ extension DataView {
 
         let sortParams = getSortParams()
         do {
-            try dbService.initDatabase()
             try await dbService.loadDataset(filePath: url)
             data = try await dbService.fetchPriceData(
                 page: page,

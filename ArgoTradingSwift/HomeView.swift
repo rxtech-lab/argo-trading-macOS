@@ -35,71 +35,12 @@ struct HomeView: View {
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
                     switch navigationService.selectedMode {
                     case .Backtest:
-                        Button {
-                            if backtestService.isRunning {
-                                logger.info("Stopping backtest...")
-                                Task {
-                                    await backtestService.cancel()
-                                }
-                            } else {
-                                guard let schema = document.selectedSchema,
-                                      let datasetURL = document.selectedDatasetURL else { return }
-                                Task.detached {
-                                    await backtestService.runBacktest(
-                                        schema: schema,
-                                        datasetURL: datasetURL,
-                                        strategyFolder: document.strategyFolder,
-                                        resultFolder: document.resultFolder,
-                                        toolbarStatusService: toolbarStatusService,
-                                        strategyCacheService: strategyCacheService,
-                                        keychainService: keychainService
-                                    )
-                                }
-                            }
-                        } label: {
-                            Label(
-                                backtestService.isRunning ? "Stop" : "Start",
-                                systemImage: backtestService.isRunning ? "square.fill" : "play.fill"
-                            )
-                            .contentTransition(.symbolEffect(.replace))
-                        }
-                        .accessibilityIdentifier("argo.runBacktest")
-                        .disabled(!backtestService.isRunning && !document.canRunBacktest)
-                        .keyboardShortcut("r", modifiers: .command)
-                        .animation(.easeInOut(duration: 0.1), value: backtestService.isRunning)
+                        BacktestStartStopButton(document: $document)
                     case .Trading:
-                        Button {
-                            if tradingService.isRunning {
-                                Task {
-                                    await tradingService.stopTrading(toolbarStatusService: toolbarStatusService)
-                                }
-                            } else {
-                                guard let provider = document.selectedTradingProvider,
-                                      let schema = document.selectedSchema else { return }
-                                Task {
-                                    await tradingService.startTrading(
-                                        provider: provider,
-                                        schema: schema,
-                                        strategyFolder: document.strategyFolder,
-                                        tradingResultFolder: document.tradingResultFolder,
-                                        keychainService: keychainService,
-                                        toolbarStatusService: toolbarStatusService
-                                    )
-                                }
-                            }
-                        } label: {
-                            Label(
-                                tradingService.isRunning ? "Stop" : "Start",
-                                systemImage: tradingService.isRunning ? "square.fill" : "play.fill"
-                            )
-                            .contentTransition(.symbolEffect(.replace))
-                        }
-                        .disabled(!tradingService.isRunning && (document.selectedTradingProvider == nil || document.selectedSchema == nil))
-                        .keyboardShortcut("r", modifiers: .command)
-                        .animation(.easeInOut(duration: 0.1), value: tradingService.isRunning)
+                        TradingStartStopButton(document: $document)
                     }
                 }
             }
@@ -137,7 +78,6 @@ struct HomeView: View {
             ToolbarItemGroup(placement: .principal) {
                 ToolbarRunningSectionView(
                     document: $document,
-                    status: toolbarStatusService.toolbarRunningStatus,
                     datasetFiles: datasetService.datasetFiles,
                     strategyFiles: strategyService.strategyFiles,
                     selectedMode: navigationService.selectedMode
@@ -146,7 +86,7 @@ struct HomeView: View {
 
                 Spacer()
 
-                ToolbarErrorView(toolbarStatus: toolbarStatusService.toolbarRunningStatus)
+                ToolbarErrorView()
 
                 Spacer()
             }
@@ -195,12 +135,5 @@ struct HomeView: View {
         .onChange(of: document.tradingResultFolder) { _, newFolder in
             tradingResultService.setResultFolder(newFolder)
         }
-        .onChange(of: tradingService.isRunning) { oldValue, newValue in
-            if oldValue && !newValue {
-                // Trading just stopped — reload to pick up final results
-                tradingResultService.reloadResults()
-            }
-        }
     }
 }
-

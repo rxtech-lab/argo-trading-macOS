@@ -23,7 +23,7 @@ struct AboutView: View {
                 .font(.subheadline)
                 .foregroundColor(.secondary)
 
-            Link("Engine Version \(getEngineVersion())", destination: .init(string: "https://github.com/rxtech-lab/argo-trading")!)
+            Link("Engine Version \(getEngineVersion())", destination: AboutView.engineVersionURL(for: getEngineVersion()))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .underline()
@@ -36,5 +36,14 @@ struct AboutView: View {
     func getEngineVersion() -> String {
         let version = SwiftargoGetBacktestEngineVersion()
         return version
+    }
+
+    static func engineVersionURL(for version: String) -> URL {
+        let base = "https://github.com/rxtech-lab/argo-trading"
+        let semverPattern = #"^v\d+\.\d+\.\d+$"#
+        if version.range(of: semverPattern, options: .regularExpression) != nil {
+            return URL(string: "\(base)/releases/tag/\(version)")!
+        }
+        return URL(string: "\(base)/tree/\(version)")!
     }
 }

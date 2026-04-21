@@ -120,6 +120,7 @@ public struct JSMarkerInfo: Sendable {
     public let cumulativePnl: Double?
     public let openPositionQty: Double?
     public let balance: Double?
+    public let holdTime: Double?
     public let reason: String?
 
     // Mark-specific fields
@@ -143,6 +144,7 @@ public struct JSMarkerInfo: Sendable {
         cumulativePnl: Double? = nil,
         openPositionQty: Double? = nil,
         balance: Double? = nil,
+        holdTime: Double? = nil,
         reason: String? = nil,
         title: String? = nil,
         color: String? = nil,
@@ -163,6 +165,7 @@ public struct JSMarkerInfo: Sendable {
         self.cumulativePnl = cumulativePnl
         self.openPositionQty = openPositionQty
         self.balance = balance
+        self.holdTime = holdTime
         self.reason = reason
         self.title = title
         self.color = color
@@ -245,6 +248,7 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
     public var cumulativePnl: Double?
     public var openPositionQty: Double?
     public var balance: Double?
+    public var holdTime: Double?
     public var reason: String?
 
     // Mark-specific fields
@@ -272,6 +276,7 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
         cumulativePnl: Double? = nil,
         openPositionQty: Double? = nil,
         balance: Double? = nil,
+        holdTime: Double? = nil,
         reason: String? = nil,
         title: String? = nil,
         category: String? = nil,
@@ -296,6 +301,7 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
         self.cumulativePnl = cumulativePnl
         self.openPositionQty = openPositionQty
         self.balance = balance
+        self.holdTime = holdTime
         self.reason = reason
         self.title = title
         self.category = category

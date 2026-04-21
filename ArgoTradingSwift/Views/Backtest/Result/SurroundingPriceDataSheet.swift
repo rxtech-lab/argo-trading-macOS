@@ -128,7 +128,6 @@ extension SurroundingPriceDataSheet {
         defer { isLoading = false }
 
         do {
-            try dbService.initDatabase()
             priceData = try await dbService.fetchPriceDataAroundTimestamp(
                 filePath: dataFilePath,
                 timestamp: timestamp,

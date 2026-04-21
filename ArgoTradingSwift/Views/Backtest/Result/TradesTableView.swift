@@ -109,11 +109,12 @@ struct TradesTableView: View {
             .init(label: "Cumulative PnL", value: String(format: "%.2f", trade.cumulativePnl)),
             .init(label: "Open Position Qty", value: String(format: "%.4f", trade.openPositionQty)),
             .init(label: "Balance", value: String(format: "%.2f", trade.balance)),
+            .init(label: "Hold Time", value: formatHoldTime(trade.holdTime)),
             .init(label: "Commission", value: String(format: "%.4f", trade.commission)),
             .init(label: "Executed At", value: trade.executedAt.map { $0.formattedUTC() } ?? ""),
-            .init(label: "Completed", value: trade.isCompleted ? "Yes" : "No"),
-            .init(label: "Reason", value: trade.reason, isLong: true),
-            .init(label: "Message", value: trade.message, isLong: true),
+            .init(label: "Completed", value: String(localized: trade.isCompleted ? "Yes" : "No")),
+            .init(label: "Reason", value: trade.reason, isLong: true, translate: true),
+            .init(label: "Message", value: trade.message, isLong: true, translate: true),
         ]
     }
 
@@ -207,6 +208,17 @@ struct TradesTableView: View {
         }
         .width(min: 80, ideal: 100)
         .customizationID("balance")
+
+        TableColumn("Hold Time", value: \.holdTime) { trade in
+            if trade.holdTime == 0 {
+                Text("-")
+                    .foregroundStyle(.secondary)
+            } else {
+                Text(formatHoldTime(trade.holdTime))
+            }
+        }
+        .width(min: 70, ideal: 90)
+        .customizationID("holdTime")
 
         TableColumn("Commission", value: \.commission) { trade in
             Text("\(trade.commission, format: .number.precision(.fractionLength(4)))")
@@ -303,6 +315,7 @@ extension TradesTableView {
         case \Trade.cumulativePnl: column = "cumulative_pnl"
         case \Trade.openPositionQty: column = "open_position_qty"
         case \Trade.balance: column = "balance"
+        case \Trade.holdTime: column = "hold_time"
         case \Trade.commission: column = "commission"
         case \Trade.strategyName: column = "strategy_name"
         case \Trade.reason: column = "reason"
@@ -318,7 +331,6 @@ extension TradesTableView {
 
         let sortParams = getSortParams()
         do {
-            try dbService.initDatabase()
             data = try await dbService.fetchTradeData(
                 filePath: filePath,
                 page: page,
@@ -331,6 +343,13 @@ extension TradesTableView {
             alertManager.showAlert(message: error.localizedDescription)
         }
     }
+}
+
+private func formatHoldTime(_ seconds: Double) -> String {
+    if seconds == 0 { return "-" }
+    return Duration.seconds(seconds).formatted(
+        .units(allowed: [.days, .hours, .minutes, .seconds], width: .abbreviated, maximumUnitCount: 2)
+    )
 }
 
 #Preview {

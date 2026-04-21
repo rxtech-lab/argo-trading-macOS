@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/rxtech-lab/argo-trading",
       "state" : {
-        "revision" : "2d0ba77470a6df216a60852011aaf5dbc6b8441b",
-        "version" : "1.16.0"
+        "revision" : "0ac4ca6763b5385975ff097949ffa2ac78b3824d",
+        "version" : "1.17.0"
       }
     },
     {
@@ -69,8 +69,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sirily11/swift-jsonschema-form",
       "state" : {
-        "branch" : "v1.0.4",
-        "revision" : "a4feb400a0bca57bc39b8ea95544c71aa768fbfd"
+        "revision" : "a4feb400a0bca57bc39b8ea95544c71aa768fbfd",
+        "version" : "1.0.4"
       }
     },
     {

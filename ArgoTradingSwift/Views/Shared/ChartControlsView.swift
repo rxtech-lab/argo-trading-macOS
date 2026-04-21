@@ -51,7 +51,7 @@ struct ChartControlsView: View {
             // Chart type picker
             Picker("", selection: $chartType) {
                 ForEach(ChartType.allCases) { type in
-                    Text(type.rawValue).tag(type)
+                    Text(LocalizedStringKey(type.rawValue)).tag(type)
                 }
             }
             .pickerStyle(.segmented)

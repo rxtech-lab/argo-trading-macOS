@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Translation
 
 // MARK: - Color Extension
 
@@ -84,6 +85,16 @@ private struct TradeMarkerSection: View {
 
     private var isBuy: Bool { marker.isBuy ?? true }
 
+    @State private var translations: [String: String] = [:]
+    @State private var translationConfig: TranslationSession.Configuration?
+
+    private var translatableValues: [(key: String, text: String)] {
+        var out: [(String, String)] = []
+        if let reason = marker.reason, !reason.isEmpty { out.append(("reason", reason)) }
+        if let message = marker.message, !message.isEmpty { out.append(("message", message)) }
+        return out
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Header
@@ -160,24 +171,72 @@ private struct TradeMarkerSection: View {
                 TooltipRow(label: "Balance", value: formatNumber(balance, decimals: 2))
             }
 
+            // Hold Time (skip when 0 — opening trades don't have a hold time)
+            if let holdTime = marker.holdTime, holdTime != 0 {
+                TooltipRow(label: "Hold Time", value: formatHoldTime(holdTime))
+            }
+
             // Reason
             if let reason = marker.reason, !reason.isEmpty {
-                Text("Reason: \(reason)")
-                    .font(.system(size: 11))
-                    .italic()
-                    .foregroundColor(Color(white: 0.56))
-                    .lineSpacing(2)
-                    .padding(.top, 8)
+                TranslatedCaption(
+                    label: "Reason:",
+                    original: reason,
+                    translated: translations["reason"]
+                )
+                .padding(.top, 8)
             }
 
             // Message
             if let message = marker.message, !message.isEmpty {
-                Text("Message: \(message)")
+                TranslatedCaption(
+                    label: "Message:",
+                    original: message,
+                    translated: translations["message"]
+                )
+                .padding(.top, (marker.reason?.isEmpty ?? true) ? 8 : 4)
+            }
+        }
+        .onAppear {
+            if translationConfig == nil, !translatableValues.isEmpty {
+                translationConfig = TranslationSession.Configuration(
+                    source: Locale.Language(identifier: "en"),
+                    target: LocaleHelper.preferredTargetLanguage()
+                )
+            }
+        }
+        .translationTask(translationConfig) { session in
+            let items = translatableValues
+            let map = await translateBatch(session: session, items: items)
+            translations = map
+        }
+    }
+}
+
+/// Caption row that shows the original reason/message and a translated copy
+/// underneath when the system Translation framework produced a different result.
+private struct TranslatedCaption: View {
+    let label: LocalizedStringKey
+    let original: String
+    let translated: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(Text(label)) \(original)")
+                .font(.system(size: 11))
+                .italic()
+                .foregroundColor(Color(white: 0.56))
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let translated, !translated.isEmpty, translated != original {
+                Text(translated)
                     .font(.system(size: 11))
                     .italic()
-                    .foregroundColor(Color(white: 0.56))
+                    .foregroundColor(Color(white: 0.72))
                     .lineSpacing(2)
-                    .padding(.top, (marker.reason?.isEmpty ?? true) ? 8 : 4)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -187,6 +246,16 @@ private struct TradeMarkerSection: View {
 
 private struct MarkMarkerSection: View {
     let marker: JSMarkerInfo
+
+    @State private var translations: [String: String] = [:]
+    @State private var translationConfig: TranslationSession.Configuration?
+
+    private var translatableValues: [(key: String, text: String)] {
+        var out: [(String, String)] = []
+        if let message = marker.message, !message.isEmpty { out.append(("message", message)) }
+        if let signalReason = marker.signalReason, !signalReason.isEmpty { out.append(("signalReason", signalReason)) }
+        return out
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -235,23 +304,36 @@ private struct MarkMarkerSection: View {
 
             // Message
             if let message = marker.message, !message.isEmpty {
-                Text("Message: \(message)")
-                    .font(.system(size: 11))
-                    .italic()
-                    .foregroundColor(Color(white: 0.56))
-                    .lineSpacing(2)
-                    .padding(.top, 8)
+                TranslatedCaption(
+                    label: "Message:",
+                    original: message,
+                    translated: translations["message"]
+                )
+                .padding(.top, 8)
             }
 
             // Signal reason
             if let signalReason = marker.signalReason, !signalReason.isEmpty {
-                Text("Reason: \(signalReason)")
-                    .font(.system(size: 11))
-                    .italic()
-                    .foregroundColor(Color(white: 0.56))
-                    .lineSpacing(2)
-                    .padding(.top, marker.message == nil ? 8 : 4)
+                TranslatedCaption(
+                    label: "Reason:",
+                    original: signalReason,
+                    translated: translations["signalReason"]
+                )
+                .padding(.top, marker.message == nil ? 8 : 4)
             }
+        }
+        .onAppear {
+            if translationConfig == nil, !translatableValues.isEmpty {
+                translationConfig = TranslationSession.Configuration(
+                    source: Locale.Language(identifier: "en"),
+                    target: LocaleHelper.preferredTargetLanguage()
+                )
+            }
+        }
+        .translationTask(translationConfig) { session in
+            let items = translatableValues
+            let map = await translateBatch(session: session, items: items)
+            translations = map
         }
     }
 
@@ -267,7 +349,7 @@ private struct MarkMarkerSection: View {
 // MARK: - Tooltip Row
 
 private struct TooltipRow: View {
-    let label: String
+    let label: LocalizedStringKey
     let value: String
     var valueColor: Color = .init(white: 0.9)
 
@@ -294,10 +376,38 @@ private func formatNumber(_ value: Double?, decimals: Int) -> String {
     return String(format: "%.\(decimals)f", value)
 }
 
+private func formatHoldTime(_ seconds: Double) -> String {
+    Duration.seconds(seconds).formatted(
+        .units(allowed: [.days, .hours, .minutes, .seconds], width: .abbreviated, maximumUnitCount: 2)
+    )
+}
+
 private func formatDate(_ timestamp: Double) -> String {
     let date = Date(timeIntervalSince1970: timestamp)
     let formatter = DateFormatter()
     formatter.dateFormat = "MMM d, yyyy, h:mm a"
     formatter.timeZone = .gmt
     return formatter.string(from: date)
+}
+
+/// Batches one translation request per item and returns a map keyed by the
+/// caller-supplied identifier. Shared between trade and mark tooltip sections
+/// so translations go out in a single round-trip instead of per field.
+func translateBatch(
+    session: TranslationSession,
+    items: [(key: String, text: String)]
+) async -> [String: String] {
+    guard !items.isEmpty else { return [:] }
+    let requests = items.map { TranslationSession.Request(sourceText: $0.text, clientIdentifier: $0.key) }
+    do {
+        let responses = try await session.translations(from: requests)
+        var map: [String: String] = [:]
+        for response in responses {
+            guard let key = response.clientIdentifier else { continue }
+            map[key] = response.targetText
+        }
+        return map
+    } catch {
+        return [:]
+    }
 }

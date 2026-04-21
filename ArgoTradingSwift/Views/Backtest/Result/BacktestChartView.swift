@@ -138,13 +138,6 @@ struct BacktestChartView: View {
         }
         viewModel = vm
 
-        do {
-            try dbService.initDatabase()
-        } catch {
-            alertManager.showAlert(message: error.localizedDescription)
-            return
-        }
-
         // Set the default interval based on data timespan
         let fileName = dataURL.lastPathComponent
         if let parsed = ParquetFileNameParser.parse(fileName),

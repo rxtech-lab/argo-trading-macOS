@@ -104,9 +104,9 @@ struct OrdersTableView: View {
             .init(label: "Strategy", value: order.strategyName),
             .init(label: "Quantity", value: String(format: "%.4f", order.quantity)),
             .init(label: "Price", value: String(format: "%.2f", order.price)),
-            .init(label: "Completed", value: order.isCompleted ? "Yes" : "No"),
-            .init(label: "Reason", value: order.reason, isLong: true),
-            .init(label: "Message", value: order.message, isLong: true),
+            .init(label: "Completed", value: String(localized: order.isCompleted ? "Yes" : "No")),
+            .init(label: "Reason", value: order.reason, isLong: true, translate: true),
+            .init(label: "Message", value: order.message, isLong: true, translate: true),
         ]
     }
 
@@ -249,7 +249,6 @@ extension OrdersTableView {
 
         let sortParams = getSortParams()
         do {
-            try dbService.initDatabase()
             data = try await dbService.fetchOrderData(
                 filePath: filePath,
                 page: page,

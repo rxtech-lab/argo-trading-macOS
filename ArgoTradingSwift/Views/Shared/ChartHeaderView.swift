@@ -10,7 +10,7 @@ import SwiftUI
 
 /// Reusable chart header with title and zoom controls
 struct ChartHeaderView: View {
-    let title: String
+    let title: LocalizedStringKey
     @Binding var showVolume: Bool
     @Binding var indicatorSettings: IndicatorSettings
     @Binding var markLevelFilter: MarkLevelFilter
@@ -31,7 +31,11 @@ struct ChartHeaderView: View {
             Button {
                 showIndicatorPopover.toggle()
             } label: {
-                Label(getIndicatorButtonLabel(), systemImage: "chart.line.uptrend.xyaxis")
+                Label {
+                    Text(getIndicatorButtonLabel())
+                } icon: {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                }
             }
             .popover(isPresented: $showIndicatorPopover) {
                 IndicatorPopoverView(
@@ -97,7 +101,7 @@ struct ChartHeaderView: View {
         }
     }
 
-    func getIndicatorButtonLabel() -> String {
+    func getIndicatorButtonLabel() -> LocalizedStringKey {
         if indicatorSettings.enabledIndicators.isEmpty {
             return "Indicators"
         } else {

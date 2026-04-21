@@ -122,8 +122,6 @@ struct LiveChartView: View {
         defer { isLoadingHistorical = false }
 
         do {
-            try dbService.initDatabase()
-
             // Load all historical price data
             let totalCount = try await dbService.getTotalCount(for: fileURL)
             let data = try await dbService.fetchAggregatedPriceDataRange(

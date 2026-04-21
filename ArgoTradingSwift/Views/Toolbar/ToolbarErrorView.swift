@@ -8,12 +8,12 @@
 import SwiftUI
 
 struct ToolbarErrorView: View {
-    let toolbarStatus: ToolbarRunningStatus
+    @Environment(ToolbarStatusService.self) private var toolbarStatusService
 
     @State private var showErrorPopover = false
 
     var body: some View {
-        if case .error(_, let errors, _) = toolbarStatus, errors.count > 0 {
+        if case .error(_, let errors, _) = toolbarStatusService.toolbarRunningStatus, errors.count > 0 {
             HStack {
                 Button {
                     showErrorPopover.toggle()

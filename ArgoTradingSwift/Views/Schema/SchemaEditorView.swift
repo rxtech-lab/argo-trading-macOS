@@ -8,7 +8,9 @@
 import ArgoTrading
 import JSONSchema
 import JSONSchemaForm
+import LightweightChart
 import SwiftUI
+import Translation
 
 struct SchemaEditorView: View {
     @Binding var document: ArgoTradingDocument
@@ -43,6 +45,15 @@ struct SchemaEditorView: View {
     @State private var keychainUiSchema: [String: Any]?
     @State private var rawSchemaString: String?
 
+    @State private var backtestSchemaString: String?
+    @State private var liveTradingSchemaString: String?
+    @State private var backtestTranslationConfig: TranslationSession.Configuration?
+    @State private var strategyTranslationConfig: TranslationSession.Configuration?
+    @State private var liveTradingTranslationConfig: TranslationSession.Configuration?
+    @State private var isTranslatingBacktest: Bool = false
+    @State private var isTranslatingStrategy: Bool = false
+    @State private var isTranslatingLiveTrading: Bool = false
+
     var body: some View {
         TabView {
             Tab("Backtest", systemImage: "list.bullet.clipboard.fill") {
@@ -62,16 +73,26 @@ struct SchemaEditorView: View {
                 // Load backtest engine schema
                 do {
                     let schemaString = try backtestService.getBacktestEngineConfigSchema()
-                    backtestSchema = try JSONSchema(jsonString: schemaString)
+                    backtestSchemaString = schemaString
+                    isTranslatingBacktest = true
+                    backtestTranslationConfig = TranslationSession.Configuration(
+                        source: Locale.Language(identifier: "en"),
+                        target: LocaleHelper.preferredTargetLanguage()
+                    )
                 } catch {
                     print("Failed to load backtest schema: \(error)")
                     self.backtestError = error.localizedDescription
                 }
 
                 // Load live trading engine schema
-                let liveTradingSchemaString = backtestService.getLiveTradingEngineConfigSchema()
-                if !liveTradingSchemaString.isEmpty {
-                    liveTradingSchema = try? JSONSchema(jsonString: liveTradingSchemaString)
+                let rawLiveTradingSchema = backtestService.getLiveTradingEngineConfigSchema()
+                if !rawLiveTradingSchema.isEmpty {
+                    liveTradingSchemaString = rawLiveTradingSchema
+                    isTranslatingLiveTrading = true
+                    liveTradingTranslationConfig = TranslationSession.Configuration(
+                        source: Locale.Language(identifier: "en"),
+                        target: LocaleHelper.preferredTargetLanguage()
+                    )
                 }
 
                 if isEditing, let schema = existingSchema {
@@ -117,37 +138,69 @@ struct SchemaEditorView: View {
                     }
                 }
             }
+            .translationTask(backtestTranslationConfig) { session in
+                guard let raw = backtestSchemaString else { return }
+                let translated = await SchemaTranslator.translate(jsonString: raw, session: session)
+                backtestSchema = try? JSONSchema(jsonString: translated)
+                isTranslatingBacktest = false
+            }
+            .translationTask(liveTradingTranslationConfig) { session in
+                guard let raw = liveTradingSchemaString else { return }
+                let translated = await SchemaTranslator.translate(jsonString: raw, session: session)
+                liveTradingSchema = try? JSONSchema(jsonString: translated)
+                isTranslatingLiveTrading = false
+            }
+            .translationTask(strategyTranslationConfig) { session in
+                guard let raw = rawSchemaString else { return }
+                let translated = await SchemaTranslator.translate(jsonString: raw, session: session)
+                strategySchema = try? JSONSchema(jsonString: translated)
+                isTranslatingStrategy = false
+            }
     }
 
     @ViewBuilder
     private func buildBacktestView() -> some View {
-        Form {
-            Section("Backtest Engine Configuration") {
-                if let backtestSchema = backtestSchema {
-                    JSONSchemaForm(schema: backtestSchema, formData: $backtestFormData, showErrorList: false, showSubmitButton: false, controller: backtestController)
-                }
+        if isTranslatingBacktest {
+            ProgressView {
+                Text("Translating…")
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            Form {
+                Section("Backtest Engine Configuration") {
+                    if let backtestSchema = backtestSchema {
+                        JSONSchemaForm(schema: backtestSchema, formData: $backtestFormData, showErrorList: false, showSubmitButton: false, controller: backtestController)
+                    }
 
-                if let error = backtestError {
-                    Text(error)
+                    if let error = backtestError {
+                        Text(error)
+                    }
                 }
             }
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped)
     }
 
     @ViewBuilder
     private func buildLiveTradingView() -> some View {
-        Form {
-            Section("Live Trading Engine Configuration") {
-                if let liveTradingSchema = liveTradingSchema {
-                    JSONSchemaForm(schema: liveTradingSchema, formData: $liveTradingFormData, showErrorList: false, showSubmitButton: false, controller: liveTradingController)
-                } else {
-                    Text("No live trading engine configuration available")
-                        .foregroundStyle(.secondary)
+        if isTranslatingLiveTrading {
+            ProgressView {
+                Text("Translating…")
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            Form {
+                Section("Live Trading Engine Configuration") {
+                    if let liveTradingSchema = liveTradingSchema {
+                        JSONSchemaForm(schema: liveTradingSchema, formData: $liveTradingFormData, showErrorList: false, showSubmitButton: false, controller: liveTradingController)
+                    } else {
+                        Text("No live trading engine configuration available")
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped)
     }
 
     @ViewBuilder
@@ -171,6 +224,15 @@ struct SchemaEditorView: View {
                         ProgressView()
                             .controlSize(.small)
                         Text("Loading strategy parameters...")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else if isTranslatingStrategy {
+                Section("Parameters") {
+                    HStack {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Translating…")
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -208,6 +270,8 @@ struct SchemaEditorView: View {
             keychainFieldNames = []
             keychainUiSchema = nil
             rawSchemaString = nil
+            strategyTranslationConfig = nil
+            isTranslatingStrategy = false
             return
         }
 
@@ -218,8 +282,17 @@ struct SchemaEditorView: View {
             do {
                 let metadata = try await strategyCacheService.getMetadata(for: url)
                 strategyMetadata = metadata
-                strategySchema = try? JSONSchema(jsonString: metadata.schema)
+                strategySchema = nil
                 rawSchemaString = metadata.schema
+                isTranslatingStrategy = true
+                if strategyTranslationConfig != nil {
+                    strategyTranslationConfig?.invalidate()
+                } else {
+                    strategyTranslationConfig = TranslationSession.Configuration(
+                        source: Locale.Language(identifier: "en"),
+                        target: LocaleHelper.preferredTargetLanguage()
+                    )
+                }
 
                 // Parse keychain fields from raw schema
                 let fields = KeychainSchemaParser.keychainFieldNames(from: metadata.schema)

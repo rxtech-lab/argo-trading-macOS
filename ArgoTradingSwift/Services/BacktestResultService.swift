@@ -89,15 +89,31 @@ class BacktestResultService {
         chartScrollRequest = nil
     }
 
-    /// Delete a result item by removing its containing folder
+    /// Delete a result item by removing the entire timestamp run folder
+    /// (e.g. `result/20260420_202633`), which contains all configs/datasets
+    /// for that run.
     func deleteResult(_ resultItem: BacktestResultItem) throws {
-        let folderToDelete = resultItem.statsFileURL.deletingLastPathComponent()
+        let folderToDelete = timestampRunFolder(for: resultItem.statsFileURL)
+            ?? resultItem.statsFileURL.deletingLastPathComponent()
 
         guard fileManager.fileExists(atPath: folderToDelete.path) else {
             throw BacktestResultError.folderNotFound
         }
 
         try fileManager.removeItem(at: folderToDelete)
+    }
+
+    private func timestampRunFolder(for statsFileURL: URL) -> URL? {
+        var current = statsFileURL.deletingLastPathComponent()
+        while current.path != "/" {
+            if Self.timestampFormatter.date(from: current.lastPathComponent) != nil {
+                return current
+            }
+            let parent = current.deletingLastPathComponent()
+            if parent == current { break }
+            current = parent
+        }
+        return nil
     }
 
     @MainActor

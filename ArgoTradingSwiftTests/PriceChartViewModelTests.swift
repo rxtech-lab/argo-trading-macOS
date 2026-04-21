@@ -13,7 +13,6 @@ import Testing
 // MARK: - Mock DuckDB Service
 
 class MockDuckDBService: DuckDBServiceProtocol {
-    var initDatabaseCalled = false
     var getTotalCountCalled = false
     var fetchPriceDataRangeCalled = false
     var getAggregatedCountCalled = false
@@ -27,13 +26,6 @@ class MockDuckDBService: DuckDBServiceProtocol {
     var mockAggregatedCounts: [ChartTimeInterval: Int] = [:]
     var mockOffsetForTimestamp: Int = 0
     var shouldThrowError = false
-
-    func initDatabase() throws {
-        initDatabaseCalled = true
-        if shouldThrowError {
-            throw DuckDBError.connectionError
-        }
-    }
 
     func getTotalCount(for filePath: URL) async throws -> Int {
         getTotalCountCalled = true
@@ -192,7 +184,6 @@ struct InitialDataLoadingTests {
 
         await viewModel.loadInitialData()
 
-        #expect(mockService.initDatabaseCalled)
         #expect(mockService.getAggregatedCountCalled)
         #expect(mockService.fetchAggregatedPriceDataRangeCalled)
         #expect(viewModel.totalCount == 1000)

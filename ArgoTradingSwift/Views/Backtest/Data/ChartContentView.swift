@@ -91,14 +91,6 @@ struct ChartContentView: View {
         }
         viewModel = vm
 
-        // Initialize database before any operations
-        do {
-            try dbService.initDatabase()
-        } catch {
-            alertManager.showAlert(message: error.localizedDescription)
-            return
-        }
-
         // Set the default interval to the minimum valid interval based on data timespan
         let fileName = targetUrl.lastPathComponent
         if let parsed = ParquetFileNameParser.parse(fileName),
@@ -146,6 +138,7 @@ struct ChartContentView: View {
                 scrollToTime: scrollToTime,
                 indicatorSettings: indicatorSettings,
                 onScrollChange: { range in
+                    logger.debug("[ChartContentView] onScrollChange range[\(range.localFromIndex)..\(range.localToIndex)]")
                     await vm.handleScrollChange(range)
                 },
                 onSelectionChange: { newIndex in

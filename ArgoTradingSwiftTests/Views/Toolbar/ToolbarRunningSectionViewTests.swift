@@ -10,19 +10,20 @@ import SwiftUI
 import ViewInspector
 @testable import ArgoTradingSwift
 
+private func makeStatusService(_ status: ToolbarRunningStatus) -> ToolbarStatusService {
+    let service = ToolbarStatusService()
+    service.setStatusImmediately(status)
+    return service
+}
+
 // MARK: - Status View Rendering Tests
 
-struct ToolbarRunningSectionViewStatusTests {
+struct ToolbarRunningStatusBadgeViewTests {
 
     @MainActor
     @Test func idleStatusDisplaysIdleText() throws {
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .idle,
-            datasetFiles: [],
-            strategyFiles: [],
-            selectedMode: .Backtest
-        )
+        let sut = ToolbarRunningStatusBadgeView()
+            .environment(makeStatusService(.idle))
 
         let text = try sut.inspect().find(text: "Idle")
         #expect(try text.string() == "Idle")
@@ -31,13 +32,8 @@ struct ToolbarRunningSectionViewStatusTests {
     @MainActor
     @Test func runningStatusDisplaysLabel() throws {
         let label = "Building..."
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .running(label: label),
-            datasetFiles: [],
-            strategyFiles: [],
-            selectedMode: .Backtest
-        )
+        let sut = ToolbarRunningStatusBadgeView()
+            .environment(makeStatusService(.running(label: label)))
 
         let labelText = try sut.inspect().find(text: label)
         #expect(try labelText.string() == label)
@@ -47,13 +43,8 @@ struct ToolbarRunningSectionViewStatusTests {
     @Test func downloadingStatusDisplaysDownloadingLabel() throws {
         let label = "BTCUSDT"
         let progress = Progress(current: 50, total: 100)
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .downloading(label: label, progress: progress),
-            datasetFiles: [],
-            strategyFiles: [],
-            selectedMode: .Backtest
-        )
+        let sut = ToolbarRunningStatusBadgeView()
+            .environment(makeStatusService(.downloading(label: label, progress: progress)))
 
         let downloadText = try sut.inspect().find(text: "Downloading \(label)")
         #expect(try downloadText.string() == "Downloading \(label)")
@@ -63,15 +54,9 @@ struct ToolbarRunningSectionViewStatusTests {
     @Test func backtestingStatusDisplaysLabelAndCounts() throws {
         let label = "Backtesting"
         let progress = Progress(current: 45, total: 100)
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .backtesting(label: label, progress: progress),
-            datasetFiles: [],
-            strategyFiles: [],
-            selectedMode: .Backtest
-        )
+        let sut = ToolbarRunningStatusBadgeView()
+            .environment(makeStatusService(.backtesting(label: label, progress: progress)))
 
-        // The view combines label and progress into a single Text: "Backtesting 45/100"
         let expectedText = "\(label) \(progress.current)/\(progress.total)"
         let labelText = try sut.inspect().find(text: expectedText)
         #expect(try labelText.string() == expectedText)
@@ -80,13 +65,8 @@ struct ToolbarRunningSectionViewStatusTests {
     @MainActor
     @Test func errorStatusDisplaysXmarkImage() throws {
         let label = "Build"
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .error(label: label, errors: ["Error"], at: Date()),
-            datasetFiles: [],
-            strategyFiles: [],
-            selectedMode: .Backtest
-        )
+        let sut = ToolbarRunningStatusBadgeView()
+            .environment(makeStatusService(.error(label: label, errors: ["Error"], at: Date())))
 
         let images = try sut.inspect().findAll(ViewType.Image.self)
         let hasXmark = images.contains { image in
@@ -98,13 +78,8 @@ struct ToolbarRunningSectionViewStatusTests {
     @MainActor
     @Test func downloadCancelledStatusDisplaysXmarkImage() throws {
         let label = "ETHUSDT"
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .downloadCancelled(label: label),
-            datasetFiles: [],
-            strategyFiles: [],
-            selectedMode: .Backtest
-        )
+        let sut = ToolbarRunningStatusBadgeView()
+            .environment(makeStatusService(.downloadCancelled(label: label)))
 
         let images = try sut.inspect().findAll(ViewType.Image.self)
         let hasXmark = images.contains { image in
@@ -116,13 +91,8 @@ struct ToolbarRunningSectionViewStatusTests {
     @MainActor
     @Test func finishedStatusDisplaysCheckmarkImage() throws {
         let message = "Build Succeeded"
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .finished(message: message, at: Date()),
-            datasetFiles: [],
-            strategyFiles: [],
-            selectedMode: .Backtest
-        )
+        let sut = ToolbarRunningStatusBadgeView()
+            .environment(makeStatusService(.finished(message: message, at: Date())))
 
         let images = try sut.inspect().findAll(ViewType.Image.self)
         let hasCheckmark = images.contains { image in
@@ -143,11 +113,11 @@ struct ToolbarRunningSectionViewButtonTests {
     @Test func schemaButtonDisplaysSelectSchemaWhenNoneSelected() throws {
         let sut = ToolbarRunningSectionView(
             document: .constant(ArgoTradingDocument()),
-            status: .idle,
             datasetFiles: [],
             strategyFiles: [],
             selectedMode: .Backtest
         )
+        .environment(makeStatusService(.idle))
 
         let selectSchemaText = try sut.inspect().find(text: "Select schema")
         #expect(try selectSchemaText.string() == "Select schema")
@@ -162,11 +132,11 @@ struct ToolbarRunningSectionViewButtonTests {
 
         let sut = ToolbarRunningSectionView(
             document: .constant(document),
-            status: .idle,
             datasetFiles: [],
             strategyFiles: [],
             selectedMode: .Backtest
         )
+        .environment(makeStatusService(.idle))
 
         let schemaNameText = try sut.inspect().find(text: "My Strategy")
         #expect(try schemaNameText.string() == "My Strategy")
@@ -176,11 +146,11 @@ struct ToolbarRunningSectionViewButtonTests {
     @Test func datasetButtonDisplaysSelectDatasetWhenNoneSelected() throws {
         let sut = ToolbarRunningSectionView(
             document: .constant(ArgoTradingDocument()),
-            status: .idle,
             datasetFiles: [],
             strategyFiles: [],
             selectedMode: .Backtest
         )
+        .environment(makeStatusService(.idle))
 
         let selectDatasetText = try sut.inspect().find(text: "Select dataset")
         #expect(try selectDatasetText.string() == "Select dataset")
@@ -193,11 +163,11 @@ struct ToolbarRunningSectionViewButtonTests {
 
         let sut = ToolbarRunningSectionView(
             document: .constant(document),
-            status: .idle,
             datasetFiles: [],
             strategyFiles: [],
             selectedMode: .Backtest
         )
+        .environment(makeStatusService(.idle))
 
         let datasetText = try sut.inspect().find(text: "BTCUSDT_1hour")
         #expect(try datasetText.string() == "BTCUSDT_1hour")
@@ -212,13 +182,8 @@ struct ToolbarRunningSectionViewDateTests {
     @MainActor
     @Test func finishedStatusFormatsDateAsToday() throws {
         let today = Date()
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .finished(message: "Done", at: today),
-            datasetFiles: [],
-            strategyFiles: [],
-            selectedMode: .Backtest
-        )
+        let sut = ToolbarRunningStatusBadgeView()
+            .environment(makeStatusService(.finished(message: "Done", at: today)))
 
         let texts = try sut.inspect().findAll(ViewType.Text.self)
         let hasToday = texts.contains { text in
@@ -230,13 +195,8 @@ struct ToolbarRunningSectionViewDateTests {
     @MainActor
     @Test func errorStatusFormatsDateAsYesterday() throws {
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .error(label: "Build", errors: [], at: yesterday),
-            datasetFiles: [],
-            strategyFiles: [],
-            selectedMode: .Backtest
-        )
+        let sut = ToolbarRunningStatusBadgeView()
+            .environment(makeStatusService(.error(label: "Build", errors: [], at: yesterday)))
 
         let texts = try sut.inspect().findAll(ViewType.Text.self)
         let hasYesterday = texts.contains { text in
@@ -248,13 +208,8 @@ struct ToolbarRunningSectionViewDateTests {
     @MainActor
     @Test func finishedStatusFormatsOlderDate() throws {
         let oldDate = Calendar.current.date(byAdding: .day, value: -5, to: Date())!
-        let sut = ToolbarRunningSectionView(
-            document: .constant(ArgoTradingDocument()),
-            status: .finished(message: "Done", at: oldDate),
-            datasetFiles: [],
-            strategyFiles: [],
-            selectedMode: .Backtest
-        )
+        let sut = ToolbarRunningStatusBadgeView()
+            .environment(makeStatusService(.finished(message: "Done", at: oldDate)))
 
         let texts = try sut.inspect().findAll(ViewType.Text.self)
         let hasFormattedDate = texts.contains { text in
