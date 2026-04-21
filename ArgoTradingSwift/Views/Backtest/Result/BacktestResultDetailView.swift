@@ -97,12 +97,29 @@ struct BacktestResultDetailView: View {
                 LabeledContent("Maximum Loss", value: formatCurrency(result.tradePnl.maximumLoss))
             }
 
+            if result.initialBalance != nil || result.finalBalance != nil {
+                Section("Balance") {
+                    if let initial = result.initialBalance {
+                        LabeledContent("Initial Balance", value: formatCurrency(initial))
+                    }
+                    if let final = result.finalBalance {
+                        LabeledContent("Final Balance", value: formatCurrency(final))
+                    }
+                    if let initial = result.initialBalance, let final = result.finalBalance {
+                        LabeledContent("Net Change", value: formatCurrency(final - initial))
+                    }
+                }
+            }
+
             Section("Trade Results") {
                 LabeledContent("Number of Trades", value: "\(result.tradeResult.numberOfTrades)")
+                if let pairs = result.tradeResult.numberOfTradingPairs {
+                    LabeledContent("Trading Pairs", value: "\(pairs)")
+                }
                 LabeledContent("Winning Trades", value: "\(result.tradeResult.numberOfWinningTrades)")
                 LabeledContent("Losing Trades", value: "\(result.tradeResult.numberOfLosingTrades)")
                 LabeledContent("Win Rate", value: formatPercent(result.tradeResult.winRate))
-                LabeledContent("Max Drawdown", value: formatPercent(result.tradeResult.maxDrawdown))
+                LabeledContent("Max Drawdown", value: formatCurrency(result.tradeResult.maxDrawdown))
             }
 
             Section("Trade Holding Time") {
@@ -136,7 +153,6 @@ struct BacktestResultDetailView: View {
         formatter.numberStyle = .percent
         formatter.minimumFractionDigits = 2
         formatter.maximumFractionDigits = 2
-        formatter.multiplier = 1
-        return formatter.string(from: NSNumber(value: value / 100)) ?? "\(value)%"
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value * 100)%"
     }
 }

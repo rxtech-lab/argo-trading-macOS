@@ -117,6 +117,9 @@ public struct JSMarkerInfo: Sendable {
     public let executedQty: Double?
     public let executedPrice: Double?
     public let pnl: Double?
+    public let cumulativePnl: Double?
+    public let openPositionQty: Double?
+    public let balance: Double?
     public let reason: String?
 
     // Mark-specific fields
@@ -137,6 +140,9 @@ public struct JSMarkerInfo: Sendable {
         executedQty: Double? = nil,
         executedPrice: Double? = nil,
         pnl: Double? = nil,
+        cumulativePnl: Double? = nil,
+        openPositionQty: Double? = nil,
+        balance: Double? = nil,
         reason: String? = nil,
         title: String? = nil,
         color: String? = nil,
@@ -154,6 +160,9 @@ public struct JSMarkerInfo: Sendable {
         self.executedQty = executedQty
         self.executedPrice = executedPrice
         self.pnl = pnl
+        self.cumulativePnl = cumulativePnl
+        self.openPositionQty = openPositionQty
+        self.balance = balance
         self.reason = reason
         self.title = title
         self.color = color
@@ -233,6 +242,9 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
     public var executedQty: Double?
     public var executedPrice: Double?
     public var pnl: Double?
+    public var cumulativePnl: Double?
+    public var openPositionQty: Double?
+    public var balance: Double?
     public var reason: String?
 
     // Mark-specific fields
@@ -257,6 +269,9 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
         executedQty: Double? = nil,
         executedPrice: Double? = nil,
         pnl: Double? = nil,
+        cumulativePnl: Double? = nil,
+        openPositionQty: Double? = nil,
+        balance: Double? = nil,
         reason: String? = nil,
         title: String? = nil,
         category: String? = nil,
@@ -278,6 +293,9 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
         self.executedQty = executedQty
         self.executedPrice = executedPrice
         self.pnl = pnl
+        self.cumulativePnl = cumulativePnl
+        self.openPositionQty = openPositionQty
+        self.balance = balance
         self.reason = reason
         self.title = title
         self.category = category

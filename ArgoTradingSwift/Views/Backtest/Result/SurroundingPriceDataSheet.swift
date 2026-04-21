@@ -38,7 +38,7 @@ struct SurroundingPriceDataSheet: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
-                Text(timestamp, format: .dateTime.year().month().day().hour().minute().second())
+                Text(timestamp.formattedUTC())
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -57,7 +57,7 @@ struct SurroundingPriceDataSheet: View {
         Table(priceData) {
             TableColumn("Time") { price in
                 highlightedCell(isHighlighted: price.id == highlightedId) {
-                    Text(price.date, format: .dateTime.year().month().day().hour().minute().second())
+                    Text(price.date.formattedUTC())
                 }
             }
             .width(min: 140, ideal: 160)

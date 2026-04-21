@@ -46,11 +46,29 @@ enum DuckDBError: LocalizedError {
     }
 }
 
+private struct CachedTable {
+    let filePath: URL
+    let mtime: FoundationDate
+    let rowCount: Int
+}
+
+private struct CachedCount {
+    let mtime: FoundationDate
+    let count: Int
+}
+
 @Observable
 class DuckDBService: DuckDBServiceProtocol {
     var database: Database?
     var connection: Connection?
-    private var currentDataset: URL?
+
+    /// Cache of materialized in-memory tables keyed by DuckDB table name.
+    /// Invalidated when the source file's path or modification time changes.
+    private var cachedTables: [String: CachedTable] = [:]
+
+    /// Cache of COUNT(*) results for parquet files queried via read_parquet.
+    /// Key is `filePath.path`, optionally suffixed with a qualifier (e.g. aggregation interval).
+    private var parquetCountCache: [String: CachedCount] = [:]
 
     /// Cached DateFormatter for parsing UTC date strings
     private static let utcDateFormatter: DateFormatter = {
@@ -67,17 +85,105 @@ class DuckDBService: DuckDBServiceProtocol {
         let database = try Database(store: .inMemory)
         let connection = try database.connect()
 
+        // Parallelize scans across available cores. DuckDB's default may underuse the CPU.
+        let threadCount = max(1, ProcessInfo.processInfo.activeProcessorCount)
+        _ = try? connection.query("PRAGMA threads=\(threadCount)")
+
         self.database = database
         self.connection = connection
     }
 
-    func loadDataset(filePath: URL) async throws {
-        // check if file exist
-        let fileManager = FileManager.default
-        guard fileManager.fileExists(atPath: filePath.path) else {
+    /// Returns the modification time of a file, or nil if the file doesn't exist.
+    private static func fileMTime(path: String) -> FoundationDate? {
+        let attrs = try? FileManager.default.attributesOfItem(atPath: path)
+        return attrs?[.modificationDate] as? FoundationDate
+    }
+
+    /// Materialize a parquet file into a named in-memory DuckDB table.
+    /// Skips work if the same file (same path + mtime) is already cached.
+    /// Returns the cached row count. Throws `.missingDataset` if the file doesn't exist.
+    @discardableResult
+    private func materializeTableIfNeeded(
+        tableName: String,
+        filePath: URL,
+        projection: String = "*"
+    ) async throws -> Int {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+        guard let mtime = Self.fileMTime(path: filePath.path) else {
             throw DuckDBError.missingDataset
         }
-        currentDataset = filePath
+
+        if let cached = cachedTables[tableName],
+           cached.filePath.path == filePath.path,
+           cached.mtime == mtime
+        {
+            return cached.rowCount
+        }
+
+        let path = filePath.path
+        let count: Int = try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    _ = try connection.query("DROP TABLE IF EXISTS \(tableName)")
+                    _ = try connection.query("""
+                    CREATE TABLE \(tableName) AS
+                    SELECT \(projection)
+                    FROM read_parquet('\(path)')
+                    """)
+                    let countResult = try connection.query("SELECT COUNT(*) FROM \(tableName)")
+                    let count = countResult[0].cast(to: Int.self)[0] ?? 0
+                    continuation.resume(returning: count)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+
+        cachedTables[tableName] = CachedTable(filePath: filePath, mtime: mtime, rowCount: count)
+        return count
+    }
+
+    /// Returns a cached COUNT(*) for a parquet file, computing it via `compute` on a miss.
+    /// Cache is invalidated by file mtime; pass a `qualifier` to scope the cache (e.g. interval).
+    private func cachedParquetCount(
+        filePath: URL,
+        qualifier: String? = nil,
+        compute: @escaping (Connection) throws -> Int
+    ) async throws -> Int {
+        guard let connection = connection else {
+            throw DuckDBError.connectionError
+        }
+        guard let mtime = Self.fileMTime(path: filePath.path) else {
+            throw DuckDBError.missingDataset
+        }
+        let key = qualifier.map { "\(filePath.path)|\($0)" } ?? filePath.path
+        if let cached = parquetCountCache[key], cached.mtime == mtime {
+            return cached.count
+        }
+        let count: Int = try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    continuation.resume(returning: try compute(connection))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+        parquetCountCache[key] = CachedCount(mtime: mtime, count: count)
+        return count
+    }
+
+    func loadDataset(filePath: URL) async throws {
+        guard FileManager.default.fileExists(atPath: filePath.path) else {
+            throw DuckDBError.missingDataset
+        }
+        _ = try await materializeTableIfNeeded(
+            tableName: "price_data",
+            filePath: filePath,
+            projection: "id, time, symbol, open, high, low, close, volume"
+        )
     }
 
     func fetchPriceData(
@@ -92,7 +198,7 @@ class DuckDBService: DuckDBServiceProtocol {
             throw DuckDBError.connectionError
         }
 
-        guard let dataset = currentDataset else {
+        guard let priceTable = cachedTables["price_data"] else {
             throw DuckDBError.missingDataset
         }
 
@@ -103,71 +209,56 @@ class DuckDBService: DuckDBServiceProtocol {
         // Validate sortDirection to prevent SQL injection
         let direction = (sortDirection == "ASC" || sortDirection == "DESC") ? sortDirection : "ASC"
 
-        // First get the total count
-        let countQuery = """
-        SELECT COUNT(*) as total
-        FROM read_parquet('\(dataset.path)')
-        """
-
-        let countResult = try connection.query(countQuery)
-        let totalCount = countResult[0].cast(to: Int.self)[0]
-
-        // Calculate offset
         let offset = (page - 1) * pageSize
+        let totalCount = priceTable.rowCount
 
-        // Main query with pagination and sorting
-        let query = """
-        SELECT id, CAST(time AS VARCHAR), symbol, open, high, low, close, volume
-        FROM read_parquet('\(dataset.path)')
-        ORDER BY \(column) \(direction)
-        LIMIT \(pageSize) OFFSET \(offset)
-        """
+        let priceData: [PriceData] = try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let query = """
+                    SELECT CAST(time AS VARCHAR), symbol, open, high, low, close, volume
+                    FROM price_data
+                    ORDER BY \(column) \(direction)
+                    LIMIT \(pageSize) OFFSET \(offset)
+                    """
 
-        let result = try connection.query(query)
+                    let result = try connection.query(query)
 
-        for r in result {
-            print(r)
-        }
+                    let times = Array(result[0].cast(to: String.self))
+                    let symbols = Array(result[1].cast(to: String.self))
+                    let opens = Array(result[2].cast(to: Double.self))
+                    let highs = Array(result[3].cast(to: Double.self))
+                    let lows = Array(result[4].cast(to: Double.self))
+                    let closes = Array(result[5].cast(to: Double.self))
+                    let volumes = Array(result[6].cast(to: Double.self))
 
-        let idColumn = result[0].cast(to: String.self)
-        let timeColumn = result[1].cast(to: String.self)
-        let symbolColumn = result[2].cast(to: String.self)
-        let openColumn = result[3].cast(to: Double.self)
-        let highColumn = result[4].cast(to: Double.self)
-        let lowColumn = result[5].cast(to: Double.self)
-        let closeColumn = result[6].cast(to: Double.self)
-        let volumeColumn = result[7].cast(to: Double.self)
+                    let count = times.count
+                    var items: [PriceData] = []
+                    items.reserveCapacity(count)
 
-        let dataFrame = DataFrame(columns: [
-            TabularData.Column(idColumn).eraseToAnyColumn(),
-            TabularData.Column(timeColumn).eraseToAnyColumn(),
-            TabularData.Column(symbolColumn).eraseToAnyColumn(),
-            TabularData.Column(openColumn).eraseToAnyColumn(),
-            TabularData.Column(highColumn).eraseToAnyColumn(),
-            TabularData.Column(lowColumn).eraseToAnyColumn(),
-            TabularData.Column(closeColumn).eraseToAnyColumn(),
-            TabularData.Column(volumeColumn).eraseToAnyColumn(),
-        ])
-
-        let priceData = dataFrame.rows.enumerated().map { index, row in
-            let time = row[1, String.self]
-            let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? Date()
-
-            return PriceData(
-                globalIndex: offset + index,
-                date: utcDate,
-                ticker: row[2, String.self] ?? "",
-                open: row[3, Double.self] ?? 0.0,
-                high: row[4, Double.self] ?? 0.0,
-                low: row[5, Double.self] ?? 0.0,
-                close: row[6, Double.self] ?? 0.0,
-                volume: row[7, Double.self] ?? 0.0
-            )
+                    for i in 0 ..< count {
+                        let utcDate = Self.utcDateFormatter.date(from: times[i] ?? "") ?? Date()
+                        items.append(PriceData(
+                            globalIndex: offset + i,
+                            date: utcDate,
+                            ticker: symbols[i] ?? "",
+                            open: opens[i] ?? 0.0,
+                            high: highs[i] ?? 0.0,
+                            low: lows[i] ?? 0.0,
+                            close: closes[i] ?? 0.0,
+                            volume: volumes[i] ?? 0.0
+                        ))
+                    }
+                    continuation.resume(returning: items)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
         }
 
         return PaginationResult(
             items: priceData,
-            total: totalCount ?? 0,
+            total: totalCount,
             page: page,
             pageSize: pageSize
         )
@@ -175,17 +266,13 @@ class DuckDBService: DuckDBServiceProtocol {
 
     /// Get total row count for a dataset
     func getTotalCount(for filePath: URL) async throws -> Int {
-        guard let connection = connection else {
-            throw DuckDBError.connectionError
+        try await cachedParquetCount(filePath: filePath) { connection in
+            let countResult = try connection.query("""
+            SELECT COUNT(*) as total
+            FROM read_parquet('\(filePath.path)')
+            """)
+            return countResult[0].cast(to: Int.self)[0] ?? 0
         }
-
-        let countQuery = """
-        SELECT COUNT(*) as total
-        FROM read_parquet('\(filePath.path)')
-        """
-
-        let countResult = try connection.query(countQuery)
-        return countResult[0].cast(to: Int.self)[0] ?? 0
     }
 
     /// Fetch price data by offset and count for lazy loading
@@ -246,10 +333,6 @@ class DuckDBService: DuckDBServiceProtocol {
 
     /// Get total count of aggregated rows for a given time interval
     func getAggregatedCount(for filePath: URL, interval: ChartTimeInterval) async throws -> Int {
-        guard let connection = connection else {
-            throw DuckDBError.connectionError
-        }
-
         // For 1s interval, use existing count (no aggregation)
         if interval == .oneSecond {
             return try await getTotalCount(for: filePath)
@@ -257,18 +340,19 @@ class DuckDBService: DuckDBServiceProtocol {
 
         // Build time bucket expression based on whether this is a standard or non-standard interval
         let timeBucketExpr = Self.timeBucketExpression(for: interval)
+        let qualifier = "agg:\(interval.rawValue)"
 
-        let countQuery = """
-        SELECT COUNT(*) as total
-        FROM (
-            SELECT \(timeBucketExpr) as interval_time
-            FROM read_parquet('\(filePath.path)')
-            GROUP BY interval_time
-        ) subquery
-        """
-
-        let countResult = try connection.query(countQuery)
-        return countResult[0].cast(to: Int.self)[0] ?? 0
+        return try await cachedParquetCount(filePath: filePath, qualifier: qualifier) { connection in
+            let countResult = try connection.query("""
+            SELECT COUNT(*) as total
+            FROM (
+                SELECT \(timeBucketExpr) as interval_time
+                FROM read_parquet('\(filePath.path)')
+                GROUP BY interval_time
+            ) subquery
+            """)
+            return countResult[0].cast(to: Int.self)[0] ?? 0
+        }
     }
 
     /// Build a time bucket expression for the given interval
@@ -430,21 +514,18 @@ class DuckDBService: DuckDBServiceProtocol {
             "order_id", "symbol", "order_type", "quantity", "price",
             "timestamp", "is_completed", "reason", "message",
             "strategy_name", "executed_at", "executed_qty", "executed_price",
-            "commission", "pnl", "position_type",
+            "commission", "pnl", "cumulative_pnl", "position_type",
+            "open_position_qty", "balance",
         ]
         let column = validColumns.contains(sortColumn) ? sortColumn : "timestamp"
 
         // Validate sortDirection to prevent SQL injection
         let direction = (sortDirection == "ASC" || sortDirection == "DESC") ? sortDirection : "DESC"
 
-        // First get the total count
-        let countQuery = """
-        SELECT COUNT(*) as total
-        FROM read_parquet('\(filePath.path)')
-        """
-
-        let countResult = try connection.query(countQuery)
-        let totalCount = countResult[0].cast(to: Int.self)[0]
+        let totalCount = try await materializeTableIfNeeded(
+            tableName: "trades_data",
+            filePath: filePath
+        )
 
         // Calculate offset
         let offset = (page - 1) * pageSize
@@ -467,81 +548,69 @@ class DuckDBService: DuckDBServiceProtocol {
             executed_price,
             commission,
             pnl,
-            position_type
-        FROM read_parquet('\(filePath.path)')
+            cumulative_pnl,
+            position_type,
+            open_position_qty,
+            balance
+        FROM trades_data
         ORDER BY \(column) \(direction)
         LIMIT \(pageSize) OFFSET \(offset)
         """
 
         let result = try connection.query(query)
 
-        let orderIdColumn = result[0].cast(to: String.self)
-        let symbolColumn = result[1].cast(to: String.self)
-        let orderTypeColumn = result[2].cast(to: String.self)
-        let quantityColumn = result[3].cast(to: Double.self)
-        let priceColumn = result[4].cast(to: Double.self)
-        let timestampColumn = result[5].cast(to: String.self)
-        let isCompletedColumn = result[6].cast(to: Bool.self)
-        let reasonColumn = result[7].cast(to: String.self)
-        let messageColumn = result[8].cast(to: String.self)
-        let strategyNameColumn = result[9].cast(to: String.self)
-        let executedAtColumn = result[10].cast(to: String.self)
-        let executedQtyColumn = result[11].cast(to: Double.self)
-        let executedPriceColumn = result[12].cast(to: Double.self)
-        let commissionColumn = result[13].cast(to: Double.self)
-        let pnlColumn = result[14].cast(to: Double.self)
-        let positionTypeColumn = result[15].cast(to: String.self)
+        let orderIds = Array(result[0].cast(to: String.self))
+        let symbols = Array(result[1].cast(to: String.self))
+        let orderTypes = Array(result[2].cast(to: String.self))
+        let quantities = Array(result[3].cast(to: Double.self))
+        let prices = Array(result[4].cast(to: Double.self))
+        let timestamps = Array(result[5].cast(to: String.self))
+        let isCompleteds = Array(result[6].cast(to: Bool.self))
+        let reasons = Array(result[7].cast(to: String.self))
+        let messages = Array(result[8].cast(to: String.self))
+        let strategyNames = Array(result[9].cast(to: String.self))
+        let executedAts = Array(result[10].cast(to: String.self))
+        let executedQtys = Array(result[11].cast(to: Double.self))
+        let executedPrices = Array(result[12].cast(to: Double.self))
+        let commissions = Array(result[13].cast(to: Double.self))
+        let pnls = Array(result[14].cast(to: Double.self))
+        let cumulativePnls = Array(result[15].cast(to: Double.self))
+        let positionTypes = Array(result[16].cast(to: String.self))
+        let openPositionQtys = Array(result[17].cast(to: Double.self))
+        let balances = Array(result[18].cast(to: Double.self))
 
-        let dataFrame = DataFrame(columns: [
-            TabularData.Column(orderIdColumn).eraseToAnyColumn(),
-            TabularData.Column(symbolColumn).eraseToAnyColumn(),
-            TabularData.Column(orderTypeColumn).eraseToAnyColumn(),
-            TabularData.Column(quantityColumn).eraseToAnyColumn(),
-            TabularData.Column(priceColumn).eraseToAnyColumn(),
-            TabularData.Column(timestampColumn).eraseToAnyColumn(),
-            TabularData.Column(isCompletedColumn).eraseToAnyColumn(),
-            TabularData.Column(reasonColumn).eraseToAnyColumn(),
-            TabularData.Column(messageColumn).eraseToAnyColumn(),
-            TabularData.Column(strategyNameColumn).eraseToAnyColumn(),
-            TabularData.Column(executedAtColumn).eraseToAnyColumn(),
-            TabularData.Column(executedQtyColumn).eraseToAnyColumn(),
-            TabularData.Column(executedPriceColumn).eraseToAnyColumn(),
-            TabularData.Column(commissionColumn).eraseToAnyColumn(),
-            TabularData.Column(pnlColumn).eraseToAnyColumn(),
-            TabularData.Column(positionTypeColumn).eraseToAnyColumn(),
-        ])
-
-        let trades = dataFrame.rows.map { row in
-            let timestampStr = row[5, String.self]
-            let timestamp = Self.utcDateFormatter.date(from: timestampStr ?? "") ?? Date()
-
-            let executedAtStr = row[10, String.self]
-            let executedAt = executedAtStr.flatMap { Self.utcDateFormatter.date(from: $0) }
-            let orderSide = row[2, String.self] ?? ""
-
-            return Trade(
-                orderId: row[0, String.self] ?? "",
-                symbol: row[1, String.self] ?? "",
-                side: OrderSide(rawValue: orderSide) ?? .buy,
-                quantity: row[3, Double.self] ?? 0.0,
-                price: row[4, Double.self] ?? 0.0,
+        let count = orderIds.count
+        var trades: [Trade] = []
+        trades.reserveCapacity(count)
+        for i in 0 ..< count {
+            let timestamp = Self.utcDateFormatter.date(from: timestamps[i] ?? "") ?? Date()
+            let executedAt = executedAts[i].flatMap { Self.utcDateFormatter.date(from: $0) }
+            trades.append(Trade(
+                orderId: orderIds[i] ?? "",
+                symbol: symbols[i] ?? "",
+                side: OrderSide(rawValue: orderTypes[i] ?? "") ?? .buy,
+                quantity: quantities[i] ?? 0.0,
+                price: prices[i] ?? 0.0,
                 timestamp: timestamp,
-                isCompleted: row[6, Bool.self] ?? false,
-                reason: row[7, String.self] ?? "",
-                message: row[8, String.self] ?? "",
-                strategyName: row[9, String.self] ?? "",
+                isCompleted: isCompleteds[i] ?? false,
+                reason: reasons[i] ?? "",
+                message: messages[i] ?? "",
+                strategyName: strategyNames[i] ?? "",
                 executedAt: executedAt,
-                executedQty: row[11, Double.self] ?? 0.0,
-                executedPrice: row[12, Double.self] ?? 0.0,
-                commission: row[13, Double.self] ?? 0.0,
-                pnl: row[14, Double.self] ?? 0.0,
-                positionType: row[15, String.self] ?? ""
-            )
+                executedQty: executedQtys[i] ?? 0.0,
+                executedPrice: executedPrices[i] ?? 0.0,
+                commission: commissions[i] ?? 0.0,
+                pnl: pnls[i] ?? 0.0,
+                cumulativePnl: cumulativePnls[i] ?? 0.0,
+                positionType: positionTypes[i] ?? "",
+                openPositionQty: openPositionQtys[i] ?? 0.0,
+                balance: balances[i] ?? 0.0
+            ))
         }
 
         return PaginationResult(
             items: trades,
-            total: totalCount ?? 0,
+            total: totalCount,
             page: page,
             pageSize: pageSize
         )
@@ -576,14 +645,10 @@ class DuckDBService: DuckDBServiceProtocol {
         // Validate sortDirection to prevent SQL injection
         let direction = (sortDirection == "ASC" || sortDirection == "DESC") ? sortDirection : "DESC"
 
-        // First get the total count
-        let countQuery = """
-        SELECT COUNT(*) as total
-        FROM read_parquet('\(filePath.path)')
-        """
-
-        let countResult = try connection.query(countQuery)
-        let totalCount = countResult[0].cast(to: Int.self)[0]
+        let totalCount = try await materializeTableIfNeeded(
+            tableName: "orders_data",
+            filePath: filePath
+        )
 
         // Calculate offset
         let offset = (page - 1) * pageSize
@@ -602,67 +667,52 @@ class DuckDBService: DuckDBServiceProtocol {
             message,
             strategy_name,
             position_type,
-            status,
-        FROM read_parquet('\(filePath.path)')
+            status
+        FROM orders_data
         ORDER BY \(column) \(direction)
         LIMIT \(pageSize) OFFSET \(offset)
         """
 
         let result = try connection.query(query)
 
-        let orderIdColumn = result[0].cast(to: String.self)
-        let symbolColumn = result[1].cast(to: String.self)
-        let orderTypeColumn = result[2].cast(to: String.self)
-        let quantityColumn = result[3].cast(to: Double.self)
-        let priceColumn = result[4].cast(to: Double.self)
-        let timestampColumn = result[5].cast(to: String.self)
-        let isCompletedColumn = result[6].cast(to: Bool.self)
-        let reasonColumn = result[7].cast(to: String.self)
-        let messageColumn = result[8].cast(to: String.self)
-        let strategyNameColumn = result[9].cast(to: String.self)
-        let positionTypeColumn = result[10].cast(to: String.self)
-        let statusColumn = result[11].cast(to: String.self)
+        let orderIds = Array(result[0].cast(to: String.self))
+        let symbols = Array(result[1].cast(to: String.self))
+        let orderTypes = Array(result[2].cast(to: String.self))
+        let quantities = Array(result[3].cast(to: Double.self))
+        let prices = Array(result[4].cast(to: Double.self))
+        let timestamps = Array(result[5].cast(to: String.self))
+        let isCompleteds = Array(result[6].cast(to: Bool.self))
+        let reasons = Array(result[7].cast(to: String.self))
+        let messages = Array(result[8].cast(to: String.self))
+        let strategyNames = Array(result[9].cast(to: String.self))
+        let positionTypes = Array(result[10].cast(to: String.self))
+        let statuses = Array(result[11].cast(to: String.self))
 
-        let dataFrame = DataFrame(columns: [
-            TabularData.Column(orderIdColumn).eraseToAnyColumn(),
-            TabularData.Column(symbolColumn).eraseToAnyColumn(),
-            TabularData.Column(orderTypeColumn).eraseToAnyColumn(),
-            TabularData.Column(quantityColumn).eraseToAnyColumn(),
-            TabularData.Column(priceColumn).eraseToAnyColumn(),
-            TabularData.Column(timestampColumn).eraseToAnyColumn(),
-            TabularData.Column(isCompletedColumn).eraseToAnyColumn(),
-            TabularData.Column(reasonColumn).eraseToAnyColumn(),
-            TabularData.Column(messageColumn).eraseToAnyColumn(),
-            TabularData.Column(strategyNameColumn).eraseToAnyColumn(),
-            TabularData.Column(positionTypeColumn).eraseToAnyColumn(),
-            TabularData.Column(statusColumn).eraseToAnyColumn(),
-        ])
-
-        let orders = dataFrame.rows.map { row in
-            let timestampStr = row[5, String.self]
-            let timestamp = Self.utcDateFormatter.date(from: timestampStr ?? "") ?? Date()
-            let orderStatisStr = row[11, String.self] ?? ""
-
-            return Order(
-                orderId: row[0, String.self] ?? "",
-                symbol: row[1, String.self] ?? "",
-                orderType: row[2, String.self] ?? "",
-                quantity: row[3, Double.self] ?? 0.0,
-                price: row[4, Double.self] ?? 0.0,
+        let count = orderIds.count
+        var orders: [Order] = []
+        orders.reserveCapacity(count)
+        for i in 0 ..< count {
+            let timestamp = Self.utcDateFormatter.date(from: timestamps[i] ?? "") ?? Date()
+            orders.append(Order(
+                orderId: orderIds[i] ?? "",
+                symbol: symbols[i] ?? "",
+                orderType: orderTypes[i] ?? "",
+                quantity: quantities[i] ?? 0.0,
+                price: prices[i] ?? 0.0,
                 timestamp: timestamp,
-                isCompleted: row[6, Bool.self] ?? false,
-                reason: row[7, String.self] ?? "",
-                message: row[8, String.self] ?? "",
-                strategyName: row[9, String.self] ?? "",
-                positionType: row[10, String.self] ?? "",
+                isCompleted: isCompleteds[i] ?? false,
+                reason: reasons[i] ?? "",
+                message: messages[i] ?? "",
+                strategyName: strategyNames[i] ?? "",
+                positionType: positionTypes[i] ?? "",
                 // fallback to .filled if status is unrecognized since it is the default status
-                status: OrderStatus(rawValue: orderStatisStr) ?? .filled
-            )
+                status: OrderStatus(rawValue: statuses[i] ?? "") ?? .filled
+            ))
         }
 
         return PaginationResult(
             items: orders,
-            total: totalCount ?? 0,
+            total: totalCount,
             page: page,
             pageSize: pageSize
         )
@@ -696,14 +746,10 @@ class DuckDBService: DuckDBServiceProtocol {
         // Validate sortDirection to prevent SQL injection
         let direction = (sortDirection == "ASC" || sortDirection == "DESC") ? sortDirection : "ASC"
 
-        // First get the total count
-        let countQuery = """
-        SELECT COUNT(*) as total
-        FROM read_parquet('\(filePath.path)')
-        """
-
-        let countResult = try connection.query(countQuery)
-        let totalCount = countResult[0].cast(to: Int.self)[0]
+        let totalCount = try await materializeTableIfNeeded(
+            tableName: "marks_data",
+            filePath: filePath
+        )
 
         // Calculate offset
         let offset = (page - 1) * pageSize
@@ -723,79 +769,59 @@ class DuckDBService: DuckDBServiceProtocol {
             message,
             category,
             level
-        FROM read_parquet('\(filePath.path)')
+        FROM marks_data
         ORDER BY \(column) \(direction)
         LIMIT \(pageSize) OFFSET \(offset)
         """
 
         let result = try connection.query(query)
 
-        let idColumn = result[0].cast(to: String.self)
-        let marketDataIdColumn = result[1].cast(to: String.self)
-        let signalTypeColumn = result[2].cast(to: String.self)
-        let signalNameColumn = result[3].cast(to: String.self)
-        let signalTimeColumn = result[4].cast(to: String.self)
-        let signalSymbolColumn = result[5].cast(to: String.self)
-        let colorColumn = result[6].cast(to: String.self)
-        let shapeColumn = result[7].cast(to: String.self)
-        let titleColumn = result[8].cast(to: String.self)
-        let messageColumn = result[9].cast(to: String.self)
-        let categoryColumn = result[10].cast(to: String.self)
-        let levelColumn = result[11].cast(to: String.self)
+        let ids = Array(result[0].cast(to: String.self))
+        let signalTypes = Array(result[2].cast(to: String.self))
+        let signalNames = Array(result[3].cast(to: String.self))
+        let signalTimes = Array(result[4].cast(to: String.self))
+        let signalSymbols = Array(result[5].cast(to: String.self))
+        let colors = Array(result[6].cast(to: String.self))
+        let shapes = Array(result[7].cast(to: String.self))
+        let titles = Array(result[8].cast(to: String.self))
+        let messages = Array(result[9].cast(to: String.self))
+        let categories = Array(result[10].cast(to: String.self))
+        let levels = Array(result[11].cast(to: String.self))
 
-        let dataFrame = DataFrame(columns: [
-            TabularData.Column(idColumn).eraseToAnyColumn(),
-            TabularData.Column(marketDataIdColumn).eraseToAnyColumn(),
-            TabularData.Column(signalTypeColumn).eraseToAnyColumn(),
-            TabularData.Column(signalNameColumn).eraseToAnyColumn(),
-            TabularData.Column(signalTimeColumn).eraseToAnyColumn(),
-            TabularData.Column(signalSymbolColumn).eraseToAnyColumn(),
-            TabularData.Column(colorColumn).eraseToAnyColumn(),
-            TabularData.Column(shapeColumn).eraseToAnyColumn(),
-            TabularData.Column(titleColumn).eraseToAnyColumn(),
-            TabularData.Column(messageColumn).eraseToAnyColumn(),
-            TabularData.Column(categoryColumn).eraseToAnyColumn(),
-            TabularData.Column(levelColumn).eraseToAnyColumn(),
-        ])
+        let count = ids.count
+        var marks: [Mark] = []
+        marks.reserveCapacity(count)
+        for i in 0 ..< count {
+            let shape = MarkShape(rawValue: shapes[i] ?? "circle") ?? .circle
+            let signalTime = Self.utcDateFormatter.date(from: signalTimes[i] ?? "") ?? Date()
+            let signalType = SignalType(rawValue: signalTypes[i] ?? "") ?? .noAction
+            let signal = Signal(
+                time: signalTime,
+                type: signalType,
+                name: signalNames[i] ?? "",
+                reason: "",
+                rawValue: "",
+                symbol: signalSymbols[i] ?? "",
+                indicator: ""
+            )
+            let markColor = MarkColor(string: colors[i] ?? "#FFFFFF")
+            let markLevel = MarkLevel(rawValue: levels[i] ?? "info") ?? .info
 
-        // ISO8601 date formatter for signal_time
-        let iso8601Formatter = ISO8601DateFormatter()
-        iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-        let marks = dataFrame.rows.compactMap { row -> Mark? in
-            let shapeStr = row[7, String.self] ?? "circle"
-            let shape = MarkShape(rawValue: shapeStr) ?? .circle
-
-            // Parse signal time separately (always available in parquet)
-            let id = row[0, String.self] ?? "0"
-            let signalTypeStr = row[2, String.self] ?? ""
-            let signalNameStr = row[3, String.self] ?? ""
-            let signalTimeStr = row[4, String.self] ?? ""
-            let signalSymbolStr = row[5, String.self] ?? ""
-            let signalTime = Self.utcDateFormatter.date(from: signalTimeStr) ?? Date()
-            let signalType = SignalType(rawValue: signalTypeStr) ?? .noAction
-
-            let signal = Signal(time: signalTime, type: signalType, name: signalNameStr, reason: "", rawValue: "", symbol: signalSymbolStr, indicator: "")
-            let markColorStr = row[6, String.self] ?? "#FFFFFF"
-            let markColor = MarkColor(string: markColorStr)
-            let levelStr = row[11, String.self] ?? "info"
-            let markLevel = MarkLevel(rawValue: levelStr) ?? .info
-
-            return Mark(
-                id: id,
+            marks.append(Mark(
+                id: ids[i] ?? "0",
                 color: markColor,
                 shape: shape,
-                title: row[8, String.self] ?? "",
-                message: row[9, String.self] ?? "",
-                category: row[10, String.self] ?? "",
+                title: titles[i] ?? "",
+                message: messages[i] ?? "",
+                category: categories[i] ?? "",
                 signal: signal,
                 level: markLevel
-            )
+            ))
         }
 
         return PaginationResult(
             items: marks,
-            total: totalCount ?? 0,
+            total: totalCount,
             page: page,
             pageSize: pageSize
         )
@@ -904,6 +930,11 @@ class DuckDBService: DuckDBServiceProtocol {
         let startTimeStr = Self.utcDateFormatter.string(from: startTime)
         let endTimeStr = Self.utcDateFormatter.string(from: endTime)
 
+        _ = try await materializeTableIfNeeded(
+            tableName: "trades_data",
+            filePath: filePath
+        )
+
         // Fetch trades within time range ordered by timestamp
         let query = """
         SELECT
@@ -922,78 +953,66 @@ class DuckDBService: DuckDBServiceProtocol {
             executed_price,
             commission,
             pnl,
-            position_type
-        FROM read_parquet('\(filePath.path)')
+            cumulative_pnl,
+            position_type,
+            open_position_qty,
+            balance
+        FROM trades_data
         WHERE timestamp >= '\(startTimeStr)' AND timestamp <= '\(endTimeStr)'
         ORDER BY timestamp ASC
         """
 
         let result = try connection.query(query)
 
-        let orderIdColumn = result[0].cast(to: String.self)
-        let symbolColumn = result[1].cast(to: String.self)
-        let orderTypeColumn = result[2].cast(to: String.self)
-        let quantityColumn = result[3].cast(to: Double.self)
-        let priceColumn = result[4].cast(to: Double.self)
-        let timestampColumn = result[5].cast(to: String.self)
-        let isCompletedColumn = result[6].cast(to: Bool.self)
-        let reasonColumn = result[7].cast(to: String.self)
-        let messageColumn = result[8].cast(to: String.self)
-        let strategyNameColumn = result[9].cast(to: String.self)
-        let executedAtColumn = result[10].cast(to: String.self)
-        let executedQtyColumn = result[11].cast(to: Double.self)
-        let executedPriceColumn = result[12].cast(to: Double.self)
-        let commissionColumn = result[13].cast(to: Double.self)
-        let pnlColumn = result[14].cast(to: Double.self)
-        let positionTypeColumn = result[15].cast(to: String.self)
+        let orderIds = Array(result[0].cast(to: String.self))
+        let symbols = Array(result[1].cast(to: String.self))
+        let orderTypes = Array(result[2].cast(to: String.self))
+        let quantities = Array(result[3].cast(to: Double.self))
+        let prices = Array(result[4].cast(to: Double.self))
+        let timestamps = Array(result[5].cast(to: String.self))
+        let isCompleteds = Array(result[6].cast(to: Bool.self))
+        let reasons = Array(result[7].cast(to: String.self))
+        let messages = Array(result[8].cast(to: String.self))
+        let strategyNames = Array(result[9].cast(to: String.self))
+        let executedAts = Array(result[10].cast(to: String.self))
+        let executedQtys = Array(result[11].cast(to: Double.self))
+        let executedPrices = Array(result[12].cast(to: Double.self))
+        let commissions = Array(result[13].cast(to: Double.self))
+        let pnls = Array(result[14].cast(to: Double.self))
+        let cumulativePnls = Array(result[15].cast(to: Double.self))
+        let positionTypes = Array(result[16].cast(to: String.self))
+        let openPositionQtys = Array(result[17].cast(to: Double.self))
+        let balances = Array(result[18].cast(to: Double.self))
 
-        let dataFrame = DataFrame(columns: [
-            TabularData.Column(orderIdColumn).eraseToAnyColumn(),
-            TabularData.Column(symbolColumn).eraseToAnyColumn(),
-            TabularData.Column(orderTypeColumn).eraseToAnyColumn(),
-            TabularData.Column(quantityColumn).eraseToAnyColumn(),
-            TabularData.Column(priceColumn).eraseToAnyColumn(),
-            TabularData.Column(timestampColumn).eraseToAnyColumn(),
-            TabularData.Column(isCompletedColumn).eraseToAnyColumn(),
-            TabularData.Column(reasonColumn).eraseToAnyColumn(),
-            TabularData.Column(messageColumn).eraseToAnyColumn(),
-            TabularData.Column(strategyNameColumn).eraseToAnyColumn(),
-            TabularData.Column(executedAtColumn).eraseToAnyColumn(),
-            TabularData.Column(executedQtyColumn).eraseToAnyColumn(),
-            TabularData.Column(executedPriceColumn).eraseToAnyColumn(),
-            TabularData.Column(commissionColumn).eraseToAnyColumn(),
-            TabularData.Column(pnlColumn).eraseToAnyColumn(),
-            TabularData.Column(positionTypeColumn).eraseToAnyColumn(),
-        ])
-
-        return dataFrame.rows.map { row in
-            let timestampStr = row[5, String.self]
-            let timestamp = Self.utcDateFormatter.date(from: timestampStr ?? "") ?? Date()
-
-            let executedAtStr = row[10, String.self]
-            let executedAt = executedAtStr.flatMap { Self.utcDateFormatter.date(from: $0) }
-
-            let orderSide = row[2, String.self]
-
-            return Trade(
-                orderId: row[0, String.self] ?? "",
-                symbol: row[1, String.self] ?? "",
-                side: OrderSide(rawValue: orderSide ?? "") ?? .buy,
-                quantity: row[3, Double.self] ?? 0.0,
-                price: row[4, Double.self] ?? 0.0,
+        let count = orderIds.count
+        var trades: [Trade] = []
+        trades.reserveCapacity(count)
+        for i in 0 ..< count {
+            let timestamp = Self.utcDateFormatter.date(from: timestamps[i] ?? "") ?? Date()
+            let executedAt = executedAts[i].flatMap { Self.utcDateFormatter.date(from: $0) }
+            trades.append(Trade(
+                orderId: orderIds[i] ?? "",
+                symbol: symbols[i] ?? "",
+                side: OrderSide(rawValue: orderTypes[i] ?? "") ?? .buy,
+                quantity: quantities[i] ?? 0.0,
+                price: prices[i] ?? 0.0,
                 timestamp: timestamp,
-                isCompleted: row[6, Bool.self] ?? false,
-                reason: row[7, String.self] ?? "",
-                message: row[8, String.self] ?? "",
-                strategyName: row[9, String.self] ?? "",
+                isCompleted: isCompleteds[i] ?? false,
+                reason: reasons[i] ?? "",
+                message: messages[i] ?? "",
+                strategyName: strategyNames[i] ?? "",
                 executedAt: executedAt,
-                executedQty: row[11, Double.self] ?? 0.0,
-                executedPrice: row[12, Double.self] ?? 0.0,
-                commission: row[13, Double.self] ?? 0.0,
-                pnl: row[14, Double.self] ?? 0.0,
-                positionType: row[15, String.self] ?? ""
-            )
+                executedQty: executedQtys[i] ?? 0.0,
+                executedPrice: executedPrices[i] ?? 0.0,
+                commission: commissions[i] ?? 0.0,
+                pnl: pnls[i] ?? 0.0,
+                cumulativePnl: cumulativePnls[i] ?? 0.0,
+                positionType: positionTypes[i] ?? "",
+                openPositionQty: openPositionQtys[i] ?? 0.0,
+                balance: balances[i] ?? 0.0
+            ))
         }
+        return trades
     }
 
     /// Fetch marks within a time range for chart overlay
@@ -1019,6 +1038,11 @@ class DuckDBService: DuckDBServiceProtocol {
         let startTimeStr = iso8601Formatter.string(from: startTime)
         let endTimeStr = iso8601Formatter.string(from: endTime)
 
+        _ = try await materializeTableIfNeeded(
+            tableName: "marks_data",
+            filePath: filePath
+        )
+
         // Query marks within time range
         let query = """
         SELECT
@@ -1034,71 +1058,56 @@ class DuckDBService: DuckDBServiceProtocol {
             message,
             category,
             level
-        FROM read_parquet('\(filePath.path)')
+        FROM marks_data
         WHERE signal_time >= '\(startTimeStr)' AND signal_time <= '\(endTimeStr)'
         ORDER BY signal_time ASC
         """
 
         let result = try connection.query(query)
 
-        let idColumn = result[0].cast(to: String.self)
-        let marketDataIdColumn = result[1].cast(to: String.self)
-        let signalTypeColumn = result[2].cast(to: String.self)
-        let signalNameColumn = result[3].cast(to: String.self)
-        let signalTimeColumn = result[4].cast(to: String.self)
-        let signalSymbolColumn = result[5].cast(to: String.self)
-        let colorColumn = result[6].cast(to: String.self)
-        let shapeColumn = result[7].cast(to: String.self)
-        let titleColumn = result[8].cast(to: String.self)
-        let messageColumn = result[9].cast(to: String.self)
-        let categoryColumn = result[10].cast(to: String.self)
-        let levelColumn = result[11].cast(to: String.self)
+        let ids = Array(result[0].cast(to: String.self))
+        let signalTypes = Array(result[2].cast(to: String.self))
+        let signalNames = Array(result[3].cast(to: String.self))
+        let signalTimes = Array(result[4].cast(to: String.self))
+        let signalSymbols = Array(result[5].cast(to: String.self))
+        let colors = Array(result[6].cast(to: String.self))
+        let shapes = Array(result[7].cast(to: String.self))
+        let titles = Array(result[8].cast(to: String.self))
+        let messages = Array(result[9].cast(to: String.self))
+        let categories = Array(result[10].cast(to: String.self))
+        let levels = Array(result[11].cast(to: String.self))
 
-        let dataFrame = DataFrame(columns: [
-            TabularData.Column(idColumn).eraseToAnyColumn(),
-            TabularData.Column(marketDataIdColumn).eraseToAnyColumn(),
-            TabularData.Column(signalTypeColumn).eraseToAnyColumn(),
-            TabularData.Column(signalNameColumn).eraseToAnyColumn(),
-            TabularData.Column(signalTimeColumn).eraseToAnyColumn(),
-            TabularData.Column(signalSymbolColumn).eraseToAnyColumn(),
-            TabularData.Column(colorColumn).eraseToAnyColumn(),
-            TabularData.Column(shapeColumn).eraseToAnyColumn(),
-            TabularData.Column(titleColumn).eraseToAnyColumn(),
-            TabularData.Column(messageColumn).eraseToAnyColumn(),
-            TabularData.Column(categoryColumn).eraseToAnyColumn(),
-            TabularData.Column(levelColumn).eraseToAnyColumn(),
-        ])
+        let count = ids.count
+        var marks: [Mark] = []
+        marks.reserveCapacity(count)
+        for i in 0 ..< count {
+            let shape = MarkShape(rawValue: shapes[i] ?? "circle") ?? .circle
+            let signalTime = Self.utcDateFormatter.date(from: signalTimes[i] ?? "") ?? Date()
+            let signalType = SignalType(rawValue: signalTypes[i] ?? "") ?? .noAction
+            let signal = Signal(
+                time: signalTime,
+                type: signalType,
+                name: signalNames[i] ?? "",
+                reason: "",
+                rawValue: "",
+                symbol: signalSymbols[i] ?? "",
+                indicator: ""
+            )
+            let markColor = MarkColor(string: colors[i] ?? "#FFFFFF")
+            let markLevel = MarkLevel(rawValue: levels[i] ?? "INFO") ?? .info
 
-        return dataFrame.rows.compactMap { row in
-            let shapeStr = row[7, String.self] ?? "circle"
-            let shape = MarkShape(rawValue: shapeStr) ?? .circle
-
-            // Parse signal time separately (always available in parquet)
-            let id = row[0, String.self] ?? "0"
-            let signalTypeStr = row[2, String.self] ?? ""
-            let signalNameStr = row[3, String.self] ?? ""
-            let signalTimeStr = row[4, String.self] ?? ""
-            let signalSymbolStr = row[5, String.self] ?? ""
-            let signalTime = Self.utcDateFormatter.date(from: signalTimeStr) ?? Date()
-            let signalType = SignalType(rawValue: signalTypeStr) ?? .noAction
-
-            let signal = Signal(time: signalTime, type: signalType, name: signalNameStr, reason: "", rawValue: "", symbol: signalSymbolStr, indicator: "")
-            let markColorStr = row[6, String.self] ?? "#FFFFFF"
-            let markColor = MarkColor(string: markColorStr)
-            let levelStr = row[11, String.self] ?? "INFO"
-            let markLevel = MarkLevel(rawValue: levelStr) ?? .info
-
-            return Mark(
-                id: id,
+            marks.append(Mark(
+                id: ids[i] ?? "0",
                 color: markColor,
                 shape: shape,
-                title: row[8, String.self] ?? "",
-                message: row[9, String.self] ?? "",
-                category: row[10, String.self] ?? "",
+                title: titles[i] ?? "",
+                message: messages[i] ?? "",
+                category: categories[i] ?? "",
                 signal: signal,
                 level: markLevel
-            )
+            ))
         }
+        return marks
     }
 
     /// Fetch log data from a parquet file with pagination and filtering
@@ -1148,15 +1157,20 @@ class DuckDBService: DuckDBServiceProtocol {
 
         let whereClause = whereConditions.isEmpty ? "" : "WHERE " + whereConditions.joined(separator: " AND ")
 
-        // First get the total count with filters
-        let countQuery = """
-        SELECT COUNT(*) as total
-        FROM read_parquet('\(filePath.path)')
-        \(whereClause)
-        """
+        let unfilteredCount = try await materializeTableIfNeeded(
+            tableName: "logs_data",
+            filePath: filePath
+        )
 
-        let countResult = try connection.query(countQuery)
-        let totalCount = countResult[0].cast(to: Int.self)[0]
+        // If no filters, the materialized count is the total. Otherwise, run a fast
+        // in-memory COUNT against the materialized table.
+        let totalCount: Int
+        if whereConditions.isEmpty {
+            totalCount = unfilteredCount
+        } else {
+            let countResult = try connection.query("SELECT COUNT(*) FROM logs_data \(whereClause)")
+            totalCount = countResult[0].cast(to: Int.self)[0] ?? 0
+        }
 
         // Calculate offset
         let offset = (page - 1) * pageSize
@@ -1170,7 +1184,7 @@ class DuckDBService: DuckDBServiceProtocol {
             level,
             message,
             fields
-        FROM read_parquet('\(filePath.path)')
+        FROM logs_data
         \(whereClause)
         ORDER BY \(column) \(direction)
         LIMIT \(pageSize) OFFSET \(offset)
@@ -1178,40 +1192,31 @@ class DuckDBService: DuckDBServiceProtocol {
 
         let result = try connection.query(query)
 
-        let idColumn = result[0].cast(to: Int64.self)
-        let timestampColumn = result[1].cast(to: String.self)
-        let symbolColumn = result[2].cast(to: String.self)
-        let levelColumn = result[3].cast(to: String.self)
-        let messageColumn = result[4].cast(to: String.self)
-        let fieldsColumn = result[5].cast(to: String.self)
+        let ids = Array(result[0].cast(to: Int64.self))
+        let timestamps = Array(result[1].cast(to: String.self))
+        let symbols = Array(result[2].cast(to: String.self))
+        let levels = Array(result[3].cast(to: String.self))
+        let messages = Array(result[4].cast(to: String.self))
+        let fields = Array(result[5].cast(to: String.self))
 
-        let dataFrame = DataFrame(columns: [
-            TabularData.Column(idColumn).eraseToAnyColumn(),
-            TabularData.Column(timestampColumn).eraseToAnyColumn(),
-            TabularData.Column(symbolColumn).eraseToAnyColumn(),
-            TabularData.Column(levelColumn).eraseToAnyColumn(),
-            TabularData.Column(messageColumn).eraseToAnyColumn(),
-            TabularData.Column(fieldsColumn).eraseToAnyColumn(),
-        ])
-
-        let logs = dataFrame.rows.map { row in
-            let timestampStr = row[1, String.self]
-            let timestamp = Self.utcDateFormatter.date(from: timestampStr ?? "") ?? Date()
-            let levelStr = row[3, String.self] ?? "INFO"
-
-            return Log(
-                id: row[0, Int64.self] ?? 0,
+        let count = ids.count
+        var logs: [Log] = []
+        logs.reserveCapacity(count)
+        for i in 0 ..< count {
+            let timestamp = Self.utcDateFormatter.date(from: timestamps[i] ?? "") ?? Date()
+            logs.append(Log(
+                id: ids[i] ?? 0,
                 timestamp: timestamp,
-                symbol: row[2, String.self] ?? "",
-                level: LogLevel(rawValue: levelStr) ?? .info,
-                message: row[4, String.self] ?? "",
-                fields: row[5, String.self] ?? ""
-            )
+                symbol: symbols[i] ?? "",
+                level: LogLevel(rawValue: levels[i] ?? "INFO") ?? .info,
+                message: messages[i] ?? "",
+                fields: fields[i] ?? ""
+            ))
         }
 
         return PaginationResult(
             items: logs,
-            total: totalCount ?? 0,
+            total: totalCount,
             page: page,
             pageSize: pageSize
         )

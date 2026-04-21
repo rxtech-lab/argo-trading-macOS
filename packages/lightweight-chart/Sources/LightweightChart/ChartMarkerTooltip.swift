@@ -128,13 +128,36 @@ private struct TradeMarkerSection: View {
             TooltipRow(label: "Qty", value: formatNumber(marker.executedQty, decimals: 4))
             TooltipRow(label: "Price", value: formatNumber(marker.executedPrice, decimals: 2))
 
-            // PnL (only for sell)
-            if !isBuy, let pnl = marker.pnl {
+            // PnL
+            if let pnl = marker.pnl {
+                if isBuy && pnl == 0 {
+                    TooltipRow(label: "PnL", value: "-")
+                } else {
+                    TooltipRow(
+                        label: "PnL",
+                        value: formatNumber(pnl, decimals: 2),
+                        valueColor: pnl >= 0 ? (Color(hex: "#32d74b") ?? .green) : (Color(hex: "#ff453a") ?? .red)
+                    )
+                }
+            }
+
+            // Cumulative PnL
+            if let cumulativePnl = marker.cumulativePnl {
                 TooltipRow(
-                    label: "PnL",
-                    value: formatNumber(pnl, decimals: 2),
-                    valueColor: pnl >= 0 ? (Color(hex: "#32d74b") ?? .green) : (Color(hex: "#ff453a") ?? .red)
+                    label: "Cum. PnL",
+                    value: formatNumber(cumulativePnl, decimals: 2),
+                    valueColor: cumulativePnl >= 0 ? (Color(hex: "#32d74b") ?? .green) : (Color(hex: "#ff453a") ?? .red)
                 )
+            }
+
+            // Open Position Qty
+            if let openPositionQty = marker.openPositionQty {
+                TooltipRow(label: "Open Pos Qty", value: formatNumber(openPositionQty, decimals: 4))
+            }
+
+            // Balance
+            if let balance = marker.balance {
+                TooltipRow(label: "Balance", value: formatNumber(balance, decimals: 2))
             }
 
             // Reason
@@ -145,6 +168,16 @@ private struct TradeMarkerSection: View {
                     .foregroundColor(Color(white: 0.56))
                     .lineSpacing(2)
                     .padding(.top, 8)
+            }
+
+            // Message
+            if let message = marker.message, !message.isEmpty {
+                Text("Message: \(message)")
+                    .font(.system(size: 11))
+                    .italic()
+                    .foregroundColor(Color(white: 0.56))
+                    .lineSpacing(2)
+                    .padding(.top, (marker.reason?.isEmpty ?? true) ? 8 : 4)
             }
         }
     }
@@ -265,5 +298,6 @@ private func formatDate(_ timestamp: Double) -> String {
     let date = Date(timeIntervalSince1970: timestamp)
     let formatter = DateFormatter()
     formatter.dateFormat = "MMM d, yyyy, h:mm a"
+    formatter.timeZone = .gmt
     return formatter.string(from: date)
 }

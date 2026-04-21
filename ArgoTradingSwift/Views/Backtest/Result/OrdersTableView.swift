@@ -20,6 +20,8 @@ struct OrdersTableView: View {
     @State private var sortOrder: [KeyPathComparator<Order>] = [KeyPathComparator(\.timestamp, order: .reverse)]
     @State private var isLoading: Bool = false
     @State private var selectedOrderForDetail: Order?
+    @State private var selectedOrderForSurrounding: Order?
+    @State private var columnCustomization: TableColumnCustomization<Order> = TableColumnCustomization<Order>()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -44,7 +46,7 @@ struct OrdersTableView: View {
     }
 
     private var tableView: some View {
-        Table(data.items, selection: $selectedRows, sortOrder: $sortOrder) {
+        Table(data.items, selection: $selectedRows, sortOrder: $sortOrder, columnCustomization: $columnCustomization) {
             basicColumns
             metadataColumns
         }
@@ -55,8 +57,18 @@ struct OrdersTableView: View {
                 Button {
                     selectedOrderForDetail = order
                 } label: {
+                    Label("Show Detail", systemImage: "info.circle")
+                }
+                Button {
+                    selectedOrderForSurrounding = order
+                } label: {
                     Label("View Surrounding Price Data", systemImage: "chart.bar.xaxis")
                 }
+            }
+        } primaryAction: { selectedIds in
+            if let firstId = selectedIds.first,
+               let order = data.items.first(where: { $0.id == firstId }) {
+                selectedOrderForDetail = order
             }
         }
         .overlay {
@@ -67,6 +79,13 @@ struct OrdersTableView: View {
             }
         }
         .sheet(item: $selectedOrderForDetail) { order in
+            RowDetailSheet(
+                title: "\(order.orderType.uppercased()) \(order.symbol)",
+                subtitle: order.timestamp.formattedUTC(),
+                fields: orderDetailFields(order)
+            )
+        }
+        .sheet(item: $selectedOrderForSurrounding) { order in
             SurroundingPriceDataSheet(
                 timestamp: order.timestamp,
                 dataFilePath: dataFilePath,
@@ -75,60 +94,87 @@ struct OrdersTableView: View {
         }
     }
 
+    private func orderDetailFields(_ order: Order) -> [RowDetailField] {
+        [
+            .init(label: "Order ID", value: order.orderId),
+            .init(label: "Symbol", value: order.symbol),
+            .init(label: "Type", value: order.orderType),
+            .init(label: "Status", value: order.status.rawValue),
+            .init(label: "Position", value: order.positionType),
+            .init(label: "Strategy", value: order.strategyName),
+            .init(label: "Quantity", value: String(format: "%.4f", order.quantity)),
+            .init(label: "Price", value: String(format: "%.2f", order.price)),
+            .init(label: "Completed", value: order.isCompleted ? "Yes" : "No"),
+            .init(label: "Reason", value: order.reason, isLong: true),
+            .init(label: "Message", value: order.message, isLong: true),
+        ]
+    }
+
     @TableColumnBuilder<Order, KeyPathComparator<Order>>
     private var basicColumns: some TableColumnContent<Order, KeyPathComparator<Order>> {
         TableColumn("Timestamp", value: \.timestamp) { order in
-            Text(order.timestamp, format: .dateTime.year().month().day().hour().minute().second())
+            Text(order.timestamp.formattedUTC())
         }
         .width(min: 140, ideal: 160)
+        .customizationID("timestamp")
 
         TableColumn("Symbol", value: \.symbol) { order in
             Text(order.symbol)
+                .help(order.symbol)
         }
         .width(min: 60, ideal: 80)
+        .customizationID("symbol")
 
         TableColumn("Status", value: \.status) { order in
             Text(order.status.rawValue)
                 .foregroundStyle(order.status.forgroundColor)
         }
+        .customizationID("status")
 
         TableColumn("Type", value: \.orderType) { order in
             Text(order.orderType)
         }
         .width(min: 50, ideal: 60)
+        .customizationID("type")
 
         TableColumn("Position", value: \.positionType) { order in
             Text(order.positionType)
                 .foregroundStyle(order.positionType == "long" ? .green : .red)
         }
         .width(min: 60, ideal: 70)
+        .customizationID("position")
 
         TableColumn("Qty", value: \.quantity) { order in
             Text("\(order.quantity, format: .number.precision(.fractionLength(4)))")
         }
         .width(min: 60, ideal: 80)
+        .customizationID("qty")
 
         TableColumn("Price", value: \.price) { order in
             Text("\(order.price, format: .number.precision(.fractionLength(2)))")
         }
         .width(min: 60, ideal: 80)
+        .customizationID("price")
     }
 
     @TableColumnBuilder<Order, KeyPathComparator<Order>>
     private var metadataColumns: some TableColumnContent<Order, KeyPathComparator<Order>> {
         TableColumn("Strategy", value: \.strategyName) { order in
             Text(order.strategyName)
+                .help(order.strategyName)
         }
         .width(min: 80, ideal: 100)
 
         TableColumn("Reason", value: \.reason) { order in
             Text(order.reason)
+                .help(order.reason)
         }
         .width(min: 80, ideal: 120)
 
         TableColumn("Message", value: \.message) { order in
             Text(order.message)
                 .lineLimit(1)
+                .help(order.message)
         }
         .width(min: 100, ideal: 150)
 

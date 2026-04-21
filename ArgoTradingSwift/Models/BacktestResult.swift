@@ -28,6 +28,8 @@ struct BacktestResult: Codable, Identifiable, Hashable {
     let marksFilePath: String
     let dataFilePath: String
     let logFilePath: String
+    let initialBalance: Double?
+    let finalBalance: Double?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -44,11 +46,14 @@ struct BacktestResult: Codable, Identifiable, Hashable {
         case logFilePath = "logs_file_path"
         case strategyPath = "strategy_path"
         case strategy
+        case initialBalance = "initial_balance"
+        case finalBalance = "final_balance"
     }
 }
 
 struct TradeResult: Codable, Hashable {
     let numberOfTrades: Int
+    let numberOfTradingPairs: Int?
     let numberOfWinningTrades: Int
     let numberOfLosingTrades: Int
     let winRate: Double
@@ -56,6 +61,7 @@ struct TradeResult: Codable, Hashable {
 
     enum CodingKeys: String, CodingKey {
         case numberOfTrades = "number_of_trades"
+        case numberOfTradingPairs = "number_of_trading_pairs"
         case numberOfWinningTrades = "number_of_winning_trades"
         case numberOfLosingTrades = "number_of_losing_trades"
         case winRate = "win_rate"

@@ -371,26 +371,35 @@ class PriceChartViewModel {
         do {
             try dbService.initDatabase()
 
-            // Load trades within time range
-            if let tradesURL = tradesURL,
-               FileManager.default.fileExists(atPath: tradesURL.path)
-            {
-                trades = try await dbService.fetchTrades(
+            // Fetch trades and marks in parallel — they hit independent files,
+            // so the wall-clock cost is bounded by the slower of the two.
+            async let tradesTask: [Trade]? = {
+                guard let tradesURL = tradesURL,
+                      FileManager.default.fileExists(atPath: tradesURL.path)
+                else { return nil }
+                return try await dbService.fetchTrades(
                     filePath: tradesURL,
                     startTime: range.lowerBound,
                     endTime: range.upperBound
                 )
-            }
+            }()
 
-            // Load marks within time range
-            if let marksURL = marksURL,
-               FileManager.default.fileExists(atPath: marksURL.path)
-            {
-                marks = try await dbService.fetchMarks(
+            async let marksTask: [Mark]? = {
+                guard let marksURL = marksURL,
+                      FileManager.default.fileExists(atPath: marksURL.path)
+                else { return nil }
+                return try await dbService.fetchMarks(
                     filePath: marksURL,
                     startTime: range.lowerBound,
                     endTime: range.upperBound
                 )
+            }()
+
+            if let fetchedTrades = try await tradesTask {
+                trades = fetchedTrades
+            }
+            if let fetchedMarks = try await marksTask {
+                marks = fetchedMarks
             }
 
             loadedOverlayRange = range

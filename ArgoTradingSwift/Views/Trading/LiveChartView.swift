@@ -143,37 +143,49 @@ struct LiveChartView: View {
         // Load trades and marks separately — failures here should not wipe out market data
         var loadedMarkers: [MarkerDataJS] = []
 
-        if !tradesFilePath.isEmpty, let first = historicalData.first, let last = historicalData.last {
+        // Fetch trades and marks in parallel — they hit independent files,
+        // so the wall-clock cost is bounded by the slower of the two. Each branch
+        // catches its own errors so one failure doesn't void the other.
+        async let tradesMarkers: [MarkerDataJS] = {
+            guard !tradesFilePath.isEmpty,
+                  let first = historicalData.first, let last = historicalData.last
+            else { return [] }
             let tradesURL = URL(fileURLWithPath: tradesFilePath)
-            if FileManager.default.fileExists(atPath: tradesURL.path) {
-                do {
-                    let trades = try await dbService.fetchTrades(
-                        filePath: tradesURL,
-                        startTime: first.date,
-                        endTime: last.date
-                    )
-                    loadedMarkers.append(contentsOf: trades.map { $0.toMarkerDataJS() })
-                } catch {
-                    logger.error("Failed to load trades from '\(tradesFilePath)': \(String(describing: error))")
-                }
+            guard FileManager.default.fileExists(atPath: tradesURL.path) else { return [] }
+            do {
+                let trades = try await dbService.fetchTrades(
+                    filePath: tradesURL,
+                    startTime: first.date,
+                    endTime: last.date
+                )
+                return trades.map { $0.toMarkerDataJS() }
+            } catch {
+                logger.error("Failed to load trades from '\(tradesFilePath)': \(String(describing: error))")
+                return []
             }
-        }
+        }()
 
-        if !marksFilePath.isEmpty, let first = historicalData.first, let last = historicalData.last {
+        async let marksMarkers: [MarkerDataJS] = {
+            guard !marksFilePath.isEmpty,
+                  let first = historicalData.first, let last = historicalData.last
+            else { return [] }
             let marksURL = URL(fileURLWithPath: marksFilePath)
-            if FileManager.default.fileExists(atPath: marksURL.path) {
-                do {
-                    let marks = try await dbService.fetchMarks(
-                        filePath: marksURL,
-                        startTime: first.date,
-                        endTime: last.date
-                    )
-                    loadedMarkers.append(contentsOf: marks.map { $0.toMarkerDataJS() })
-                } catch {
-                    logger.error("Failed to load marks from '\(marksFilePath)': \(String(describing: error))")
-                }
+            guard FileManager.default.fileExists(atPath: marksURL.path) else { return [] }
+            do {
+                let marks = try await dbService.fetchMarks(
+                    filePath: marksURL,
+                    startTime: first.date,
+                    endTime: last.date
+                )
+                return marks.map { $0.toMarkerDataJS() }
+            } catch {
+                logger.error("Failed to load marks from '\(marksFilePath)': \(String(describing: error))")
+                return []
             }
-        }
+        }()
+
+        loadedMarkers.append(contentsOf: await tradesMarkers)
+        loadedMarkers.append(contentsOf: await marksMarkers)
 
         markers = loadedMarkers
     }
