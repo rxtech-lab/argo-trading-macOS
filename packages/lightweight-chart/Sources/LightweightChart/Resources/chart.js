@@ -402,6 +402,21 @@ function showMarkerTooltip(markers, point) {
               `;
       }
 
+      if (
+        markerData.holdTime !== undefined &&
+        markerData.holdTime !== null &&
+        markerData.holdTime !== 0
+      ) {
+        html += `
+                  <div class="tooltip-row">
+                      <span class="tooltip-label">Hold Time</span>
+                      <span class="tooltip-value">${formatDuration(
+                        markerData.holdTime
+                      )}</span>
+                  </div>
+              `;
+      }
+
       if (markerData.reason) {
         html += `<div class="tooltip-reason">${markerData.reason}</div>`;
       }
@@ -475,6 +490,24 @@ function showMarkerTooltip(markers, point) {
 function formatNumber(value, decimals) {
   if (value === undefined || value === null) return "-";
   return value.toFixed(decimals);
+}
+
+// Format a duration given in seconds as up to two units, e.g. "1h 5m", "45s".
+function formatDuration(seconds) {
+  if (seconds === undefined || seconds === null) return "-";
+  let total = Math.max(0, Math.floor(seconds));
+  const days = Math.floor(total / 86400);
+  total -= days * 86400;
+  const hours = Math.floor(total / 3600);
+  total -= hours * 3600;
+  const minutes = Math.floor(total / 60);
+  const secs = total - minutes * 60;
+  const parts = [];
+  if (days) parts.push(days + "d");
+  if (hours) parts.push(hours + "h");
+  if (minutes) parts.push(minutes + "m");
+  if (secs || parts.length === 0) parts.push(secs + "s");
+  return parts.slice(0, 2).join(" ");
 }
 
 // Format date from Unix timestamp

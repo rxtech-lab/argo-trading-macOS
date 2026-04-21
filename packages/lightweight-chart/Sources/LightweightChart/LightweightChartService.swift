@@ -140,6 +140,7 @@ func parseMarkerHoverData(from body: Any) -> JSMarkerHoverData? {
             cumulativePnl: markerDict["cumulativePnl"] as? Double,
             openPositionQty: markerDict["openPositionQty"] as? Double,
             balance: markerDict["balance"] as? Double,
+            holdTime: markerDict["holdTime"] as? Double,
             reason: markerDict["reason"] as? String,
             title: markerDict["title"] as? String,
             color: markerDict["color"] as? String,

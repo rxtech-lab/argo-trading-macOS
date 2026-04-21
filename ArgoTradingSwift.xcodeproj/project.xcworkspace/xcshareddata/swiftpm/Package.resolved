@@ -1,5 +1,5 @@
 {
-  "originHash" : "5246a66c49ffbc84481105b1960019ad0f9c0df41b17074729da96a64ae3b85f",
+  "originHash" : "9e175bf08518ef14e99f1276e3e21421f168fb8679136c3c004d9fd7b87997e9",
   "pins" : [
     {
       "identity" : "duckdb-swift",
@@ -60,8 +60,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sirily11/swift-jsonschema-form",
       "state" : {
-        "branch" : "v1.0.4",
-        "revision" : "a4feb400a0bca57bc39b8ea95544c71aa768fbfd"
+        "revision" : "a4feb400a0bca57bc39b8ea95544c71aa768fbfd",
+        "version" : "1.0.4"
       }
     },
     {

@@ -722,8 +722,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sirily11/swift-jsonschema-form";
 			requirement = {
-				branch = v1.0.4;
-				kind = branch;
+				kind = exactVersion;
+				version = 1.0.4;
 			};
 		};
 		DFA92FBC2EFAA5400002E178 /* XCRemoteSwiftPackageReference "ViewInspector" */ = {

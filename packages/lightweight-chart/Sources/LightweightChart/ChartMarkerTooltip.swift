@@ -160,6 +160,11 @@ private struct TradeMarkerSection: View {
                 TooltipRow(label: "Balance", value: formatNumber(balance, decimals: 2))
             }
 
+            // Hold Time (skip when 0 — opening trades don't have a hold time)
+            if let holdTime = marker.holdTime, holdTime != 0 {
+                TooltipRow(label: "Hold Time", value: formatHoldTime(holdTime))
+            }
+
             // Reason
             if let reason = marker.reason, !reason.isEmpty {
                 Text("Reason: \(reason)")
@@ -292,6 +297,12 @@ private struct TooltipRow: View {
 private func formatNumber(_ value: Double?, decimals: Int) -> String {
     guard let value else { return "-" }
     return String(format: "%.\(decimals)f", value)
+}
+
+private func formatHoldTime(_ seconds: Double) -> String {
+    Duration.seconds(seconds).formatted(
+        .units(allowed: [.days, .hours, .minutes, .seconds], width: .abbreviated, maximumUnitCount: 2)
+    )
 }
 
 private func formatDate(_ timestamp: Double) -> String {

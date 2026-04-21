@@ -989,6 +989,9 @@
         }
       }
     },
+    "Hold Time" : {
+
+    },
     "Holding Time" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1829,6 +1832,9 @@
         }
       }
     },
+    "Raw JSON Schema" : {
+
+    },
     "Realized PnL" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2625,6 +2631,9 @@
           }
         }
       }
+    },
+    "Unable to load schema" : {
+
     },
     "Unrealized PnL" : {
       "localizations" : {
