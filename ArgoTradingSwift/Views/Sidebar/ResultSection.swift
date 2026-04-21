@@ -14,7 +14,7 @@ struct ResultSection: View {
     @Environment(BacktestResultService.self) var backtestResultService
 
     @State private var showDeleteAlert = false
-    @State private var folderToDelete: URL?
+    @State private var resultItemToDelete: BacktestResultItem?
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -50,7 +50,7 @@ struct ResultSection: View {
                                             Divider()
 
                                             Button(role: .destructive) {
-                                                folderToDelete = getTimestampFolder(from: resultItem.statsFileURL)
+                                                resultItemToDelete = resultItem
                                                 showDeleteAlert = true
                                             } label: {
                                                 Label("Delete", systemImage: "trash")
@@ -65,38 +65,22 @@ struct ResultSection: View {
         }
         .alert("Delete Result", isPresented: $showDeleteAlert) {
             Button("Cancel", role: .cancel) {
-                folderToDelete = nil
+                resultItemToDelete = nil
             }
             Button("Delete", role: .destructive) {
-                if let folder = folderToDelete {
-                    deleteFolder(folder)
+                if let item = resultItemToDelete {
+                    do {
+                        try backtestResultService.deleteResult(item)
+                    } catch {
+                        print("Error deleting result: \(error.localizedDescription)")
+                    }
                 }
-                folderToDelete = nil
+                resultItemToDelete = nil
             }
         } message: {
-            if let folder = folderToDelete {
-                Text("Are you sure you want to delete \"\(folder.lastPathComponent)\"? This action cannot be undone.")
+            if let item = resultItemToDelete {
+                Text("Are you sure you want to delete this result run from \(Self.dateFormatter.string(from: item.runTimestamp))? This action cannot be undone.")
             }
-        }
-    }
-}
-
-extension ResultSection {
-    private func getTimestampFolder(from statsFileURL: URL) -> URL {
-        // Path: result/20251227_092739/config_0/BTCUSDT_.../stats.yaml
-        // Navigate up 3 levels: stats.yaml -> dataset -> config -> timestamp
-        statsFileURL
-            .deletingLastPathComponent()  // remove stats.yaml
-            .deletingLastPathComponent()  // remove dataset folder
-            .deletingLastPathComponent()  // remove config folder -> timestamp folder
-    }
-
-    private func deleteFolder(_ folder: URL) {
-        do {
-            try FileManager.default.removeItem(at: folder)
-            // FolderMonitor in BacktestResultService will auto-refresh
-        } catch {
-            print("Error deleting folder: \(error.localizedDescription)")
         }
     }
 }

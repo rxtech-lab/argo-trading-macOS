@@ -11,9 +11,6 @@ import LightweightChart
 /// Protocol for database operations used by PriceChartViewModel
 /// Enables dependency injection and mocking for tests
 protocol DuckDBServiceProtocol {
-    /// Initialize the database connection
-    func initDatabase() throws
-
     /// Get the total number of rows in a parquet file
     func getTotalCount(for filePath: URL) async throws -> Int
 

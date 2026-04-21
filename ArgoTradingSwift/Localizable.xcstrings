@@ -243,6 +243,9 @@
         }
       }
     },
+    "Are you sure you want to delete this result run from %@? This action cannot be undone." : {
+
+    },
     "Argo Trading" : {
       "localizations" : {
         "zh-Hans" : {
@@ -352,6 +355,9 @@
           }
         }
       }
+    },
+    "Calculation Method" : {
+
     },
     "Cancel" : {
       "localizations" : {
@@ -1362,6 +1368,12 @@
         }
       }
     },
+    "Median" : {
+
+    },
+    "Median PnL" : {
+
+    },
     "Message" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1461,6 +1473,9 @@
           }
         }
       }
+    },
+    "No Chart Data" : {
+
     },
     "No Data" : {
       "localizations" : {
@@ -1692,6 +1707,9 @@
         }
       }
     },
+    "PnL %" : {
+
+    },
     "Polygon API Key" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1711,6 +1729,9 @@
           }
         }
       }
+    },
+    "Portfolio" : {
+
     },
     "Position" : {
       "localizations" : {
@@ -1831,9 +1852,6 @@
           }
         }
       }
-    },
-    "Raw JSON Schema" : {
-
     },
     "Realized PnL" : {
       "localizations" : {
@@ -2136,6 +2154,9 @@
           }
         }
       }
+    },
+    "Series" : {
+
     },
     "Server" : {
       "localizations" : {
@@ -2492,6 +2513,9 @@
         }
       }
     },
+    "This result does not contain monthly statistics or percentile data." : {
+
+    },
     "Ticker" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2551,6 +2575,9 @@
           }
         }
       }
+    },
+    "Total Investment" : {
+
     },
     "Total Items: %lld" : {
       "localizations" : {
@@ -2632,9 +2659,6 @@
         }
       }
     },
-    "Unable to load schema" : {
-
-    },
     "Unrealized PnL" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2644,6 +2668,9 @@
           }
         }
       }
+    },
+    "Value" : {
+
     },
     "Version" : {
       "localizations" : {

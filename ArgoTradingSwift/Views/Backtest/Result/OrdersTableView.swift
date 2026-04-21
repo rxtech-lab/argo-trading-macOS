@@ -249,7 +249,6 @@ extension OrdersTableView {
 
         let sortParams = getSortParams()
         do {
-            try dbService.initDatabase()
             data = try await dbService.fetchOrderData(
                 filePath: filePath,
                 page: page,

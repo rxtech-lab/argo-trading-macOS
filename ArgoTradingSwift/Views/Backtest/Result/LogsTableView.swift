@@ -226,7 +226,6 @@ extension LogsTableView {
 
         let sortParams = getSortParams()
         do {
-            try dbService.initDatabase()
             data = try await dbService.fetchLogData(
                 filePath: filePath,
                 page: page,

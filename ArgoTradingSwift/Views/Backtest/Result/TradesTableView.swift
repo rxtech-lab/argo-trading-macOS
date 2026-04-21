@@ -331,7 +331,6 @@ extension TradesTableView {
 
         let sortParams = getSortParams()
         do {
-            try dbService.initDatabase()
             data = try await dbService.fetchTradeData(
                 filePath: filePath,
                 page: page,

@@ -137,8 +137,6 @@ class PriceChartViewModel {
         isLoading = true
 
         do {
-            try dbService.initDatabase()
-
             // Use interval-aware count
             totalCount = try await dbService.getAggregatedCount(for: url, interval: timeInterval)
 
@@ -235,13 +233,17 @@ class PriceChartViewModel {
 
     @MainActor
     func loadMoreAtBeginning() async {
-        guard !isLoading else { return }
+        guard !isLoading else {
+            logger.debug("[loadMoreAtBeginning] SKIP: isLoading=true")
+            return
+        }
         guard let firstData = loadedData.first else {
+            logger.debug("[loadMoreAtBeginning] SKIP: loadedData is empty")
             return
         }
         let firstLoadedIndex = firstData.globalIndex
         if firstLoadedIndex == 0 {
-            // Already at the beginning
+            logger.debug("[loadMoreAtBeginning] SKIP: already at beginning (firstLoadedIndex=0)")
             return
         }
 
@@ -250,6 +252,7 @@ class PriceChartViewModel {
         do {
             let loadCount = min(loadChunkSize, firstLoadedIndex)
             let newOffset = firstLoadedIndex - loadCount
+            logger.info("[loadMoreAtBeginning] START: firstLoadedIndex=\(firstLoadedIndex) loadCount=\(loadCount) newOffset=\(newOffset) currentLoadedCount=\(loadedData.count)")
 
             // Use interval-aware fetch
             let newData = try await dbService.fetchAggregatedPriceDataRange(
@@ -258,26 +261,31 @@ class PriceChartViewModel {
                 startOffset: newOffset,
                 count: loadCount
             )
+            logger.info("[loadMoreAtBeginning] FETCHED: \(newData.count) items, firstGlobalIndex=\(newData.first?.globalIndex ?? -1) lastGlobalIndex=\(newData.last?.globalIndex ?? -1)")
 
             let combinedData = newData + loadedData
-            logger.info("Loaded complete, new global first index is \(combinedData.first!.globalIndex)")
+            logger.info("[loadMoreAtBeginning] DONE: combinedCount=\(combinedData.count) newFirstGlobalIndex=\(combinedData.first!.globalIndex) newLastGlobalIndex=\(combinedData.last!.globalIndex)")
 
             loadedData = combinedData
 
         } catch {
-            print("Error loading more data: \(error)")
+            logger.error("[loadMoreAtBeginning] ERROR: \(error)")
         }
 
         isLoading = false
     }
 
     func loadMoreAtEnd() async {
-        guard !isLoading else { return }
+        guard !isLoading else {
+            logger.debug("[loadMoreAtEnd] SKIP: isLoading=true")
+            return
+        }
         isLoading = true
 
         do {
             let currentEnd = currentOffset + loadedData.count
             let loadCount = min(loadChunkSize, totalCount - currentEnd)
+            logger.info("[loadMoreAtEnd] START: currentOffset=\(currentOffset) loadedCount=\(loadedData.count) currentEnd=\(currentEnd) loadCount=\(loadCount) totalCount=\(totalCount)")
 
             // Use interval-aware fetch
             let newData = try await dbService.fetchAggregatedPriceDataRange(
@@ -286,14 +294,16 @@ class PriceChartViewModel {
                 startOffset: currentEnd,
                 count: loadCount
             )
+            logger.info("[loadMoreAtEnd] FETCHED: \(newData.count) items, firstGlobalIndex=\(newData.first?.globalIndex ?? -1) lastGlobalIndex=\(newData.last?.globalIndex ?? -1)")
 
             let combinedData = loadedData + newData
             loadedData = combinedData
+            logger.info("[loadMoreAtEnd] DONE: combinedCount=\(combinedData.count) newLastGlobalIndex=\(combinedData.last!.globalIndex)")
 
             // Scroll position is already a global index, no adjustment needed
             // The visual position is maintained because the global index doesn't change
         } catch {
-            print("Error loading more data: \(error)")
+            logger.error("[loadMoreAtEnd] ERROR: \(error)")
         }
 
         isLoading = false
@@ -307,26 +317,39 @@ class PriceChartViewModel {
         if let lastScroll = lastProgrammaticScrollTime,
            Date().timeIntervalSince(lastScroll) < scrollGuardDuration
         {
+            logger.debug("[handleScrollChange] SKIP: within programmatic-scroll guard period")
             return
         }
 
         guard let firstData = loadedData.first else {
+            logger.debug("[handleScrollChange] SKIP: loadedData.first is nil (empty data)")
             return
         }
         guard let lastData = loadedData.last else {
+            logger.debug("[handleScrollChange] SKIP: loadedData.last is nil")
             return
         }
-        if range.isNearStart(threshold: 200), hasMoreDataAtBeginning {
-            logger.debug("[PriceChartViewModel] Loading more data at beginning \(range.localFromIndex) - \(range.localToIndex), firstData=\(firstData.date), lastData=\(lastData.date)")
+
+        let nearStart = range.isNearStart(threshold: 200)
+        let nearEnd = range.isNearEnd(threshold: 50, totalCount: loadedData.count)
+        logger.debug("[handleScrollChange] range[\(range.localFromIndex)..\(range.localToIndex)] loadedCount=\(loadedData.count) firstIdx=\(firstData.globalIndex) lastIdx=\(lastData.globalIndex) totalCount=\(totalCount) nearStart=\(nearStart) hasMoreAtBeginning=\(hasMoreDataAtBeginning) nearEnd=\(nearEnd) hasMoreAtEnd=\(hasMoreDataAtEnd) isLoading=\(isLoading)")
+
+        if nearStart, hasMoreDataAtBeginning {
+            logger.info("[handleScrollChange] -> loadMoreAtBeginning (range[\(range.localFromIndex)..\(range.localToIndex)], firstIdx=\(firstData.globalIndex))")
             await loadMoreAtBeginning()
             await loadVisibleOverlays()
             return
         }
 
-        if range.isNearEnd(threshold: 50, totalCount: loadedData.count), hasMoreDataAtEnd {
-            logger.debug("[PriceChartViewModel] Loading more data at end \(range.localFromIndex) - \(range.localToIndex), firstData=\(firstData.date), lastData=\(lastData.date), vmTotalCount=\(loadedData.count)")
+        if nearEnd, hasMoreDataAtEnd {
+            logger.info("[handleScrollChange] -> loadMoreAtEnd (range[\(range.localFromIndex)..\(range.localToIndex)], lastIdx=\(lastData.globalIndex))")
             await loadMoreAtEnd()
             await loadVisibleOverlays()
+            return
+        }
+
+        if nearStart, !hasMoreDataAtBeginning {
+            logger.debug("[handleScrollChange] near start but no more data at beginning (firstIdx=\(firstData.globalIndex))")
         }
     }
 
@@ -369,8 +392,6 @@ class PriceChartViewModel {
         defer { isLoadingOverlays = false }
 
         do {
-            try dbService.initDatabase()
-
             // Fetch trades and marks in parallel — they hit independent files,
             // so the wall-clock cost is bounded by the slower of the two.
             async let tradesTask: [Trade]? = {

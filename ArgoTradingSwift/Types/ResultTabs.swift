@@ -9,6 +9,7 @@ import SwiftUI
 
 enum ResultTab: String, CaseIterable, Identifiable {
     case general = "General"
+    case charts = "Charts"
     case trades = "Trades"
     case orders = "Orders"
     case marks = "Marks"

@@ -78,7 +78,15 @@ class DuckDBService: DuckDBServiceProtocol {
         return formatter
     }()
 
-    func initDatabase() throws {
+    init() {
+        do {
+            try initDatabase()
+        } catch {
+            logger.error("Failed to initialize DuckDB on launch: \(error.localizedDescription)")
+        }
+    }
+
+    private func initDatabase() throws {
         // Only initialize once - skip if already connected
         guard database == nil else { return }
 

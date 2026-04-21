@@ -282,7 +282,6 @@ extension MarksTableView {
 
         let sortParams = getSortParams()
         do {
-            try dbService.initDatabase()
             data = try await dbService.fetchMarkData(
                 filePath: filePath,
                 page: page,
