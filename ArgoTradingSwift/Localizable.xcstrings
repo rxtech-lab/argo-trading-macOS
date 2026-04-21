@@ -1929,6 +1929,9 @@
         }
       }
     },
+    "Run Backtest" : {
+
+    },
     "Run Info" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1994,6 +1997,9 @@
           }
         }
       }
+    },
+    "Running progress %lld%%" : {
+
     },
     "Save" : {
       "localizations" : {
@@ -2291,6 +2297,9 @@
         }
       }
     },
+    "Start Trading" : {
+
+    },
     "Started" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2341,6 +2350,9 @@
         }
       }
     },
+    "Stop Backtest" : {
+
+    },
     "Stop server" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2350,6 +2362,9 @@
           }
         }
       }
+    },
+    "Stop Trading" : {
+
     },
     "Stopped" : {
       "localizations" : {
