@@ -9,6 +9,8 @@ import SwiftUI
 
 struct BacktestResultDetailView: View {
     @State private var selectedTab: ResultTab = .general
+    @State private var generalSubView: GeneralSubView = .info
+    @State private var tradesSubView: TradesSubView = .trades
     let resultItem: BacktestResultItem
 
     @Environment(NavigationService.self) private var navigationService
@@ -25,17 +27,32 @@ struct BacktestResultDetailView: View {
         VStack {
             Picker("Select Tab", selection: $selectedTab) {
                 ForEach(ResultTab.allCases) { tab in
-                    Text(tab.rawValue).tag(tab)
+                    Text(LocalizedStringKey(tab.rawValue)).tag(tab)
                 }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
 
-            switch selectedTab {
-            case .general:
+            tabContent
+        }
+        .padding(.top, 8)
+        .navigationTitle(result.symbol)
+        .toolbar {
+            subViewToolbarItem
+        }
+    }
+
+    @ViewBuilder private var tabContent: some View {
+        switch selectedTab {
+        case .general:
+            switch generalSubView {
+            case .info:
                 buildGeneralTab()
             case .charts:
                 BacktestResultChartsView(result: result)
+            }
+        case .trades:
+            switch tradesSubView {
             case .trades:
                 TradesTableView(
                     filePath: URL(fileURLWithPath: result.tradesFilePath),
@@ -51,22 +68,59 @@ struct BacktestResultDetailView: View {
                     filePath: URL(fileURLWithPath: result.marksFilePath),
                     dataFilePath: URL(fileURLWithPath: result.dataFilePath)
                 )
-            case .logs:
-                LogsTableView(
-                    filePath: URL(fileURLWithPath: result.logFilePath),
-                    dataFilePath: URL(fileURLWithPath: result.dataFilePath)
-                )
             }
+        case .logs:
+            LogsTableView(
+                filePath: URL(fileURLWithPath: result.logFilePath),
+                dataFilePath: URL(fileURLWithPath: result.dataFilePath)
+            )
         }
-        .padding(.top, 8)
-        .navigationTitle(result.symbol)
+    }
+
+    @ToolbarContentBuilder private var subViewToolbarItem: some ToolbarContent {
+        switch selectedTab {
+        case .general:
+            ToolbarItem(placement: .automatic) {
+                Menu {
+                    Picker("View", selection: $generalSubView) {
+                        ForEach(GeneralSubView.allCases) { subView in
+                            Label(LocalizedStringKey(subView.rawValue), systemImage: subView.systemImage)
+                                .tag(subView)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label(LocalizedStringKey(generalSubView.rawValue), systemImage: generalSubView.systemImage)
+                        .labelStyle(.titleAndIcon)
+                }
+            }
+        case .trades:
+            ToolbarItem(placement: .automatic) {
+                Menu {
+                    Picker("View", selection: $tradesSubView) {
+                        ForEach(TradesSubView.allCases) { subView in
+                            Label(LocalizedStringKey(subView.rawValue), systemImage: subView.systemImage)
+                                .tag(subView)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label(LocalizedStringKey(tradesSubView.rawValue), systemImage: tradesSubView.systemImage)
+                        .labelStyle(.titleAndIcon)
+                }
+            }
+        case .logs:
+            ToolbarItem(placement: .automatic) { EmptyView() }
+        }
     }
 
     @ViewBuilder func buildGeneralTab() -> some View {
         Form {
             if let portfolioCalculation = result.portfolioCalculation {
                 Section("Portfolio") {
-                    LabeledContent("Calculation Method", value: portfolioCalculation.displayName)
+                    LabeledContent("Calculation Method") {
+                        Text(LocalizedStringKey(portfolioCalculation.displayName))
+                    }
                 }
             }
 

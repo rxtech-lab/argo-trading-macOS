@@ -244,7 +244,14 @@
       }
     },
     "Are you sure you want to delete this result run from %@? This action cannot be undone." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "您确定要从 %@ 删除此运行结果吗？此操作无法撤销。"
+          }
+        }
+      }
     },
     "Argo Trading" : {
       "localizations" : {
@@ -282,6 +289,67 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "平均"
+          }
+        }
+      }
+    },
+    "Average Cost" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平均成本"
+          }
+        }
+      }
+    },
+    "Average PnL" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平均盈亏"
+          }
+        }
+      }
+    },
+    "Average Win Rate" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平均胜率"
+          }
+        }
+      }
+    },
+    "Avg Holding Time" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平均持仓时间"
+          }
+        }
+      }
+    },
+    "Avg Max Drawdown" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平均最大回撤"
+          }
+        }
+      }
+    },
+    "Avg vs Buy & Hold" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平均 vs 买入并持有"
           }
         }
       }
@@ -326,6 +394,46 @@
         }
       }
     },
+    "Best PnL" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最佳盈亏"
+          }
+        }
+      }
+    },
+    "Best Single Trade" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最佳单笔交易"
+          }
+        }
+      }
+    },
+    "Best Symbol" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最佳代号"
+          }
+        }
+      }
+    },
+    "Best Win Rate" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最佳胜率"
+          }
+        }
+      }
+    },
     "Bind address" : {
       "localizations" : {
         "zh-Hans" : {
@@ -357,7 +465,14 @@
       }
     },
     "Calculation Method" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "计算方法"
+          }
+        }
+      }
     },
     "Cancel" : {
       "localizations" : {
@@ -365,6 +480,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "取消"
+          }
+        }
+      }
+    },
+    "Candlestick" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "K 线图"
           }
         }
       }
@@ -380,6 +506,17 @@
       }
     },
     "Chart" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图表"
+          }
+        }
+      }
+    },
+    "Charts" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -559,6 +696,17 @@
         }
       }
     },
+    "Cum. PnL" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "累计盈亏"
+          }
+        }
+      }
+    },
     "Cumulative PnL" : {
       "localizations" : {
         "zh-Hans" : {
@@ -699,6 +847,16 @@
         }
       }
     },
+    "Description" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "描述"
+          }
+        }
+      }
+    },
     "Done" : {
       "localizations" : {
         "zh-Hans" : {
@@ -825,6 +983,27 @@
         }
       }
     },
+    "EMA" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "EMA"
+          }
+        }
+      }
+    },
+    "Engine Api Version" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "引擎 API 版本"
+          }
+        }
+      }
+    },
     "Engine Version %@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -895,12 +1074,52 @@
         }
       }
     },
+    "Executed At" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "成交时间"
+          }
+        }
+      }
+    },
+    "Executed Price" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "成交价格"
+          }
+        }
+      }
+    },
+    "Executed Qty" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已成交数量"
+          }
+        }
+      }
+    },
     "Failed to load provider configuration schema." : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "加载提供商配置 蓝图 失败。"
+          }
+        }
+      }
+    },
+    "Fast Period" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "快速周期"
           }
         }
       }
@@ -921,6 +1140,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "字段"
+          }
+        }
+      }
+    },
+    "FIFO" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "先进先出"
           }
         }
       }
@@ -996,7 +1226,14 @@
       }
     },
     "Hold Time" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "持仓时间"
+          }
+        }
+      }
     },
     "Holding Time" : {
       "localizations" : {
@@ -1004,6 +1241,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "持仓时间"
+          }
+        }
+      }
+    },
+    "Hover over chart to see values" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "悬停图表查看数值"
+          }
+        }
+      }
+    },
+    "ID" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID"
           }
         }
       }
@@ -1034,6 +1291,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "导入策略"
+          }
+        }
+      }
+    },
+    "Indicators" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "指标"
+          }
+        }
+      }
+    },
+    "Indicators (%lld)" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "指标 (%lld)"
           }
         }
       }
@@ -1124,6 +1401,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "级别"
+          }
+        }
+      }
+    },
+    "LIFO" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "后进先出"
+          }
+        }
+      }
+    },
+    "Line" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "折线图"
+          }
+        }
+      }
+    },
+    "Live Chart" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实时图表"
           }
         }
       }
@@ -1228,6 +1537,17 @@
         }
       }
     },
+    "Logs" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日志"
+          }
+        }
+      }
+    },
     "Losing Trades" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1244,6 +1564,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "最低"
+          }
+        }
+      }
+    },
+    "MACD" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MACD"
           }
         }
       }
@@ -1278,6 +1609,17 @@
         }
       }
     },
+    "Mark" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标记"
+          }
+        }
+      }
+    },
     "Mark Levels" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1308,6 +1650,17 @@
         }
       }
     },
+    "Marks" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标记"
+          }
+        }
+      }
+    },
     "Max" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1324,6 +1677,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "最大回撤"
+          }
+        }
+      }
+    },
+    "Max Holding Time" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最长持仓时间"
           }
         }
       }
@@ -1369,10 +1732,24 @@
       }
     },
     "Median" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中位数"
+          }
+        }
+      }
     },
     "Median PnL" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中位数 盈亏"
+          }
+        }
+      }
     },
     "Message" : {
       "localizations" : {
@@ -1380,6 +1757,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "消息"
+          }
+        }
+      }
+    },
+    "Message:" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "消息："
           }
         }
       }
@@ -1400,6 +1788,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "最小"
+          }
+        }
+      }
+    },
+    "Min Holding Time" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最短持仓时间"
           }
         }
       }
@@ -1464,6 +1862,17 @@
         }
       }
     },
+    "No" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "否"
+          }
+        }
+      }
+    },
     "No backtest results for this strategy yet" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1475,7 +1884,14 @@
       }
     },
     "No Chart Data" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无图表数据"
+          }
+        }
+      }
     },
     "No Data" : {
       "localizations" : {
@@ -1657,12 +2073,43 @@
         }
       }
     },
+    "Open Position Qty" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "持仓数量"
+          }
+        }
+      }
+    },
     "Open project" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开项目"
+          }
+        }
+      }
+    },
+    "Order ID" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "订单 ID"
+          }
+        }
+      }
+    },
+    "Orders" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "订单"
           }
         }
       }
@@ -1697,6 +2144,16 @@
         }
       }
     },
+    "Period" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "周期"
+          }
+        }
+      }
+    },
     "PnL" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1708,7 +2165,14 @@
       }
     },
     "PnL %" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "盈亏 %"
+          }
+        }
+      }
     },
     "Polygon API Key" : {
       "localizations" : {
@@ -1731,7 +2195,14 @@
       }
     },
     "Portfolio" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "投资组合"
+          }
+        }
+      }
     },
     "Position" : {
       "localizations" : {
@@ -1763,6 +2234,16 @@
         }
       }
     },
+    "Price Chart" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "价格图表"
+          }
+        }
+      }
+    },
     "Price Data" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1779,6 +2260,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "盈亏"
+          }
+        }
+      }
+    },
+    "Profit Factor" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "盈利因子"
           }
         }
       }
@@ -1853,6 +2344,16 @@
         }
       }
     },
+    "Quantity" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "数量"
+          }
+        }
+      }
+    },
     "Realized PnL" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1869,6 +2370,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "原因"
+          }
+        }
+      }
+    },
+    "Reason:" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原因："
           }
         }
       }
@@ -1923,12 +2435,34 @@
         }
       }
     },
+    "Results" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "结果"
+          }
+        }
+      }
+    },
     "Risk" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "风险"
+          }
+        }
+      }
+    },
+    "RSI" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RSI"
           }
         }
       }
@@ -1954,7 +2488,14 @@
       }
     },
     "Run Backtest" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行回测"
+          }
+        }
+      }
     },
     "Run Info" : {
       "localizations" : {
@@ -2017,13 +2558,20 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : ""
+            "value" : "在 %1$@:%2$@ 上运行"
           }
         }
       }
     },
     "Running progress %lld%%" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行进度 %lld%%"
+          }
+        }
+      }
     },
     "Save" : {
       "localizations" : {
@@ -2156,7 +2704,14 @@
       }
     },
     "Series" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系列"
+          }
+        }
+      }
     },
     "Server" : {
       "localizations" : {
@@ -2264,12 +2819,73 @@
         }
       }
     },
+    "Signal" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "信号"
+          }
+        }
+      }
+    },
+    "Signal Indicator" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "信号指标"
+          }
+        }
+      }
+    },
     "Signal Name" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "信号名称"
+          }
+        }
+      }
+    },
+    "Signal Period" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "信号周期"
+          }
+        }
+      }
+    },
+    "Signal Raw Value" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "信号原始值"
+          }
+        }
+      }
+    },
+    "Signal Reason" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "信号原因"
+          }
+        }
+      }
+    },
+    "Signal Symbol" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "信号代码"
           }
         }
       }
@@ -2290,6 +2906,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "信号类型"
+          }
+        }
+      }
+    },
+    "Slow Period" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "慢速周期"
+          }
+        }
+      }
+    },
+    "SMA" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SMA"
           }
         }
       }
@@ -2325,7 +2962,14 @@
       }
     },
     "Start Trading" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始交易"
+          }
+        }
+      }
     },
     "Started" : {
       "localizations" : {
@@ -2378,7 +3022,14 @@
       }
     },
     "Stop Backtest" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止回测"
+          }
+        }
+      }
     },
     "Stop server" : {
       "localizations" : {
@@ -2391,7 +3042,14 @@
       }
     },
     "Stop Trading" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止交易"
+          }
+        }
+      }
     },
     "Stopped" : {
       "localizations" : {
@@ -2514,7 +3172,14 @@
       }
     },
     "This result does not contain monthly statistics or percentile data." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此结果不包含月度统计或百分位数数据。"
+          }
+        }
+      }
     },
     "Ticker" : {
       "localizations" : {
@@ -2577,7 +3242,14 @@
       }
     },
     "Total Investment" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "总投资"
+          }
+        }
+      }
     },
     "Total Items: %lld" : {
       "localizations" : {
@@ -2599,6 +3271,26 @@
         }
       }
     },
+    "Total Results" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "总结果数"
+          }
+        }
+      }
+    },
+    "Total Trades" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "总交易数"
+          }
+        }
+      }
+    },
     "Trade Holding Time" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2615,6 +3307,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "交易结果"
+          }
+        }
+      }
+    },
+    "Trades" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "交易"
           }
         }
       }
@@ -2670,7 +3373,14 @@
       }
     },
     "Value" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "值"
+          }
+        }
+      }
     },
     "Version" : {
       "localizations" : {
@@ -2688,6 +3398,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "版本 %@"
+          }
+        }
+      }
+    },
+    "View" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看"
           }
         }
       }
@@ -2722,6 +3442,17 @@
         }
       }
     },
+    "VWAP" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VWAP"
+          }
+        }
+      }
+    },
     "Warning" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2748,6 +3479,57 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "盈利交易"
+          }
+        }
+      }
+    },
+    "Worst Drawdown" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最差回撤"
+          }
+        }
+      }
+    },
+    "Worst PnL" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最差盈亏"
+          }
+        }
+      }
+    },
+    "Worst Single Trade" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最差单笔交易"
+          }
+        }
+      }
+    },
+    "Worst Symbol" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最差代号"
+          }
+        }
+      }
+    },
+    "Yes" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "是"
           }
         }
       }

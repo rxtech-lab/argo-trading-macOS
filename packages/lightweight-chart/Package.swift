@@ -22,6 +22,9 @@ let package = Package(
                 .copy("Resources/chart.css"),
                 .copy("Resources/chart.js"),
                 .copy("Resources/lightweight-charts.standalone.production.js"),
+            ],
+            swiftSettings: [
+                .swiftLanguageMode(.v5)
             ]
         ),
         .testTarget(

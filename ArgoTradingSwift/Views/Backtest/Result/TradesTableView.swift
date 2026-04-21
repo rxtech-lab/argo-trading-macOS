@@ -112,9 +112,9 @@ struct TradesTableView: View {
             .init(label: "Hold Time", value: formatHoldTime(trade.holdTime)),
             .init(label: "Commission", value: String(format: "%.4f", trade.commission)),
             .init(label: "Executed At", value: trade.executedAt.map { $0.formattedUTC() } ?? ""),
-            .init(label: "Completed", value: trade.isCompleted ? "Yes" : "No"),
-            .init(label: "Reason", value: trade.reason, isLong: true),
-            .init(label: "Message", value: trade.message, isLong: true),
+            .init(label: "Completed", value: String(localized: trade.isCompleted ? "Yes" : "No")),
+            .init(label: "Reason", value: trade.reason, isLong: true, translate: true),
+            .init(label: "Message", value: trade.message, isLong: true, translate: true),
         ]
     }
 

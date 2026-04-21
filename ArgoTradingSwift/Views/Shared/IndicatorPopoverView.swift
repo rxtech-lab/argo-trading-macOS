@@ -54,7 +54,7 @@ struct IndicatorRowView: View {
                     .frame(width: 24)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(config.type.displayName)
+                    Text(LocalizedStringKey(config.type.displayName))
                         .font(.body)
 
                     if config.isEnabled && !config.parameters.isEmpty {
@@ -89,7 +89,7 @@ struct IndicatorRowView: View {
                 VStack(spacing: 8) {
                     ForEach(Array(config.parameters.keys.sorted()), id: \.self) { key in
                         IndicatorParameterRow(
-                            label: parameterDisplayName(key),
+                            label: Self.parameterDisplayName(key),
                             value: Binding(
                                 get: { config.parameters[key] ?? 0 },
                                 set: { newValue in
@@ -108,24 +108,34 @@ struct IndicatorRowView: View {
 
     private var parameterSummary: String {
         config.parameters.sorted(by: { $0.key < $1.key })
-            .map { "\($0.key): \($0.value)" }
+            .map { "\(String(localized: Self.parameterLocalizedKey($0.key))): \($0.value)" }
             .joined(separator: ", ")
     }
 
-    private func parameterDisplayName(_ key: String) -> String {
+    static func parameterDisplayName(_ key: String) -> LocalizedStringKey {
         switch key {
         case "period": return "Period"
         case "fastPeriod": return "Fast Period"
         case "slowPeriod": return "Slow Period"
         case "signalPeriod": return "Signal Period"
-        default: return key.capitalized
+        default: return LocalizedStringKey(key.capitalized)
+        }
+    }
+
+    static func parameterLocalizedKey(_ key: String) -> String.LocalizationValue {
+        switch key {
+        case "period": return "Period"
+        case "fastPeriod": return "Fast Period"
+        case "slowPeriod": return "Slow Period"
+        case "signalPeriod": return "Signal Period"
+        default: return String.LocalizationValue(stringLiteral: key.capitalized)
         }
     }
 }
 
 /// Parameter input row with stepper
 struct IndicatorParameterRow: View {
-    let label: String
+    let label: LocalizedStringKey
     @Binding var value: Int
 
     var body: some View {

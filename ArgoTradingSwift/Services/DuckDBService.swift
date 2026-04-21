@@ -109,7 +109,7 @@ class DuckDBService: DuckDBServiceProtocol {
 
     /// Materialize a parquet file into a named in-memory DuckDB table.
     /// Skips work if the same file (same path + mtime) is already cached.
-    /// Returns the cached row count. Throws `.missingDataset` if the file doesn't exist.
+    /// Returns \the cached row count. Throws `.missingDataset` if the file doesn't exist.
     @discardableResult
     private func materializeTableIfNeeded(
         tableName: String,

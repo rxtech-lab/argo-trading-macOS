@@ -11,7 +11,7 @@ import SwiftUI
 /// Reusable chart legend displaying OHLCV values for a selected data point
 struct ChartLegendView: View {
     let priceData: PriceData?
-    var placeholderText: String = "Hover over chart to see values"
+    var placeholderText: LocalizedStringKey = "Hover over chart to see values"
 
     var body: some View {
         Group {
