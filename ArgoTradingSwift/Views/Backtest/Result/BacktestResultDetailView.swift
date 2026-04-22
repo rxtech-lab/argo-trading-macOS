@@ -11,6 +11,23 @@ struct BacktestResultDetailView: View {
     @State private var selectedTab: ResultTab = .general
     @State private var generalSubView: GeneralSubView = .info
     @State private var tradesSubView: TradesSubView = .trades
+    @State private var showConfigSheet = false
+    @State private var configSheetTab: ConfigTab = .backtest
+
+    private enum ConfigTab: String, CaseIterable, Identifiable {
+        case backtest
+        case strategy
+
+        var id: String { rawValue }
+
+        var localizedName: LocalizedStringKey {
+            switch self {
+            case .backtest: "Backtest Config"
+            case .strategy: "Strategy Config"
+            }
+        }
+    }
+
     let resultItem: BacktestResultItem
 
     @Environment(NavigationService.self) private var navigationService
@@ -168,7 +185,6 @@ struct BacktestResultDetailView: View {
                 }
             }
 
-
             if result.initialBalance != nil || result.finalBalance != nil {
                 Section("Balance") {
                     if let initial = result.initialBalance {
@@ -192,6 +208,14 @@ struct BacktestResultDetailView: View {
                 LabeledContent("Losing Trades", value: "\(result.tradeResult.numberOfLosingTrades)")
                 LabeledContent("Win Rate", value: formatPercent(result.tradeResult.winRate))
                 LabeledContent("Max Drawdown", value: formatCurrency(result.tradeResult.maxDrawdown))
+                if let sharpeRatio = result.tradeResult.sharpeRatio {
+                    LabeledContentWithHelp(
+                        "Sharpe Ratio",
+                        value: String(format: "%.2f", sharpeRatio)
+                    ) {
+                        SharpeRatioHelper.helpView(for: sharpeRatio)
+                    }
+                }
             }
 
             Section("Trade Holding Time") {
@@ -210,8 +234,54 @@ struct BacktestResultDetailView: View {
             Section("Run Info") {
                 LabeledContent("Run Time", value: resultItem.displayTime)
             }
+
+            if result.backtestConfig != nil || result.strategyConfig != nil {
+                Section("Configuration") {
+                    Button("Show Backtest Config") {
+                        configSheetTab = result.backtestConfig != nil ? .backtest : .strategy
+                        showConfigSheet = true
+                    }
+                    .foregroundStyle(.link)
+                    .buttonStyle(.plain)
+                }
+            }
         }
         .formStyle(.grouped)
+        .sheet(isPresented: $showConfigSheet) {
+            configSheet
+        }
+    }
+
+    private var configSheet: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Configuration").font(.headline)
+                Spacer()
+                Button("Done") { showConfigSheet = false }
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding()
+
+            Picker("Config", selection: $configSheetTab) {
+                ForEach(ConfigTab.allCases) { tab in
+                    Text(tab.localizedName).tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+
+            Divider()
+
+            switch configSheetTab {
+            case .backtest:
+                JSONView(object: result.backtestConfig ?? [:])
+            case .strategy:
+                JSONView(object: result.strategyConfig ?? [:])
+            }
+        }
+        .frame(minWidth: 520, minHeight: 420)
     }
 
     private func formatCurrency(_ value: Double) -> String {
@@ -230,4 +300,5 @@ struct BacktestResultDetailView: View {
         formatter.maximumFractionDigits = 2
         return formatter.string(from: NSNumber(value: value)) ?? "\(value * 100)%"
     }
+
 }

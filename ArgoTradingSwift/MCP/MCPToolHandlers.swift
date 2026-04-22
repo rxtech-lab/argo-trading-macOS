@@ -243,6 +243,38 @@ enum MCPToolHandlers {
         ]))
     }
 
+    // MARK: - get_backtest_status
+
+    @MainActor
+    static func getBacktestStatus(args _: [String: Value]) async throws -> CallTool.Result {
+        guard let handle = DocumentRegistry.shared.current() else {
+            throw MCPToolError.noDocument
+        }
+        let backtest = handle.services.backtest
+        let progress: Value = .object([
+            "current": .int(backtest.currentProgress.current),
+            "total": .int(backtest.currentProgress.total),
+        ])
+        let currentStrategy: Value = backtest.currentStrategy.isEmpty
+            ? .null : .string(backtest.currentStrategy)
+        let currentStrategyId: Value = backtest.currentStrategyId.map { .string($0) } ?? .null
+        let currentDataFile: Value = backtest.currentDataFile.isEmpty
+            ? .null : .string(backtest.currentDataFile)
+        let errors: [Value] = backtest.accumulatedErrors.map { .string($0) }
+        return .json(.object([
+            "is_running": .bool(backtest.isRunning),
+            "current_strategy": currentStrategy,
+            "current_strategy_id": currentStrategyId,
+            "current_data_file": currentDataFile,
+            "progress": progress,
+            "total_strategies": .int(backtest.totalStrategies),
+            "total_configs": .int(backtest.totalConfigs),
+            "total_data_files": .int(backtest.totalDataFiles),
+            "total_data_points": .int(backtest.totalDataPoints),
+            "errors": .array(errors),
+        ]))
+    }
+
     // MARK: - get_config
 
     @MainActor

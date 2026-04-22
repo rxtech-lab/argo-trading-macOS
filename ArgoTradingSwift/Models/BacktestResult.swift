@@ -48,6 +48,8 @@ struct BacktestResult: Codable, Identifiable, Hashable {
     let monthlyTrades: [MonthlyTrade]?
     let monthlyBalance: [MonthlyBalance]?
     let monthlyHoldingTime: [MonthlyHoldingTime]?
+    let backtestConfig: [String: YAMLValue]?
+    let strategyConfig: [String: YAMLValue]?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -70,6 +72,8 @@ struct BacktestResult: Codable, Identifiable, Hashable {
         case monthlyTrades = "monthly_trades"
         case monthlyBalance = "monthly_balance"
         case monthlyHoldingTime = "monthly_holding_time"
+        case backtestConfig = "backtest_config"
+        case strategyConfig = "strategy_config"
     }
 }
 
@@ -80,6 +84,7 @@ struct TradeResult: Codable, Hashable {
     let numberOfLosingTrades: Int
     let winRate: Double
     let maxDrawdown: Double
+    let sharpeRatio: Double?
 
     enum CodingKeys: String, CodingKey {
         case numberOfTrades = "number_of_trades"
@@ -88,6 +93,7 @@ struct TradeResult: Codable, Hashable {
         case numberOfLosingTrades = "number_of_losing_trades"
         case winRate = "win_rate"
         case maxDrawdown = "max_drawdown"
+        case sharpeRatio = "sharpe_ratio"
     }
 }
 

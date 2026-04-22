@@ -19,6 +19,7 @@ enum MCPToolName {
     static let selectData = "select_data"
     static let runBacktest = "run_backtest"
     static let getConfig = "get_config"
+    static let getBacktestStatus = "get_backtest_status"
 }
 
 enum MCPToolCatalog {
@@ -120,6 +121,11 @@ enum MCPToolCatalog {
         Tool(
             name: MCPToolName.getConfig,
             description: "Return the currently selected schema and dataset.",
+            inputSchema: schema()
+        ),
+        Tool(
+            name: MCPToolName.getBacktestStatus,
+            description: "Return whether a backtest is currently running and its progress. Use this to recover status if run_backtest returned an error or timed out but the job may still be running.",
             inputSchema: schema()
         ),
     ]

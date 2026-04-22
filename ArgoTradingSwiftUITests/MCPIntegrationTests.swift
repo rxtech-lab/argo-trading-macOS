@@ -68,7 +68,7 @@ final class MCPIntegrationTests: XCTestCase {
 
     // MARK: - Tests
 
-    func testListToolsReturnsAllNine() async throws {
+    func testListToolsReturnsAllTools() async throws {
         let fixture = try prepareFixture()
         _ = launchApp(fixture: fixture, port: testPort)
 
@@ -79,6 +79,7 @@ final class MCPIntegrationTests: XCTestCase {
         let expected: Set<String> = [
             "load_strategy", "list_schemas", "read_schema", "update_schema",
             "list_data", "select_schema", "select_data", "run_backtest", "get_config",
+            "get_backtest_status",
         ]
         XCTAssertEqual(names, expected, "unexpected tool set: \(names)")
     }
