@@ -6,13 +6,22 @@
 //
 
 import ArgoTrading
+import LightweightChart
 import SwiftUI
+import Translation
 
 struct StrategyMetadataView: View {
     let strategyMetadata: SwiftargoStrategyMetadata
     let strategyId: String?
 
     @Environment(BacktestResultService.self) private var backtestResultService
+
+    @State private var translations: [String: String] = [:]
+    @State private var translationConfig: TranslationSession.Configuration?
+
+    private var translatableValues: [String] {
+        [strategyMetadata.description].filter { !$0.isEmpty }
+    }
 
     // MARK: - Computed Properties
 
@@ -188,7 +197,11 @@ struct StrategyMetadataView: View {
             Section("Metadata") {
                 FormDescriptionField(title: "Name", value: strategyMetadata.name)
                 FormDescriptionField(title: "Identifier", value: strategyMetadata.identifier)
-                FormDescriptionField(title: "Description", value: strategyMetadata.description)
+                FormDescriptionField(
+                    title: "Description",
+                    value: strategyMetadata.description,
+                    translation: translations[strategyMetadata.description]
+                )
                 FormDescriptionField(title: "Engine Api Version", value: strategyMetadata.runtimeVersion)
             }
 
@@ -243,5 +256,49 @@ struct StrategyMetadataView: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear {
+            if translationConfig == nil, !translatableValues.isEmpty {
+                translationConfig = TranslationSession.Configuration(
+                    source: Locale.Language(identifier: "en"),
+                    target: LocaleHelper.preferredTargetLanguage()
+                )
+            }
+        }
+        .onChange(of: strategyMetadata.identifier) { _, _ in
+            translations = [:]
+            if translationConfig != nil {
+                translationConfig?.invalidate()
+            } else if !translatableValues.isEmpty {
+                translationConfig = TranslationSession.Configuration(
+                    source: Locale.Language(identifier: "en"),
+                    target: LocaleHelper.preferredTargetLanguage()
+                )
+            }
+        }
+        .translationTask(translationConfig) { session in
+            await runTranslation(session: session)
+        }
+    }
+
+    private func runTranslation(session: TranslationSession) async {
+        let sources = translatableValues
+        guard !sources.isEmpty else { return }
+        let requests = sources.enumerated().map { index, text in
+            TranslationSession.Request(sourceText: text, clientIdentifier: "\(index)")
+        }
+        do {
+            let responses = try await session.translations(from: requests)
+            var map: [String: String] = [:]
+            for response in responses {
+                guard let id = response.clientIdentifier,
+                      let index = Int(id),
+                      index < sources.count
+                else { continue }
+                map[sources[index]] = response.targetText
+            }
+            translations = map
+        } catch {
+            translations = [:]
+        }
     }
 }

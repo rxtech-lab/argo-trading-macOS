@@ -31,15 +31,20 @@ struct StrategyParametersView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let schema = resolvedSchema {
-                Form {
-                    JSONSchemaForm(schema: schema, formData: .constant(.object(properties: [:])), showSubmitButton: false)
+                ScrollView {
+                    Form {
+                        JSONSchemaForm(schema: schema, formData: .constant(.object(properties: [:])), showSubmitButton: false)
+                    }
+                    .formStyle(.grouped)
+                    .disabled(true)
+                    .frame(maxWidth: .infinity)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
-                .formStyle(.grouped)
-                .disabled(true)
             } else {
                 Text("Invalid JSON Schema")
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             if translationConfig == nil {
                 translationConfig = TranslationSession.Configuration(
