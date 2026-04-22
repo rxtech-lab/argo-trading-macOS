@@ -57,14 +57,19 @@ jobs:
 
       - name: Bump version (release only)
         if: github.event_name == 'release'
-        uses: sirily11/ios-bump-version@v1.6.0
-        with:
-          version: ${{ github.ref_name }}
-          build-number: ${{ github.run_number }}
+        run: |
+          # Strip leading 'v' from release tag (v1.2.3 -> 1.2.3) — Apple's
+          # MARKETING_VERSION must be numeric.
+          RELEASE_VERSION="${GITHUB_REF_NAME#v}"
+          echo "RELEASE_VERSION=${RELEASE_VERSION}" >> "$GITHUB_ENV"
+          ./scripts/update-version.sh "${RELEASE_VERSION}"
 
       - name: Build archive
         run: |
           gem install xcpretty
+          # CURRENT_PROJECT_VERSION is overridden per-build so every CI build
+          # has a unique build number (github.run_number), without committing
+          # churn to project.pbxproj.
           set -o pipefail && xcodebuild -destination platform=macOS \
             -scheme ArgoTradingSwift \
             -configuration Release \
@@ -73,6 +78,7 @@ jobs:
             CODE_SIGN_IDENTITY="${{ secrets.SIGNING_CERTIFICATE_NAME }}" \
             CODE_SIGN_STYLE=Manual \
             OTHER_CODE_SIGN_FLAGS="--options=runtime --timestamp" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             archive | xcpretty
 
       - name: Sign Sparkle
