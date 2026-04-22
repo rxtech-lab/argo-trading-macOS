@@ -591,16 +591,25 @@ function setCandlestickData(data) {
     volumeSeries.setData(volumeData);
   }
 
-  // Restore scroll position (skip on first load when savedRange is null)
-  if (savedRange) {
-    try {
-      chart.timeScale().setVisibleRange(savedRange);
-    } catch (e) {
-      // Range no longer valid (e.g., switched to different file), let chart auto-fit
-    }
-  }
+  restoreVisibleRangeIfOverlapping(savedRange, formattedData);
 
   console.log("[Chart] Data set complete");
+}
+
+// When a dataset switch replaces the chart data, the previously-captured
+// visible range may be entirely outside the new data (e.g., small dataset
+// Apr 18-19 -> large dataset loaded tail Apr 20). setVisibleRange on an
+// out-of-data range leaves the chart stuck with zero visible bars and no
+// scroll events that can drive infinite-scroll, so skip the restore when
+// there is no overlap and let the chart auto-fit to the new data.
+function restoreVisibleRangeIfOverlapping(savedRange, formattedData) {
+  if (!savedRange || !formattedData.length) return;
+  const newFirstTime = formattedData[0].time;
+  const newLastTime = formattedData[formattedData.length - 1].time;
+  if (savedRange.to < newFirstTime || savedRange.from > newLastTime) return;
+  try {
+    chart.timeScale().setVisibleRange(savedRange);
+  } catch (e) {}
 }
 
 // Set line data
@@ -648,14 +657,7 @@ function setLineData(data) {
     volumeSeries.setData(volumeData);
   }
 
-  // Restore scroll position (skip on first load when savedRange is null)
-  if (savedRange) {
-    try {
-      chart.timeScale().setVisibleRange(savedRange);
-    } catch (e) {
-      // Range no longer valid, let chart auto-fit
-    }
-  }
+  restoreVisibleRangeIfOverlapping(savedRange, formattedData);
 }
 
 // Update single data point (for streaming)

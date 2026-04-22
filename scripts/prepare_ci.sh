@@ -44,4 +44,9 @@ download \
     "$S3_BASE/BTCUSDT_2026-04-18_2026-04-19_1_minute.parquet" \
     "$DATA_DIR/BTCUSDT_2026-04-18_2026-04-19_1_minute.parquet"
 
+# Large dataset — used by ScrollChartUITests to exercise infinite-scroll loading.
+download \
+    "$S3_BASE/BTCUSDT_2025-01-01_2026-04-20_1_minute.parquet" \
+    "$DATA_DIR/BTCUSDT_2025-01-01_2026-04-20_1_minute.parquet"
+
 echo -e "${GREEN}All fixtures ready${NC}"

@@ -158,6 +158,7 @@ struct ChartContentView: View {
                 Text("Showing \(vm.loadedData.count) of \(vm.totalCount) records")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("argo.priceChart.recordCount")
             }
 
             Text("Scroll to navigate, pinch to zoom")

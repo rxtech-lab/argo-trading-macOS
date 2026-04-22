@@ -26,6 +26,8 @@ class MockDuckDBService: DuckDBServiceProtocol {
     var mockAggregatedCounts: [ChartTimeInterval: Int] = [:]
     var mockOffsetForTimestamp: Int = 0
     var shouldThrowError = false
+    var fetchDelay: Duration?
+    var fetchAggregatedPriceDataRangeCallCount = 0
 
     func getTotalCount(for filePath: URL) async throws -> Int {
         getTotalCountCalled = true
@@ -68,7 +70,11 @@ class MockDuckDBService: DuckDBServiceProtocol {
         count: Int
     ) async throws -> [PriceData] {
         fetchAggregatedPriceDataRangeCalled = true
+        fetchAggregatedPriceDataRangeCallCount += 1
         lastRequestedInterval = interval
+        if let fetchDelay {
+            try? await Task.sleep(for: fetchDelay)
+        }
         if shouldThrowError {
             throw DuckDBError.connectionError
         }
@@ -1113,5 +1119,119 @@ struct OverlayLoadingTests {
         viewModel.resetOverlayRange()
 
         #expect(viewModel.loadedOverlayRange == nil)
+    }
+}
+
+// MARK: - Pending Load Tests
+
+struct PendingLoadTests {
+    @Test func loadMoreAtBeginning_whileLoading_queuesAndFiresAfter() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 2000
+        mockService.mockPriceData = createMockPriceData(count: 2000)
+        mockService.fetchDelay = .milliseconds(50)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        let initialTask = Task { await viewModel.loadInitialData() }
+        try await Task.sleep(for: .milliseconds(10))
+
+        #expect(viewModel.isLoading)
+        await viewModel.loadMoreAtBeginning()
+
+        await initialTask.value
+
+        // Initial load placed us at offset 1500 (last 500). Pending load should
+        // have prepended another 500, bringing firstGlobalIndex to 1000.
+        #expect(viewModel.loadedData.count == 1000)
+        #expect(viewModel.loadedData.first?.globalIndex == 1000)
+        #expect(mockService.fetchAggregatedPriceDataRangeCallCount == 2)
+    }
+
+    @Test func loadMoreAtEnd_whileLoading_queuesAndFiresAfter() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 2000
+        mockService.mockPriceData = createMockPriceData(count: 2000)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        await viewModel.loadInitialData()
+        await viewModel.loadMoreAtBeginning() // shift window back so there's room at end
+        let countBefore = viewModel.loadedData.count
+        let lastBefore = viewModel.loadedData.last?.globalIndex ?? 0
+
+        // Now queue an end-load during a slow reload.
+        mockService.fetchDelay = .milliseconds(50)
+        mockService.fetchAggregatedPriceDataRangeCallCount = 0
+
+        let reloadTask = Task { await viewModel.loadMoreAtBeginning() }
+        try await Task.sleep(for: .milliseconds(10))
+
+        #expect(viewModel.isLoading)
+        await viewModel.loadMoreAtEnd()
+
+        await reloadTask.value
+
+        // Pending end-load should have fired after the beginning-load finished.
+        #expect(viewModel.loadedData.count > countBefore)
+        #expect((viewModel.loadedData.last?.globalIndex ?? 0) > lastBefore)
+        #expect(mockService.fetchAggregatedPriceDataRangeCallCount == 2)
+    }
+
+    @Test func latestDirection_wins() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 2000
+        mockService.mockPriceData = createMockPriceData(count: 2000)
+        mockService.fetchDelay = .milliseconds(50)
+
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        let initialTask = Task { await viewModel.loadInitialData() }
+        try await Task.sleep(for: .milliseconds(10))
+
+        // Queue beginning, then end — end should overwrite.
+        await viewModel.loadMoreAtBeginning()
+        await viewModel.loadMoreAtEnd()
+
+        await initialTask.value
+
+        // Initial load put firstIndex at 1500. If .beginning had won, firstIndex
+        // would drop to 1000. .end wins → firstIndex stays at 1500.
+        #expect(viewModel.loadedData.first?.globalIndex == 1500)
+        // End-load from offset 2000 fetches 0 rows (we're already at totalCount),
+        // so count stays at 500 but the pending direction was honored.
+        #expect(viewModel.loadedData.count == 500)
+        #expect(mockService.fetchAggregatedPriceDataRangeCallCount == 2)
+    }
+
+    @Test func terminalGuardsDoNotQueue() async throws {
+        let mockService = MockDuckDBService()
+        mockService.mockTotalCount = 300
+        mockService.mockPriceData = createMockPriceData(count: 300)
+        // bufferSize > totalCount means initial load brings in everything
+        // starting at globalIndex 0, so loadMoreAtBeginning hits the
+        // "firstLoadedIndex == 0" terminal guard.
+        let url = URL(fileURLWithPath: "/tmp/test.parquet")
+        let viewModel = PriceChartViewModel(url: url, dbService: mockService, bufferSize: 500)
+
+        mockService.fetchDelay = .milliseconds(50)
+        let initialTask = Task { await viewModel.loadInitialData() }
+        try await Task.sleep(for: .milliseconds(10))
+
+        #expect(viewModel.isLoading)
+        // This call queues as .beginning (isLoading=true guard).
+        await viewModel.loadMoreAtBeginning()
+
+        await initialTask.value
+
+        // Initial loaded everything (firstGlobalIndex = 0). When the pending
+        // .beginning fires, it should hit the terminal guard and NOT re-queue
+        // or issue another fetch.
+        #expect(viewModel.loadedData.first?.globalIndex == 0)
+        #expect(viewModel.loadedData.count == 300)
+        #expect(mockService.fetchAggregatedPriceDataRangeCallCount == 1)
     }
 }

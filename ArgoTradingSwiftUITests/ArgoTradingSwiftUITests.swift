@@ -22,7 +22,7 @@ final class ArgoTradingSwiftUITests: XCTestCase {
         app.launchEnvironment["ARGO_RESET_STATE"] = "1"
         app.launch()
 
-        app/*@START_MENU_TOKEN@*/ .buttons["BTCUSDT, •, 1 minute, Apr 18, 2026 - Apr 19, 2026"]/*[[".cells.buttons[\"BTCUSDT, •, 1 minute, Apr 18, 2026 - Apr 19, 2026\"]",".buttons[\"BTCUSDT, •, 1 minute, Apr 18, 2026 - Apr 19, 2026\"]"],[[[-1,1],[-1,0]]],[0]]@END_MENU_TOKEN@*/ .firstMatch.click()
+        app .buttons["BTCUSDT, •, 1 minute, Apr 18, 2026 - Apr 19, 2026"] .firstMatch.click()
         XCTAssertTrue(app/*@START_MENU_TOKEN@*/ .staticTexts["Price Chart"]/*[[".groups.staticTexts[\"Price Chart\"]",".staticTexts[\"Price Chart\"]"],[[[-1,1],[-1,0]]],[0]]@END_MENU_TOKEN@*/ .waitForExistence(timeout: 20), "Price Chart not found after clicking fixture — it may take a while to load")
 
         app/*@START_MENU_TOKEN@*/ .buttons["place_order_plugin"]/*[[".cells.buttons[\"place_order_plugin\"]",".buttons[\"place_order_plugin\"]"],[[[-1,1],[-1,0]]],[0]]@END_MENU_TOKEN@*/ .firstMatch.click()
