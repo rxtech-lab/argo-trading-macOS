@@ -33,6 +33,8 @@ enum MCPToolDispatcher {
                 return try await MCPToolHandlers.runBacktest(args: args)
             case MCPToolName.getConfig:
                 return try await MCPToolHandlers.getConfig(args: args)
+            case MCPToolName.getBacktestStatus:
+                return try await MCPToolHandlers.getBacktestStatus(args: args)
             default:
                 return .errorText("Unknown tool: \(name)")
             }
