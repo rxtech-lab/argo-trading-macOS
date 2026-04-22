@@ -129,7 +129,7 @@ class PriceChartViewModel {
 
             loadedData = fetchedData
         } catch {
-            onError?(error.localizedDescription)
+            reportErrorIfNotCancelled(error)
         }
 
         isLoading = false
@@ -157,7 +157,7 @@ class PriceChartViewModel {
 
             loadedData = fetchedData
         } catch {
-            onError?(error.localizedDescription)
+            reportErrorIfNotCancelled(error)
         }
 
         isLoading = false
@@ -198,7 +198,7 @@ class PriceChartViewModel {
                 await loadDataAroundOffset(targetOffset, visibleCount: bufferSize * 2)
             }
         } catch {
-            onError?(error.localizedDescription)
+            reportErrorIfNotCancelled(error)
         }
     }
 
@@ -226,7 +226,7 @@ class PriceChartViewModel {
 
             loadedData = fetchedData
         } catch {
-            onError?(error.localizedDescription)
+            reportErrorIfNotCancelled(error)
         }
 
         // sleep to allow UI to update
@@ -445,7 +445,22 @@ class PriceChartViewModel {
 
             loadedOverlayRange = range
         } catch {
-            onError?("Failed to load overlay data: \(error.localizedDescription)")
+            reportErrorIfNotCancelled(error, prefix: "Failed to load overlay data: ")
         }
+    }
+
+    // MARK: - Error Reporting
+
+    /// Forward an error to `onError` unless it was caused by Task cancellation.
+    /// When the user navigates to a different price file, SwiftUI cancels the prior
+    /// `.task`, which interrupts in-flight DuckDB queries. Those surface as errors
+    /// (e.g. DuckDB.DatabaseError 4 / connectionQueryError from interrupt) that are
+    /// not actionable to the user and should not trigger an alert.
+    private func reportErrorIfNotCancelled(_ error: Error, prefix: String = "") {
+        if Task.isCancelled || error is CancellationError {
+            logger.debug("[PriceChartViewModel] suppressed error from cancelled task: \(error)")
+            return
+        }
+        onError?("\(prefix)\(error.localizedDescription)")
     }
 }

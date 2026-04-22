@@ -131,6 +131,14 @@ struct TradingRunDetailView: View {
                 LabeledContent("Losing Trades", value: "\(result.tradeResult.numberOfLosingTrades)")
                 LabeledContent("Win Rate", value: String(format: "%.1f%%", result.tradeResult.winRate * 100))
                 LabeledContent("Max Drawdown", value: formatCurrency(result.tradeResult.maxDrawdown))
+                if let sharpRatio = result.tradeResult.sharpeRatio {
+                    LabeledContentWithHelp(
+                        "Sharpe Ratio",
+                        value: String(format: "%.2f", sharpRatio)
+                    ) {
+                        SharpeRatioHelper.helpView(for: sharpRatio)
+                    }
+                }
             }
 
             Section("Holding Time") {
@@ -154,4 +162,5 @@ struct TradingRunDetailView: View {
         formatter.maximumFractionDigits = 2
         return formatter.string(from: NSNumber(value: value)) ?? "$\(value)"
     }
+
 }

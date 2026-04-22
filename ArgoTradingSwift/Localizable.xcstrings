@@ -38,6 +38,12 @@
             "state" : "new",
             "value" : "%1$@ [%2$lld]"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ [%2$lld]"
+          }
         }
       }
     },
@@ -183,6 +189,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "关于我的应用"
+          }
+        }
+      }
+    },
+    "Acceptable" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可接受"
           }
         }
       }
@@ -1084,6 +1100,16 @@
         }
       }
     },
+    "Excellent" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "优秀"
+          }
+        }
+      }
+    },
     "Exec Price" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1220,7 +1246,17 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "常规"
+            "value" : "通用"
+          }
+        }
+      }
+    },
+    "Good" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "良好"
           }
         }
       }
@@ -1858,6 +1894,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "名称"
+          }
+        }
+      }
+    },
+    "Negative" : {
+      "comment" : "sharpe ratio indicator",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "负比率"
           }
         }
       }
@@ -2783,6 +2830,16 @@
         }
       }
     },
+    "Sharpe Ratio" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "夏普比率"
+          }
+        }
+      }
+    },
     "Show Backtest Config" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3161,6 +3218,16 @@
         }
       }
     },
+    "Suboptimal" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "欠佳"
+          }
+        }
+      }
+    },
     "Symbol" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3227,6 +3294,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法找到所选的交易运行"
+          }
+        }
+      }
+    },
+    "The Sharpe Ratio measures risk-adjusted return. It shows how much excess return you receive for the extra volatility of holding a riskier asset.\n\nA negative ratio (%@) indicates the strategy is underperforming the risk-free rate. Consider reviewing the strategy's risk management." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "夏普比率衡量风险调整后收益。它显示了您为持有风险较高资产所承受的额外波动率，能换取多少超额收益。\n\n负比率（%@）表明该策略跑输无风险利率。请考虑审查该策略的风险管理。"
+          }
+        }
+      }
+    },
+    "The Sharpe Ratio measures risk-adjusted return. It shows how much excess return you receive for the extra volatility of holding a riskier asset.\n\nA ratio above 3.0 (%@) indicates excellent risk-adjusted performance. This is exceptional, but verify it's sustainable and not due to overfitting." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "夏普比率衡量风险调整后收益。它显示了您为持有风险较高资产所承受的额外波动率，能换取多少超额收益。\n\n比率高于3.0（%@）表明风险调整后的表现极佳。这非常优异，但请验证其是否具有可持续性，且不是由于过拟合所致。"
+          }
+        }
+      }
+    },
+    "The Sharpe Ratio measures risk-adjusted return. It shows how much excess return you receive for the extra volatility of holding a riskier asset.\n\nA ratio below 1.0 (%@) suggests suboptimal risk-adjusted returns. The returns may not adequately compensate for the risk taken." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "夏普比率衡量风险调整后收益。它显示了您为持有风险较高资产所承受的额外波动率，能换取多少超额收益。\n\n比率低于1.0（%@）表明风险调整后收益欠佳。收益可能无法充分补偿所承担的风险。"
+          }
+        }
+      }
+    },
+    "The Sharpe Ratio measures risk-adjusted return. It shows how much excess return you receive for the extra volatility of holding a riskier asset.\n\nA ratio between 1.0-2.0 (%@) indicates acceptable risk-adjusted performance. This is considered decent for most strategies." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "夏普比率衡量风险调整后收益。它显示了您为持有风险较高资产所承受的额外波动率，能换取多少超额收益。\n\n比率介于1.0-2.0之间（%@）表明风险调整后的表现尚可。对于大多数策略而言，这已相当不错。"
+          }
+        }
+      }
+    },
+    "The Sharpe Ratio measures risk-adjusted return. It shows how much excess return you receive for the extra volatility of holding a riskier asset.\n\nA ratio between 2.0-3.0 (%@) indicates very good risk-adjusted performance. The strategy is generating strong returns relative to its risk." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "夏普比率衡量风险调整后收益。它显示了您为持有风险较高资产所承受的额外波动率，能换取多少超额收益。\n\n比率介于2.0-3.0之间（%@）表明风险调整后的表现非常好。相对于所承担的风险，该策略正在产生强劲的收益。"
           }
         }
       }

@@ -84,6 +84,7 @@ struct TradeResult: Codable, Hashable {
     let numberOfLosingTrades: Int
     let winRate: Double
     let maxDrawdown: Double
+    let sharpeRatio: Double?
 
     enum CodingKeys: String, CodingKey {
         case numberOfTrades = "number_of_trades"
@@ -92,6 +93,7 @@ struct TradeResult: Codable, Hashable {
         case numberOfLosingTrades = "number_of_losing_trades"
         case winRate = "win_rate"
         case maxDrawdown = "max_drawdown"
+        case sharpeRatio = "sharpe_ratio"
     }
 }
 
