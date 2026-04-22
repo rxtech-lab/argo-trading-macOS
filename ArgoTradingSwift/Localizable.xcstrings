@@ -31,6 +31,16 @@
         }
       }
     },
+    "%@ [%lld]" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ [%2$lld]"
+          }
+        }
+      }
+    },
     "%@ **Cancelled**" : {
       "localizations" : {
         "zh-Hans" : {
@@ -374,6 +384,16 @@
         }
       }
     },
+    "Backtest Config" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回测配置"
+          }
+        }
+      }
+    },
     "Backtest Engine Configuration" : {
       "localizations" : {
         "zh-Hans" : {
@@ -592,6 +612,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已完成"
+          }
+        }
+      }
+    },
+    "Config" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "配置"
           }
         }
       }
@@ -2023,6 +2053,16 @@
         }
       }
     },
+    "No values" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有数据"
+          }
+        }
+      }
+    },
     "Number of Trades" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2743,6 +2783,16 @@
         }
       }
     },
+    "Show Backtest Config" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看回测配置"
+          }
+        }
+      }
+    },
     "Show dataset info" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3081,6 +3131,16 @@
         }
       }
     },
+    "Strategy Config" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "策略配置"
+          }
+        }
+      }
+    },
     "Strategy Info" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3353,7 +3413,14 @@
       }
     },
     "Translating…" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻译中"
+          }
+        }
+      }
     },
     "Type" : {
       "localizations" : {
