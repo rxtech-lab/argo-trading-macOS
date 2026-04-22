@@ -9,6 +9,20 @@ import Combine
 import SwiftUI
 import WebKit
 
+/// Reference-type holder for view callbacks. `setupCallbacks` runs once per
+/// mount via `.task` and captures `self` by value — SwiftUI re-creating the
+/// `LightweightChartView` struct with a different callback closure (e.g. when
+/// the parent view-model changes) would otherwise leave the Combine sink
+/// dispatching to the old, orphaned callback. Routing callbacks through this
+/// class gives the sink a stable reference whose fields we keep in sync with
+/// the current view struct on every render.
+@MainActor
+final class LightweightChartCallbackBox {
+    var onScrollChange: ((VisibleLogicalRange) async -> Void)?
+    var onSelectionChange: ((Int?) -> Void)?
+    var onMarkerHover: ((JSMarkerHoverData?) -> Void)?
+}
+
 /// SwiftUI wrapper for TradingView Lightweight Charts
 public struct LightweightChartView: View {
     // MARK: - Properties
@@ -34,6 +48,7 @@ public struct LightweightChartView: View {
     @State private var isChartReady = false
     @State private var scrollSubject = PassthroughSubject<JSVisibleRange, Never>()
     @State private var scrollCancellable: AnyCancellable?
+    @State private var callbackBox = LightweightChartCallbackBox()
 
     // Tooltip state
     @State private var tooltipData: JSMarkerHoverData?
@@ -69,7 +84,17 @@ public struct LightweightChartView: View {
     }
 
     public var body: some View {
-        chartContent
+        // Keep the callback box in sync with the current view's closures.
+        // The Combine sink in setupCallbacks captures the box by reference
+        // (stable across re-renders because it lives in @State backing),
+        // so this ensures scroll/selection/hover events always dispatch to
+        // the latest parent-supplied handlers — e.g. after the parent swaps
+        // to a new PriceChartViewModel when the dataset URL changes.
+        callbackBox.onScrollChange = onScrollChange
+        callbackBox.onSelectionChange = onSelectionChange
+        callbackBox.onMarkerHover = onMarkerHover
+
+        return chartContent
             .task {
                 await initializeChart()
             }
@@ -217,13 +242,18 @@ public struct LightweightChartView: View {
     // MARK: - Private Methods
 
     private func setupCallbacks() {
+        let box = callbackBox
         scrollCancellable =
             scrollSubject
             .debounce(for: .milliseconds(40), scheduler: RunLoop.main)
             .removeDuplicates()
             .sink { range in
-                Task {
-                    await handleVisibleRangeChange(range)
+                Task { @MainActor in
+                    let visibleRange = VisibleLogicalRange(
+                        localFromIndex: Int(range.from),
+                        localToIndex: Int(range.to)
+                    )
+                    await box.onScrollChange?(visibleRange)
                 }
             }
 
@@ -232,26 +262,13 @@ public struct LightweightChartView: View {
         }
 
         chartService.onCrosshairMove = { crosshairData in
-            onSelectionChange?(crosshairData.globalIndex)
+            box.onSelectionChange?(crosshairData.globalIndex)
         }
 
         chartService.onMarkerHover = { hoverData in
             tooltipData = hoverData
-            onMarkerHover?(hoverData)
+            box.onMarkerHover?(hoverData)
         }
-    }
-
-    @MainActor
-    private func handleVisibleRangeChange(_ range: JSVisibleRange) async {
-        let from = Int(range.from)
-        let to = Int(range.to)
-
-        let visibleRange = VisibleLogicalRange(
-            localFromIndex: from,
-            localToIndex: to
-        )
-
-        await onScrollChange?(visibleRange)
     }
 
     @MainActor

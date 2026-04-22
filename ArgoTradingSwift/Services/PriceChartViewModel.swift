@@ -26,6 +26,9 @@ class PriceChartViewModel {
     private(set) var currentOffset: Int = 0
     private(set) var isLoading = false
 
+    private enum PendingLoadDirection { case beginning, end }
+    private var pendingLoad: PendingLoadDirection?
+
     /// Current time interval for chart aggregation
     private(set) var timeInterval: ChartTimeInterval = .oneSecond
 
@@ -130,6 +133,7 @@ class PriceChartViewModel {
         }
 
         isLoading = false
+        await processPendingLoad()
     }
 
     func loadInitialData() async {
@@ -157,6 +161,7 @@ class PriceChartViewModel {
         }
 
         isLoading = false
+        await processPendingLoad()
     }
 
     /// Scroll to a specific timestamp, loading data if necessary
@@ -227,14 +232,26 @@ class PriceChartViewModel {
         // sleep to allow UI to update
         try? await Task.sleep(for: .seconds(0.2))
         isLoading = false
+        await processPendingLoad()
     }
 
     // MARK: - Private Methods
 
+    private func processPendingLoad() async {
+        guard let direction = pendingLoad else { return }
+        pendingLoad = nil
+        logger.info("[processPendingLoad] firing \(String(describing: direction))")
+        switch direction {
+        case .beginning: await loadMoreAtBeginning()
+        case .end: await loadMoreAtEnd()
+        }
+    }
+
     @MainActor
     func loadMoreAtBeginning() async {
         guard !isLoading else {
-            logger.debug("[loadMoreAtBeginning] SKIP: isLoading=true")
+            pendingLoad = .beginning
+            logger.debug("[loadMoreAtBeginning] QUEUED: isLoading=true")
             return
         }
         guard let firstData = loadedData.first else {
@@ -273,11 +290,13 @@ class PriceChartViewModel {
         }
 
         isLoading = false
+        await processPendingLoad()
     }
 
     func loadMoreAtEnd() async {
         guard !isLoading else {
-            logger.debug("[loadMoreAtEnd] SKIP: isLoading=true")
+            pendingLoad = .end
+            logger.debug("[loadMoreAtEnd] QUEUED: isLoading=true")
             return
         }
         isLoading = true
@@ -307,6 +326,7 @@ class PriceChartViewModel {
         }
 
         isLoading = false
+        await processPendingLoad()
     }
 
     // MARK: - Scroll Handling

@@ -46,6 +46,35 @@ enum UITestUtils {
         }
     }
 
+    /// Parses the `argo.priceChart.recordCount` label "Showing 500 of 675840 records"
+    /// into its two integers. Returns `(0, 0)` if the label can't be parsed.
+    static func parseRecordCount(_ label: String) -> (loaded: Int, total: Int) {
+        let numbers = label
+            .replacingOccurrences(of: ",", with: "")
+            .components(separatedBy: .whitespaces)
+            .compactMap(Int.init)
+        guard numbers.count >= 2 else { return (0, 0) }
+        return (numbers[0], numbers[1])
+    }
+
+    /// Reads the record-count string from an XCUIElement. On macOS, SwiftUI
+    /// `Text` exposes its content as `AXValue` (-> `element.value`) rather than
+    /// `AXLabel`, so `element.label` is often empty. Try value first, then
+    /// fall back to label/title so the helper stays robust across platforms
+    /// and SwiftUI versions.
+    static func readRecordCount(_ element: XCUIElement) -> (loaded: Int, total: Int) {
+        let candidates: [String] = [
+            element.value as? String,
+            element.label,
+            element.title,
+        ].compactMap { $0 }.filter { !$0.isEmpty }
+        for text in candidates {
+            let parsed = parseRecordCount(text)
+            if parsed.loaded > 0 || parsed.total > 0 { return parsed }
+        }
+        return (0, 0)
+    }
+
     static func findResultsTab(in app: XCUIApplication) -> XCUIElement {
         let candidates: [XCUIElement] = [
             app.buttons.matching(identifier: "argo.backtestTab.Results").firstMatch,

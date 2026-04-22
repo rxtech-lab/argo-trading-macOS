@@ -21,3 +21,5 @@ testdata/result/*
 testdata/strategy/*.wasm
 testdata/data/*.parquet
 *.parquet
+build
+*.profraw
