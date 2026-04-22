@@ -332,7 +332,8 @@ actor MCPHTTPServer {
         let server = MCP.Server(
             name: "ArgoTradingSwift",
             version: Bundle.main.appVersion ?? "0.0.0",
-            instructions: "Control ArgoTradingSwift: import strategies, read/update schemas, list data, select, and run backtests."
+            instructions: "Control ArgoTradingSwift: import strategies, read/update schemas, list data, select, and run backtests.",
+            capabilities: .init(tools: .init())
         )
         await registerHandlers(on: server)
         try await server.start(transport: transport)

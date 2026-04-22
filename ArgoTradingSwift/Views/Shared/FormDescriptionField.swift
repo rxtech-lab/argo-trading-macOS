@@ -10,13 +10,22 @@ import SwiftUI
 struct FormDescriptionField: View {
     let title: LocalizedStringKey
     let value: String
+    var translation: String? = nil
 
     var body: some View {
-        HStack {
+        HStack(alignment: .top) {
             Text(title)
             Spacer()
-            Text(value)
-                .multilineTextAlignment(.trailing)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(value)
+                    .multilineTextAlignment(.trailing)
+                if let translation, !translation.isEmpty, translation != value {
+                    Text(translation)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.trailing)
+                }
+            }
         }
     }
 }
