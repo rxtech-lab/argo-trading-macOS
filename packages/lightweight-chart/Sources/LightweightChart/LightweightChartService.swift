@@ -136,6 +136,7 @@ func parseMarkerHoverData(from body: Any) -> JSMarkerHoverData? {
             positionType: markerDict["positionType"] as? String,
             executedQty: markerDict["executedQty"] as? Double,
             executedPrice: markerDict["executedPrice"] as? Double,
+            averageCost: markerDict["averageCost"] as? Double,
             pnl: markerDict["pnl"] as? Double,
             cumulativePnl: markerDict["cumulativePnl"] as? Double,
             openPositionQty: markerDict["openPositionQty"] as? Double,

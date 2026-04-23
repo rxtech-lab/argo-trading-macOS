@@ -118,19 +118,51 @@ struct TradingRunDetailView: View {
             }
 
             Section("PnL") {
-                LabeledContent("Total PnL", value: formatCurrency(result.tradePnl.totalPnl))
-                LabeledContent("Realized PnL", value: formatCurrency(result.tradePnl.realizedPnl))
-                LabeledContent("Unrealized PnL", value: formatCurrency(result.tradePnl.unrealizedPnl))
-                LabeledContent("Maximum Profit", value: formatCurrency(result.tradePnl.maximumProfit))
+                LabeledContentWithHelp(
+                    "Total PnL",
+                    value: formatCurrency(result.tradePnl.totalPnl),
+                    help: PnLMetricsHelper.totalPnl
+                )
+                LabeledContentWithHelp(
+                    "Realized PnL",
+                    value: formatCurrency(result.tradePnl.realizedPnl),
+                    help: PnLMetricsHelper.realizedPnl
+                )
+                LabeledContentWithHelp(
+                    "Unrealized PnL",
+                    value: formatCurrency(result.tradePnl.unrealizedPnl),
+                    help: PnLMetricsHelper.unrealizedPnl
+                )
+                LabeledContentWithHelp(
+                    "Maximum Profit",
+                    value: formatCurrency(result.tradePnl.maximumProfit),
+                    help: PnLMetricsHelper.maximumProfit
+                )
                 LabeledContent("Maximum Loss", value: formatCurrency(result.tradePnl.maximumLoss))
             }
 
             Section("Trade Results") {
                 LabeledContent("Number of Trades", value: "\(result.tradeResult.numberOfTrades)")
-                LabeledContent("Winning Trades", value: "\(result.tradeResult.numberOfWinningTrades)")
-                LabeledContent("Losing Trades", value: "\(result.tradeResult.numberOfLosingTrades)")
-                LabeledContent("Win Rate", value: String(format: "%.1f%%", result.tradeResult.winRate * 100))
-                LabeledContent("Max Drawdown", value: formatCurrency(result.tradeResult.maxDrawdown))
+                LabeledContentWithHelp(
+                    "Winning Trades",
+                    value: "\(result.tradeResult.numberOfWinningTrades)",
+                    help: PnLMetricsHelper.winningTrades
+                )
+                LabeledContentWithHelp(
+                    "Losing Trades",
+                    value: "\(result.tradeResult.numberOfLosingTrades)",
+                    help: PnLMetricsHelper.losingTrades
+                )
+                LabeledContentWithHelp(
+                    "Win Rate",
+                    value: String(format: "%.1f%%", result.tradeResult.winRate * 100),
+                    help: PnLMetricsHelper.winRate
+                )
+                LabeledContentWithHelp(
+                    "Max Drawdown",
+                    value: formatCurrency(result.tradeResult.maxDrawdown),
+                    help: PnLMetricsHelper.maxDrawdown
+                )
                 if let sharpRatio = result.tradeResult.sharpeRatio {
                     LabeledContentWithHelp(
                         "Sharpe Ratio",
@@ -141,10 +173,15 @@ struct TradingRunDetailView: View {
                 }
             }
 
-            Section("Holding Time") {
+            Section {
                 LabeledContent("Min", value: String(format: "%.1f min", result.tradeHoldingTime.min))
                 LabeledContent("Max", value: String(format: "%.1f min", result.tradeHoldingTime.max))
                 LabeledContent("Average", value: String(format: "%.1f min", result.tradeHoldingTime.avg))
+            } header: {
+                SectionHeaderWithHelp(
+                    title: "Holding Time",
+                    help: PnLMetricsHelper.tradeHoldingTime
+                )
             }
 
             Section("Fees") {

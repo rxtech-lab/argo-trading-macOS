@@ -24,7 +24,7 @@ struct GroupedChartPoint: Identifiable, Hashable {
 }
 
 struct CategoryLineChartView: View {
-    let title: String
+    let title: LocalizedStringKey
     let points: [CategoryChartPoint]
     let lineColor: Color
     let xAxisLabel: String
@@ -33,7 +33,7 @@ struct CategoryLineChartView: View {
     @State private var selectedCategory: String?
 
     init(
-        title: String,
+        title: LocalizedStringKey,
         points: [CategoryChartPoint],
         lineColor: Color = .accentColor,
         xAxisLabel: String = "Category",
@@ -114,7 +114,7 @@ struct CategoryLineChartView: View {
 }
 
 struct GroupedBarChartView: View {
-    let title: String
+    let title: LocalizedStringKey
     let points: [GroupedChartPoint]
     let seriesOrder: [String]
     let seriesColors: [String: Color]
@@ -124,7 +124,7 @@ struct GroupedBarChartView: View {
     @State private var selectedCategory: String?
 
     init(
-        title: String,
+        title: LocalizedStringKey,
         points: [GroupedChartPoint],
         seriesOrder: [String],
         seriesColors: [String: Color],
@@ -170,7 +170,7 @@ struct GroupedBarChartView: View {
                             Circle()
                                 .fill(seriesColors[name] ?? .accentColor)
                                 .frame(width: 8, height: 8)
-                            Text(name)
+                            Text(LocalizedStringKey(name))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -215,7 +215,7 @@ struct GroupedBarChartView: View {
 }
 
 struct CategoryBarChartView: View {
-    let title: String
+    let title: LocalizedStringKey
     let points: [CategoryChartPoint]
     let positiveColor: Color
     let negativeColor: Color?
@@ -225,7 +225,7 @@ struct CategoryBarChartView: View {
     @State private var selectedCategory: String?
 
     init(
-        title: String,
+        title: LocalizedStringKey,
         points: [CategoryChartPoint],
         positiveColor: Color = .accentColor,
         negativeColor: Color? = nil,
@@ -369,7 +369,7 @@ private struct ChartGroupedTooltipOverlay: View {
                             Circle()
                                 .fill(seriesColors[point.series] ?? .accentColor)
                                 .frame(width: 6, height: 6)
-                            Text(point.series)
+                            Text(LocalizedStringKey(point.series))
                                 .foregroundStyle(.secondary)
                             Text(point.displayValue)
                                 .fontWeight(.semibold)

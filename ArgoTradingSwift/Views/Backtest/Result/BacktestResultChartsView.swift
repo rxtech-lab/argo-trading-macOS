@@ -171,7 +171,7 @@ struct BacktestResultChartsView: View {
 
     @ViewBuilder
     private func chartGroup<Content: View>(
-        title: String,
+        title: LocalizedStringKey,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 16) {

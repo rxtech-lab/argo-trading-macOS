@@ -168,20 +168,52 @@ struct BacktestResultDetailView: View {
             }
 
             Section("Profit & Loss") {
-                LabeledContent("Total PnL", value: formatCurrency(result.tradePnl.totalPnl))
-                LabeledContent("Realized PnL", value: formatCurrency(result.tradePnl.realizedPnl))
-                LabeledContent("Unrealized PnL", value: formatCurrency(result.tradePnl.unrealizedPnl))
-                LabeledContent("Buy & Hold PnL", value: formatCurrency(result.buyAndHoldPnl))
-                LabeledContent("Maximum Profit", value: formatCurrency(result.tradePnl.maximumProfit))
+                LabeledContentWithHelp(
+                    "Total PnL",
+                    value: formatCurrency(result.tradePnl.totalPnl)
+                ) {
+                    PnLComparisonHelper.helpView(
+                        totalPnl: result.tradePnl.totalPnl,
+                        buyAndHoldPnl: result.buyAndHoldPnl
+                    )
+                }
+                LabeledContentWithHelp(
+                    "Realized PnL",
+                    value: formatCurrency(result.tradePnl.realizedPnl),
+                    help: PnLMetricsHelper.realizedPnl
+                )
+                LabeledContentWithHelp(
+                    "Unrealized PnL",
+                    value: formatCurrency(result.tradePnl.unrealizedPnl),
+                    help: PnLMetricsHelper.unrealizedPnl
+                )
+                LabeledContentWithHelp(
+                    "Buy & Hold PnL",
+                    value: formatCurrency(result.buyAndHoldPnl),
+                    help: PnLMetricsHelper.buyAndHoldPnl
+                )
+                LabeledContentWithHelp(
+                    "Maximum Profit",
+                    value: formatCurrency(result.tradePnl.maximumProfit),
+                    help: PnLMetricsHelper.maximumProfit
+                )
                 LabeledContent("Maximum Loss", value: formatCurrency(result.tradePnl.maximumLoss))
                 if let median = result.tradePnl.medianPnl {
                     LabeledContent("Median PnL", value: formatCurrency(median))
                 }
                 if let investment = result.tradePnl.totalInvestment {
-                    LabeledContent("Total Investment", value: formatCurrency(investment))
+                    LabeledContentWithHelp(
+                        "Total Investment",
+                        value: formatCurrency(investment),
+                        help: PnLMetricsHelper.totalInvestment
+                    )
                 }
                 if let pct = result.tradePnl.pnlPercentage {
-                    LabeledContent("PnL %", value: formatPercent(pct))
+                    LabeledContentWithHelp(
+                        "PnL %",
+                        value: formatPercent(pct),
+                        help: PnLMetricsHelper.pnlPercentage
+                    )
                 }
             }
 
@@ -202,12 +234,32 @@ struct BacktestResultDetailView: View {
             Section("Trade Results") {
                 LabeledContent("Number of Trades", value: "\(result.tradeResult.numberOfTrades)")
                 if let pairs = result.tradeResult.numberOfTradingPairs {
-                    LabeledContent("Trading Pairs", value: "\(pairs)")
+                    LabeledContentWithHelp(
+                        "Trading Pairs",
+                        value: "\(pairs)",
+                        help: PnLMetricsHelper.tradingPairs
+                    )
                 }
-                LabeledContent("Winning Trades", value: "\(result.tradeResult.numberOfWinningTrades)")
-                LabeledContent("Losing Trades", value: "\(result.tradeResult.numberOfLosingTrades)")
-                LabeledContent("Win Rate", value: formatPercent(result.tradeResult.winRate))
-                LabeledContent("Max Drawdown", value: formatCurrency(result.tradeResult.maxDrawdown))
+                LabeledContentWithHelp(
+                    "Winning Trades",
+                    value: "\(result.tradeResult.numberOfWinningTrades)",
+                    help: PnLMetricsHelper.winningTrades
+                )
+                LabeledContentWithHelp(
+                    "Losing Trades",
+                    value: "\(result.tradeResult.numberOfLosingTrades)",
+                    help: PnLMetricsHelper.losingTrades
+                )
+                LabeledContentWithHelp(
+                    "Win Rate",
+                    value: formatPercent(result.tradeResult.winRate),
+                    help: PnLMetricsHelper.winRate
+                )
+                LabeledContentWithHelp(
+                    "Max Drawdown",
+                    value: formatCurrency(result.tradeResult.maxDrawdown),
+                    help: PnLMetricsHelper.maxDrawdown
+                )
                 if let sharpeRatio = result.tradeResult.sharpeRatio {
                     LabeledContentWithHelp(
                         "Sharpe Ratio",
@@ -218,13 +270,18 @@ struct BacktestResultDetailView: View {
                 }
             }
 
-            Section("Trade Holding Time") {
+            Section {
                 LabeledContent("Minimum", value: DurationFormatter.format(result.tradeHoldingTime.min))
                 LabeledContent("Maximum", value: DurationFormatter.format(result.tradeHoldingTime.max))
                 LabeledContent("Average", value: DurationFormatter.format(result.tradeHoldingTime.avg))
                 if let median = result.tradeHoldingTime.median {
                     LabeledContent("Median", value: DurationFormatter.format(median))
                 }
+            } header: {
+                SectionHeaderWithHelp(
+                    title: "Trade Holding Time",
+                    help: PnLMetricsHelper.tradeHoldingTime
+                )
             }
 
             Section("Fees") {
@@ -232,7 +289,11 @@ struct BacktestResultDetailView: View {
             }
 
             Section("Run Info") {
-                LabeledContent("Run Time", value: resultItem.displayTime)
+                LabeledContentWithHelp(
+                    "Run Time",
+                    value: resultItem.displayDateTime,
+                    help: PnLMetricsHelper.runTimestamp
+                )
             }
 
             if result.backtestConfig != nil || result.strategyConfig != nil {

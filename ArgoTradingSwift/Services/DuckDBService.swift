@@ -522,7 +522,7 @@ class DuckDBService: DuckDBServiceProtocol {
             "order_id", "symbol", "order_type", "quantity", "price",
             "timestamp", "is_completed", "reason", "message",
             "strategy_name", "executed_at", "executed_qty", "executed_price",
-            "commission", "pnl", "cumulative_pnl", "position_type",
+            "average_cost", "commission", "pnl", "cumulative_pnl", "position_type",
             "open_position_qty", "balance", "hold_time",
         ]
         let column = validColumns.contains(sortColumn) ? sortColumn : "timestamp"
@@ -554,6 +554,7 @@ class DuckDBService: DuckDBServiceProtocol {
             CAST(executed_at AS VARCHAR),
             executed_qty,
             executed_price,
+            average_cost,
             commission,
             pnl,
             cumulative_pnl,
@@ -581,13 +582,14 @@ class DuckDBService: DuckDBServiceProtocol {
         let executedAts = Array(result[10].cast(to: String.self))
         let executedQtys = Array(result[11].cast(to: Double.self))
         let executedPrices = Array(result[12].cast(to: Double.self))
-        let commissions = Array(result[13].cast(to: Double.self))
-        let pnls = Array(result[14].cast(to: Double.self))
-        let cumulativePnls = Array(result[15].cast(to: Double.self))
-        let positionTypes = Array(result[16].cast(to: String.self))
-        let openPositionQtys = Array(result[17].cast(to: Double.self))
-        let balances = Array(result[18].cast(to: Double.self))
-        let holdTimes = Array(result[19].cast(to: Double.self))
+        let averageCosts = Array(result[13].cast(to: Double.self))
+        let commissions = Array(result[14].cast(to: Double.self))
+        let pnls = Array(result[15].cast(to: Double.self))
+        let cumulativePnls = Array(result[16].cast(to: Double.self))
+        let positionTypes = Array(result[17].cast(to: String.self))
+        let openPositionQtys = Array(result[18].cast(to: Double.self))
+        let balances = Array(result[19].cast(to: Double.self))
+        let holdTimes = Array(result[20].cast(to: Double.self))
 
         let count = orderIds.count
         var trades: [Trade] = []
@@ -609,6 +611,7 @@ class DuckDBService: DuckDBServiceProtocol {
                 executedAt: executedAt,
                 executedQty: executedQtys[i] ?? 0.0,
                 executedPrice: executedPrices[i] ?? 0.0,
+                averageCost: averageCosts[i] ?? 0.0,
                 commission: commissions[i] ?? 0.0,
                 pnl: pnls[i] ?? 0.0,
                 cumulativePnl: cumulativePnls[i] ?? 0.0,
@@ -962,6 +965,7 @@ class DuckDBService: DuckDBServiceProtocol {
             CAST(executed_at AS VARCHAR),
             executed_qty,
             executed_price,
+            average_cost,
             commission,
             pnl,
             cumulative_pnl,
@@ -989,13 +993,14 @@ class DuckDBService: DuckDBServiceProtocol {
         let executedAts = Array(result[10].cast(to: String.self))
         let executedQtys = Array(result[11].cast(to: Double.self))
         let executedPrices = Array(result[12].cast(to: Double.self))
-        let commissions = Array(result[13].cast(to: Double.self))
-        let pnls = Array(result[14].cast(to: Double.self))
-        let cumulativePnls = Array(result[15].cast(to: Double.self))
-        let positionTypes = Array(result[16].cast(to: String.self))
-        let openPositionQtys = Array(result[17].cast(to: Double.self))
-        let balances = Array(result[18].cast(to: Double.self))
-        let holdTimes = Array(result[19].cast(to: Double.self))
+        let averageCosts = Array(result[13].cast(to: Double.self))
+        let commissions = Array(result[14].cast(to: Double.self))
+        let pnls = Array(result[15].cast(to: Double.self))
+        let cumulativePnls = Array(result[16].cast(to: Double.self))
+        let positionTypes = Array(result[17].cast(to: String.self))
+        let openPositionQtys = Array(result[18].cast(to: Double.self))
+        let balances = Array(result[19].cast(to: Double.self))
+        let holdTimes = Array(result[20].cast(to: Double.self))
 
         let count = orderIds.count
         var trades: [Trade] = []
@@ -1017,6 +1022,7 @@ class DuckDBService: DuckDBServiceProtocol {
                 executedAt: executedAt,
                 executedQty: executedQtys[i] ?? 0.0,
                 executedPrice: executedPrices[i] ?? 0.0,
+                averageCost: averageCosts[i] ?? 0.0,
                 commission: commissions[i] ?? 0.0,
                 pnl: pnls[i] ?? 0.0,
                 cumulativePnl: cumulativePnls[i] ?? 0.0,

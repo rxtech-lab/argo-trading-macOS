@@ -20,24 +20,24 @@ struct LabeledContentWithHelp<Content: View, HelpContent: View>: View {
         self.helpContent = nil
     }
 
-    init(_ label: LocalizedStringKey, help: LocalizedStringKey, @ViewBuilder content: () -> Content) where HelpContent == Text {
+    init(
+        _ label: LocalizedStringKey,
+        help: LocalizedStringKey,
+        @ViewBuilder content: () -> Content
+    ) where HelpContent == HelpTextPopover {
         self.label = label
         self.content = content()
-        self.helpContent = Text(help)
-            .font(.callout)
-            .padding()
-            .frame(width: 320)
-            .fixedSize(horizontal: false, vertical: true) as? HelpContent
+        self.helpContent = HelpTextPopover(text: help)
     }
 
-    init(_ label: LocalizedStringKey, value: String, help: LocalizedStringKey) where Content == Text, HelpContent == Text {
+    init(
+        _ label: LocalizedStringKey,
+        value: String,
+        help: LocalizedStringKey
+    ) where Content == Text, HelpContent == HelpTextPopover {
         self.label = label
         self.content = Text(value)
-        self.helpContent = Text(help)
-            .font(.callout)
-            .padding()
-            .frame(width: 320)
-            .fixedSize(horizontal: false, vertical: true) as? HelpContent
+        self.helpContent = HelpTextPopover(text: help)
     }
 
     init(_ label: LocalizedStringKey, value: String, @ViewBuilder helpContent: () -> HelpContent) where Content == Text {
@@ -58,7 +58,7 @@ struct LabeledContentWithHelp<Content: View, HelpContent: View>: View {
         } label: {
             HStack(spacing: 4) {
                 Text(label)
-                if helpContent != nil {
+                if let helpContent {
                     Button {
                         showingHelp.toggle()
                     } label: {
@@ -73,5 +73,17 @@ struct LabeledContentWithHelp<Content: View, HelpContent: View>: View {
                 }
             }
         }
+    }
+}
+
+struct HelpTextPopover: View {
+    let text: LocalizedStringKey
+
+    var body: some View {
+        Text(text)
+            .font(.callout)
+            .padding()
+            .frame(width: 320)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
