@@ -116,6 +116,7 @@ public struct JSMarkerInfo: Sendable {
     public let positionType: String?
     public let executedQty: Double?
     public let executedPrice: Double?
+    public let averageCost: Double?
     public let pnl: Double?
     public let cumulativePnl: Double?
     public let openPositionQty: Double?
@@ -140,6 +141,7 @@ public struct JSMarkerInfo: Sendable {
         positionType: String? = nil,
         executedQty: Double? = nil,
         executedPrice: Double? = nil,
+        averageCost: Double? = nil,
         pnl: Double? = nil,
         cumulativePnl: Double? = nil,
         openPositionQty: Double? = nil,
@@ -161,6 +163,7 @@ public struct JSMarkerInfo: Sendable {
         self.positionType = positionType
         self.executedQty = executedQty
         self.executedPrice = executedPrice
+        self.averageCost = averageCost
         self.pnl = pnl
         self.cumulativePnl = cumulativePnl
         self.openPositionQty = openPositionQty
@@ -244,6 +247,7 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
     public var positionType: String?
     public var executedQty: Double?
     public var executedPrice: Double?
+    public var averageCost: Double?
     public var pnl: Double?
     public var cumulativePnl: Double?
     public var openPositionQty: Double?
@@ -272,6 +276,7 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
         positionType: String? = nil,
         executedQty: Double? = nil,
         executedPrice: Double? = nil,
+        averageCost: Double? = nil,
         pnl: Double? = nil,
         cumulativePnl: Double? = nil,
         openPositionQty: Double? = nil,
@@ -297,6 +302,7 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
         self.positionType = positionType
         self.executedQty = executedQty
         self.executedPrice = executedPrice
+        self.averageCost = averageCost
         self.pnl = pnl
         self.cumulativePnl = cumulativePnl
         self.openPositionQty = openPositionQty
@@ -347,6 +353,8 @@ public enum IndicatorType: String, CaseIterable, Identifiable, Codable, Sendable
     case vwap = "VWAP"
     case rsi = "RSI"
     case macd = "MACD"
+    case williamsR = "Williams %R"
+    case psychLine = "Psychological Line"
 
     public var id: String { rawValue }
 
@@ -358,7 +366,7 @@ public enum IndicatorType: String, CaseIterable, Identifiable, Codable, Sendable
         switch self {
         case .sma, .ema, .vwap:
             return true
-        case .rsi, .macd:
+        case .rsi, .macd, .williamsR, .psychLine:
             return false
         }
     }
@@ -376,6 +384,10 @@ public enum IndicatorType: String, CaseIterable, Identifiable, Codable, Sendable
             return ["period": 14]
         case .macd:
             return ["fastPeriod": 12, "slowPeriod": 26, "signalPeriod": 9]
+        case .williamsR:
+            return ["period": 14]
+        case .psychLine:
+            return ["period": 12]
         }
     }
 
@@ -390,6 +402,10 @@ public enum IndicatorType: String, CaseIterable, Identifiable, Codable, Sendable
             return "gauge.with.needle"
         case .macd:
             return "waveform.path.ecg"
+        case .williamsR:
+            return "gauge.with.dots.needle.bottom.50percent"
+        case .psychLine:
+            return "percent"
         }
     }
 
@@ -406,6 +422,10 @@ public enum IndicatorType: String, CaseIterable, Identifiable, Codable, Sendable
             return "#4CAF50"
         case .macd:
             return "#E91E63"
+        case .williamsR:
+            return "#00BCD4"
+        case .psychLine:
+            return "#795548"
         }
     }
 }
@@ -464,9 +484,13 @@ public struct IndicatorSettings: Codable, Equatable, Sendable {
     /// Decode from JSON Data
     public static func fromData(_ data: Data?) -> IndicatorSettings {
         guard let data = data,
-            let settings = try? JSONDecoder().decode(IndicatorSettings.self, from: data)
+            var settings = try? JSONDecoder().decode(IndicatorSettings.self, from: data)
         else {
             return .default
+        }
+        let existingTypes = Set(settings.indicators.map { $0.type })
+        for type in IndicatorType.allCases where !existingTypes.contains(type) {
+            settings.indicators.append(IndicatorConfig(type: type, isEnabled: false))
         }
         return settings
     }

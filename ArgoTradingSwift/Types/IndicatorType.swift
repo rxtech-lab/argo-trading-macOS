@@ -14,6 +14,8 @@ enum IndicatorType: String, CaseIterable, Identifiable, Codable {
     case vwap = "VWAP"
     case rsi = "RSI"
     case macd = "MACD"
+    case williamsR = "Williams %R"
+    case psychLine = "Psychological Line"
 
     var id: String { rawValue }
 
@@ -25,7 +27,7 @@ enum IndicatorType: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .sma, .ema, .vwap:
             return true
-        case .rsi, .macd:
+        case .rsi, .macd, .williamsR, .psychLine:
             return false
         }
     }
@@ -43,6 +45,10 @@ enum IndicatorType: String, CaseIterable, Identifiable, Codable {
             return ["period": 14]
         case .macd:
             return ["fastPeriod": 12, "slowPeriod": 26, "signalPeriod": 9]
+        case .williamsR:
+            return ["period": 14]
+        case .psychLine:
+            return ["period": 12]
         }
     }
 
@@ -57,6 +63,10 @@ enum IndicatorType: String, CaseIterable, Identifiable, Codable {
             return "gauge.with.needle"
         case .macd:
             return "waveform.path.ecg"
+        case .williamsR:
+            return "gauge.with.dots.needle.bottom.50percent"
+        case .psychLine:
+            return "percent"
         }
     }
 
@@ -73,6 +83,10 @@ enum IndicatorType: String, CaseIterable, Identifiable, Codable {
             return "#4CAF50"
         case .macd:
             return "#E91E63"
+        case .williamsR:
+            return "#00BCD4"
+        case .psychLine:
+            return "#795548"
         }
     }
 }

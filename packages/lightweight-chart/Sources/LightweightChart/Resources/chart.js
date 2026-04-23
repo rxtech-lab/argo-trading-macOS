@@ -1033,6 +1033,41 @@ function calculateMACD(data, fastPeriod, slowPeriod, signalPeriod) {
   return result;
 }
 
+// Williams %R: -100 * (highestHigh - close) / (highestHigh - lowestLow)
+function calculateWilliamsR(data, period) {
+  if (data.length < period) return [];
+
+  const result = [];
+  for (let i = period - 1; i < data.length; i++) {
+    let highestHigh = data[i].high;
+    let lowestLow = data[i].low;
+    for (let j = 1; j < period; j++) {
+      if (data[i - j].high > highestHigh) highestHigh = data[i - j].high;
+      if (data[i - j].low < lowestLow) lowestLow = data[i - j].low;
+    }
+    const range = highestHigh - lowestLow;
+    const value = range === 0 ? 0 : (-100 * (highestHigh - data[i].close)) / range;
+    result.push({ time: data[i].time, value });
+  }
+  return result;
+}
+
+// Psychological Line: percentage of up-close days within the period
+function calculatePsychologicalLine(data, period) {
+  if (data.length < period + 1) return [];
+
+  const result = [];
+  for (let i = period; i < data.length; i++) {
+    let upDays = 0;
+    for (let j = 0; j < period; j++) {
+      const idx = i - j;
+      if (data[idx].close > data[idx - 1].close) upDays++;
+    }
+    result.push({ time: data[i].time, value: (upDays / period) * 100 });
+  }
+  return result;
+}
+
 // ============== INDICATOR SERIES MANAGEMENT ==============
 
 // Set indicators from Swift configuration
@@ -1188,6 +1223,48 @@ function updateSingleIndicator(indicator, priceData) {
           signalSeries: signalSeries,
           histogramSeries: histogramSeries,
         });
+      }
+      break;
+    }
+
+    case "WILLIAMS %R": {
+      const data = calculateWilliamsR(priceData, indicator.parameters.period || 14);
+      console.log("[Chart] Calculated Williams %R data points:", data.length);
+
+      if (existing) {
+        existing.series.setData(data);
+      } else {
+        const williamsRSeries = chart.addSeries(LightweightCharts.LineSeries, {
+          color: indicator.color,
+          lineWidth: 2,
+          priceScaleId: "williamsr",
+        });
+        williamsRSeries.priceScale().applyOptions({
+          scaleMargins: { top: 0.85, bottom: 0.02 },
+        });
+        williamsRSeries.setData(data);
+        indicatorSeries.set(indicator.id, { series: williamsRSeries });
+      }
+      break;
+    }
+
+    case "PSYCHOLOGICAL LINE": {
+      const data = calculatePsychologicalLine(priceData, indicator.parameters.period || 12);
+      console.log("[Chart] Calculated Psychological Line data points:", data.length);
+
+      if (existing) {
+        existing.series.setData(data);
+      } else {
+        const psychLineSeries = chart.addSeries(LightweightCharts.LineSeries, {
+          color: indicator.color,
+          lineWidth: 2,
+          priceScaleId: "psychline",
+        });
+        psychLineSeries.priceScale().applyOptions({
+          scaleMargins: { top: 0.85, bottom: 0.02 },
+        });
+        psychLineSeries.setData(data);
+        indicatorSeries.set(indicator.id, { series: psychLineSeries });
       }
       break;
     }

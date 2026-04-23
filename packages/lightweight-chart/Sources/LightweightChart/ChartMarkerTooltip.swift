@@ -139,6 +139,11 @@ private struct TradeMarkerSection: View {
             TooltipRow(label: "Qty", value: formatNumber(marker.executedQty, decimals: 4))
             TooltipRow(label: "Price", value: formatNumber(marker.executedPrice, decimals: 2))
 
+            // Average Cost
+            if let averageCost = marker.averageCost {
+                TooltipRow(label: "Avg Cost", value: formatNumber(averageCost, decimals: 2))
+            }
+
             // PnL
             if let pnl = marker.pnl {
                 if isBuy && pnl == 0 {

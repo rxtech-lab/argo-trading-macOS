@@ -320,7 +320,6 @@
       }
     },
     "Average Cost" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -346,6 +345,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "平均胜率"
+          }
+        }
+      }
+    },
+    "Avg" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平均"
+          }
+        }
+      }
+    },
+    "Avg Cost" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平均成本"
           }
         }
       }
@@ -430,6 +450,16 @@
         }
       }
     },
+    "Balance Over Months" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月度余额"
+          }
+        }
+      }
+    },
     "Best PnL" : {
       "localizations" : {
         "zh-Hans" : {
@@ -476,6 +506,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "绑定地址"
+          }
+        }
+      }
+    },
+    "Buy & Hold" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "买入并持有"
           }
         }
       }
@@ -1040,6 +1080,16 @@
         }
       }
     },
+    "Ending Balance" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "期末余额"
+          }
+        }
+      }
+    },
     "Engine Api Version" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1311,12 +1361,52 @@
         }
       }
     },
+    "Holding Time Distribution" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "持仓时间分布"
+          }
+        }
+      }
+    },
+    "Holding Time Over Months" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月度持仓时间"
+          }
+        }
+      }
+    },
+    "Holding Time Percentiles" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "持仓时间分位数"
+          }
+        }
+      }
+    },
     "Hover over chart to see values" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "悬停图表查看数值"
+          }
+        }
+      }
+    },
+    "How long positions were held, measured from entry to exit. Minimum, Maximum, Average, and Median summarize the distribution across all trade pairs in the period." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "持仓时长，从入场到出场的时间。最小值、最大值、平均值和中位数汇总了该期间内所有交易对的分布情况。"
           }
         }
       }
@@ -1614,6 +1704,17 @@
         }
       }
     },
+    "Losing" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "亏损"
+          }
+        }
+      }
+    },
     "Losing Trades" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1888,6 +1989,26 @@
         }
       }
     },
+    "Monthly Change" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月度变化"
+          }
+        }
+      }
+    },
+    "Much Worse" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明显劣于"
+          }
+        }
+      }
+    },
     "Name" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2140,6 +2261,16 @@
         }
       }
     },
+    "On Par" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旗鼓相当"
+          }
+        }
+      }
+    },
     "Open" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2201,6 +2332,16 @@
         }
       }
     },
+    "Outperforming" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跑赢大盘"
+          }
+        }
+      }
+    },
     "Overview" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2217,6 +2358,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "第 %lld 页"
+          }
+        }
+      }
+    },
+    "Paper profit or loss from positions still open at the end of the period, valued at the final market price. Not yet locked in and will change with price movements." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "期末仍未平仓的浮动盈亏，按最终市场价格估值。尚未锁定，会随价格变动而变化。"
           }
         }
       }
@@ -2257,6 +2408,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "盈亏 %"
+          }
+        }
+      }
+    },
+    "PnL Distribution" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "盈亏分布"
+          }
+        }
+      }
+    },
+    "PnL Percentiles" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "盈亏分位数"
           }
         }
       }
@@ -2357,6 +2528,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "盈利因子"
+          }
+        }
+      }
+    },
+    "Profit or loss from closed positions only — the cash actually gained or lost from trades where both entry and exit were executed." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅来自已平仓位的盈亏——即入场和出场均已执行的交易所实际获得或损失的现金。"
+          }
+        }
+      }
+    },
+    "Profit or loss from passively buying at the start and holding until the end over the same period. Used as a benchmark — if Total PnL exceeds this, the active strategy outperformed buy-and-hold." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在同一期间内被动买入并持有至结束所产生的盈亏。用作基准——若总盈亏超过此值，则主动策略跑赢了买入并持有。"
           }
         }
       }
@@ -3218,6 +3409,16 @@
         }
       }
     },
+    "Strong Alpha" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "强劲超额"
+          }
+        }
+      }
+    },
     "Suboptimal" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3274,6 +3475,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "技术指标"
+          }
+        }
+      }
+    },
+    "The date and time when this backtest was executed. Useful for distinguishing between multiple runs of the same strategy." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此回测的执行日期和时间。用于区分同一策略的多次运行。"
+          }
+        }
+      }
+    },
+    "The largest peak-to-trough decline in portfolio value during the period. A key measure of downside risk — shows the worst loss an investor would have had to endure." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "期间内投资组合价值从峰值到谷底的最大回撤。衡量下行风险的关键指标——显示投资者可能承受的最大损失。"
+          }
+        }
+      }
+    },
+    "The largest profit earned on a single trade during the period. Highlights the best individual trade outcome." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "期间内单笔交易的最大利润。突出显示最佳的单笔交易结果。"
+          }
+        }
+      }
+    },
+    "The number of closed trade pairs that ended with a loss." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以亏损收尾的已平仓交易对数量。"
+          }
+        }
+      }
+    },
+    "The number of closed trade pairs that ended with a profit." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以盈利收尾的已平仓交易对数量。"
+          }
+        }
+      }
+    },
+    "The number of matched entry-and-exit trade pairs. A trade pair consists of an opening trade and its corresponding closing trade, and is the unit used to measure PnL and win rate." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已配对的入场与出场交易数量。一个交易对由开仓交易及其对应的平仓交易组成，是衡量盈亏和胜率的基本单位。"
+          }
+        }
+      }
+    },
+    "The percentage of closed trade pairs that were profitable (Winning Trades ÷ Total Trade Pairs). A high win rate alone does not guarantee profitability — a few large losses can outweigh many small wins." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已平仓交易对中盈利的比例（盈利交易 ÷ 总交易对）。高胜率本身并不能保证盈利——少数大额亏损可能抵消许多小额盈利。"
           }
         }
       }
@@ -3408,6 +3679,16 @@
         }
       }
     },
+    "Total capital deployed across all trades during the period. Represents the cumulative cost basis used by the strategy to enter positions." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "期间内所有交易投入的总资金。代表该策略进入仓位所使用的累计成本基础。"
+          }
+        }
+      }
+    },
     "Total Fees" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3444,6 +3725,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "总盈亏"
+          }
+        }
+      }
+    },
+    "Total Profit and Loss across all trades — realized PnL plus unrealized PnL on any open positions.\n\nResults are close to buy-and-hold (difference: %@). Make sure the active-trading overhead — fees, slippage, effort — is worth it." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有交易的总盈亏——已实现盈亏加上未平仓位的未实现盈亏。\n\n结果与买入并持有相近（差额：%@）。请确保主动交易的开销——手续费、滑点、精力——值得付出。"
+          }
+        }
+      }
+    },
+    "Total Profit and Loss across all trades — realized PnL plus unrealized PnL on any open positions.\n\nThe strategy outperformed buy-and-hold by %@. The strategy is adding value over passive holding." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有交易的总盈亏——已实现盈亏加上未平仓位的未实现盈亏。\n\n该策略跑赢买入并持有 %@。相较于被动持有，该策略正在创造超额价值。"
+          }
+        }
+      }
+    },
+    "Total Profit and Loss across all trades — realized PnL plus unrealized PnL on any open positions.\n\nThe strategy significantly outperformed buy-and-hold by %@. Strong alpha — verify this isn't due to a single lucky period or overfitting." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有交易的总盈亏——已实现盈亏加上未平仓位的未实现盈亏。\n\n该策略显著跑赢买入并持有 %@。强劲的超额收益——但请核实这并非源于某一次幸运行情或过拟合。"
+          }
+        }
+      }
+    },
+    "Total Profit and Loss across all trades — realized PnL plus unrealized PnL on any open positions.\n\nThe strategy significantly underperformed buy-and-hold by %@. Passive holding would have produced a far better outcome over this period." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有交易的总盈亏——已实现盈亏加上未平仓位的未实现盈亏。\n\n该策略显著跑输买入并持有 %@。在此期间被动持有本可获得好得多的结果。"
+          }
+        }
+      }
+    },
+    "Total Profit and Loss across all trades — realized PnL plus unrealized PnL on any open positions.\n\nThe strategy underperformed buy-and-hold by %@. Consider whether active trading is justified versus simply holding." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有交易的总盈亏——已实现盈亏加上未平仓位的未实现盈亏。\n\n该策略跑输买入并持有 %@。请考虑相较于简单持有，主动交易是否值得。"
+          }
+        }
+      }
+    },
+    "Total Profit and Loss across all trades. Combines realized PnL from closed positions and unrealized PnL from any positions still open at the end of the period." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有交易的总盈亏。合并已平仓位的已实现盈亏和期末未平仓位的未实现盈亏。"
+          }
+        }
+      }
+    },
+    "Total Profit and Loss expressed as a percentage of total invested capital. Useful for comparing strategies that deploy different amounts of capital." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "总盈亏占总投入资金的百分比。便于比较使用不同资金量的策略。"
           }
         }
       }
@@ -3499,6 +3850,16 @@
         }
       }
     },
+    "Trades Over Months" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月度交易"
+          }
+        }
+      }
+    },
     "Trading Details" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3545,6 +3906,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "类型"
+          }
+        }
+      }
+    },
+    "Underperforming" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表现不佳"
           }
         }
       }
@@ -3660,12 +4031,33 @@
         }
       }
     },
+    "Winning" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "盈利"
+          }
+        }
+      }
+    },
     "Winning Trades" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "盈利交易"
+          }
+        }
+      }
+    },
+    "Winning vs Losing Trades" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "盈利与亏损交易"
           }
         }
       }

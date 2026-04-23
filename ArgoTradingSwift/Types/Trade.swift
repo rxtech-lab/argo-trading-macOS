@@ -32,6 +32,7 @@ struct Trade: Codable, Hashable, Identifiable {
     let executedAt: Date?
     let executedQty: Double
     let executedPrice: Double
+    let averageCost: Double
     let commission: Double
     let pnl: Double
     let cumulativePnl: Double
@@ -63,6 +64,7 @@ extension Trade {
         marker.positionType = positionType
         marker.executedQty = executedQty
         marker.executedPrice = executedPrice
+        marker.averageCost = averageCost
         marker.pnl = pnl
         marker.cumulativePnl = cumulativePnl
         marker.openPositionQty = openPositionQty

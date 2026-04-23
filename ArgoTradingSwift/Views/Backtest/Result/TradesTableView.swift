@@ -105,6 +105,7 @@ struct TradesTableView: View {
             .init(label: "Price", value: String(format: "%.2f", trade.price)),
             .init(label: "Executed Qty", value: String(format: "%.4f", trade.executedQty)),
             .init(label: "Executed Price", value: String(format: "%.2f", trade.executedPrice)),
+            .init(label: "Average Cost", value: String(format: "%.2f", trade.averageCost)),
             .init(label: "PnL", value: String(format: "%.2f", trade.pnl)),
             .init(label: "Cumulative PnL", value: String(format: "%.2f", trade.cumulativePnl)),
             .init(label: "Open Position Qty", value: String(format: "%.4f", trade.openPositionQty)),
@@ -172,6 +173,12 @@ struct TradesTableView: View {
         }
         .width(min: 60, ideal: 80)
         .customizationID("execQty")
+
+        TableColumn("Avg Cost", value: \.averageCost) { trade in
+            Text("\(trade.averageCost, format: .number.precision(.fractionLength(2)))")
+        }
+        .width(min: 60, ideal: 80)
+        .customizationID("averageCost")
 
         TableColumn("PnL", value: \.pnl) { trade in
             if trade.side == .buy && trade.pnl == 0 {
@@ -311,6 +318,7 @@ extension TradesTableView {
         case \Trade.price: column = "price"
         case \Trade.executedPrice: column = "executed_price"
         case \Trade.executedQty: column = "executed_qty"
+        case \Trade.averageCost: column = "average_cost"
         case \Trade.pnl: column = "pnl"
         case \Trade.cumulativePnl: column = "cumulative_pnl"
         case \Trade.openPositionQty: column = "open_position_qty"

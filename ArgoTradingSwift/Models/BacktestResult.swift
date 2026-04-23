@@ -202,4 +202,8 @@ struct BacktestResultItem: Identifiable, Hashable {
     var displayTime: String {
         Self.timeFormatter.string(from: runTimestamp)
     }
+
+    var displayDateTime: String {
+        runTimestamp.formatted(date: .abbreviated, time: .shortened)
+    }
 }
