@@ -119,6 +119,7 @@ public struct JSMarkerInfo: Sendable {
     public let averageCost: Double?
     public let pnl: Double?
     public let cumulativePnl: Double?
+    public let lifoPnl: Double?
     public let openPositionQty: Double?
     public let balance: Double?
     public let holdTime: Double?
@@ -144,6 +145,7 @@ public struct JSMarkerInfo: Sendable {
         averageCost: Double? = nil,
         pnl: Double? = nil,
         cumulativePnl: Double? = nil,
+        lifoPnl: Double? = nil,
         openPositionQty: Double? = nil,
         balance: Double? = nil,
         holdTime: Double? = nil,
@@ -166,6 +168,7 @@ public struct JSMarkerInfo: Sendable {
         self.averageCost = averageCost
         self.pnl = pnl
         self.cumulativePnl = cumulativePnl
+        self.lifoPnl = lifoPnl
         self.openPositionQty = openPositionQty
         self.balance = balance
         self.holdTime = holdTime
@@ -250,6 +253,7 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
     public var averageCost: Double?
     public var pnl: Double?
     public var cumulativePnl: Double?
+    public var lifoPnl: Double?
     public var openPositionQty: Double?
     public var balance: Double?
     public var holdTime: Double?
@@ -279,6 +283,7 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
         averageCost: Double? = nil,
         pnl: Double? = nil,
         cumulativePnl: Double? = nil,
+        lifoPnl: Double? = nil,
         openPositionQty: Double? = nil,
         balance: Double? = nil,
         holdTime: Double? = nil,
@@ -305,6 +310,7 @@ public struct MarkerDataJS: Codable, Sendable, Equatable {
         self.averageCost = averageCost
         self.pnl = pnl
         self.cumulativePnl = cumulativePnl
+        self.lifoPnl = lifoPnl
         self.openPositionQty = openPositionQty
         self.balance = balance
         self.holdTime = holdTime

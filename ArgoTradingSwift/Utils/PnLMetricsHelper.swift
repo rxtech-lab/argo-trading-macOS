@@ -33,4 +33,6 @@ enum PnLMetricsHelper {
     static let winRate: LocalizedStringKey = "The percentage of closed trade pairs that were profitable (Winning Trades ÷ Total Trade Pairs). A high win rate alone does not guarantee profitability — a few large losses can outweigh many small wins."
 
     static let tradeHoldingTime: LocalizedStringKey = "How long positions were held, measured from entry to exit. Minimum, Maximum, Average, and Median summarize the distribution across all trade pairs in the period."
+
+    static let lifoPnl: LocalizedStringKey = "Profit or loss for this trade calculated using LIFO (Last-In, First-Out) cost basis — the closing trade is matched against the most recently opened position. Differs from average-cost PnL and is often used for tax-lot or short-term-focused accounting."
 }

@@ -49,6 +49,7 @@ struct TradesTableView: View {
         Table(data.items, selection: $selectedRows, sortOrder: $sortOrder, columnCustomization: $columnCustomization) {
             basicColumns
             executionColumns
+            positionColumns
             metadataColumns
         }
         .contextMenu(forSelectionType: String.self) { selectedIds in
@@ -108,6 +109,7 @@ struct TradesTableView: View {
             .init(label: "Average Cost", value: String(format: "%.2f", trade.averageCost)),
             .init(label: "PnL", value: String(format: "%.2f", trade.pnl)),
             .init(label: "Cumulative PnL", value: String(format: "%.2f", trade.cumulativePnl)),
+            .init(label: "LIFO PnL", value: String(format: "%.2f", trade.lifoPnl), help: PnLMetricsHelper.lifoPnl),
             .init(label: "Open Position Qty", value: String(format: "%.4f", trade.openPositionQty)),
             .init(label: "Balance", value: String(format: "%.2f", trade.balance)),
             .init(label: "Hold Time", value: formatHoldTime(trade.holdTime)),
@@ -204,6 +206,21 @@ struct TradesTableView: View {
         .width(min: 80, ideal: 100)
         .customizationID("cumulativePnl")
 
+        TableColumn("LIFO PnL", value: \.lifoPnl) { trade in
+            if trade.side == .buy && trade.lifoPnl == 0 {
+                Text("-")
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("\(trade.lifoPnl, format: .number.precision(.fractionLength(2)))")
+                    .foregroundStyle(trade.lifoPnl >= 0 ? .green : .red)
+            }
+        }
+        .width(min: 60, ideal: 80)
+        .customizationID("lifoPnl")
+    }
+
+    @TableColumnBuilder<Trade, KeyPathComparator<Trade>>
+    private var positionColumns: some TableColumnContent<Trade, KeyPathComparator<Trade>> {
         TableColumn("Open Pos Qty", value: \.openPositionQty) { trade in
             Text("\(trade.openPositionQty, format: .number.precision(.fractionLength(4)))")
         }
@@ -321,6 +338,7 @@ extension TradesTableView {
         case \Trade.averageCost: column = "average_cost"
         case \Trade.pnl: column = "pnl"
         case \Trade.cumulativePnl: column = "cumulative_pnl"
+        case \Trade.lifoPnl: column = "lifo_pnl"
         case \Trade.openPositionQty: column = "open_position_qty"
         case \Trade.balance: column = "balance"
         case \Trade.holdTime: column = "hold_time"

@@ -13,6 +13,7 @@ struct RowDetailField: Identifiable {
     let value: String
     var isLong: Bool = false
     var translate: Bool = false
+    var help: LocalizedStringKey? = nil
 }
 
 struct RowDetailSheet: View {
@@ -39,10 +40,18 @@ struct RowDetailSheet: View {
                 if !shortFields.isEmpty {
                     Section {
                         ForEach(shortFields) { field in
-                            LabeledContent(field.label) {
-                                Text(field.value.isEmpty ? "—" : field.value)
-                                    .textSelection(.enabled)
-                                    .foregroundStyle(field.value.isEmpty ? .secondary : .primary)
+                            if let help = field.help {
+                                LabeledContentWithHelp(field.label, help: help) {
+                                    Text(field.value.isEmpty ? "—" : field.value)
+                                        .textSelection(.enabled)
+                                        .foregroundStyle(field.value.isEmpty ? .secondary : .primary)
+                                }
+                            } else {
+                                LabeledContent(field.label) {
+                                    Text(field.value.isEmpty ? "—" : field.value)
+                                        .textSelection(.enabled)
+                                        .foregroundStyle(field.value.isEmpty ? .secondary : .primary)
+                                }
                             }
                         }
                     }

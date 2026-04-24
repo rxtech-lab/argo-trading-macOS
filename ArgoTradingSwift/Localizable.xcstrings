@@ -1572,6 +1572,26 @@
         }
       }
     },
+    "LIFO PnL" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "后进先出盈亏"
+          }
+        }
+      }
+    },
+    "Profit or loss for this trade calculated using LIFO (Last-In, First-Out) cost basis — the closing trade is matched against the most recently opened position. Differs from average-cost PnL and is often used for tax-lot or short-term-focused accounting." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用后进先出（LIFO）成本法计算的单笔盈亏——平仓交易与最近一次开仓的持仓相匹配。与按平均成本计算的盈亏不同，常用于税务批次核算或侧重短期的分析。"
+          }
+        }
+      }
+    },
     "Line" : {
       "extractionState" : "stale",
       "localizations" : {

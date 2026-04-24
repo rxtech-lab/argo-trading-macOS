@@ -139,6 +139,7 @@ func parseMarkerHoverData(from body: Any) -> JSMarkerHoverData? {
             averageCost: markerDict["averageCost"] as? Double,
             pnl: markerDict["pnl"] as? Double,
             cumulativePnl: markerDict["cumulativePnl"] as? Double,
+            lifoPnl: markerDict["lifoPnl"] as? Double,
             openPositionQty: markerDict["openPositionQty"] as? Double,
             balance: markerDict["balance"] as? Double,
             holdTime: markerDict["holdTime"] as? Double,
