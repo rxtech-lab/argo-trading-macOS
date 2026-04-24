@@ -36,6 +36,7 @@ struct Trade: Codable, Hashable, Identifiable {
     let commission: Double
     let pnl: Double
     let cumulativePnl: Double
+    let lifoPnl: Double
     let positionType: String
     let openPositionQty: Double
     let balance: Double
@@ -67,6 +68,7 @@ extension Trade {
         marker.averageCost = averageCost
         marker.pnl = pnl
         marker.cumulativePnl = cumulativePnl
+        marker.lifoPnl = lifoPnl
         marker.openPositionQty = openPositionQty
         marker.balance = balance
         marker.holdTime = holdTime

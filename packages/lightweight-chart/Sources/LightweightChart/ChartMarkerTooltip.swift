@@ -166,6 +166,19 @@ private struct TradeMarkerSection: View {
                 )
             }
 
+            // LIFO PnL
+            if let lifoPnl = marker.lifoPnl {
+                if isBuy && lifoPnl == 0 {
+                    TooltipRow(label: "LIFO PnL", value: "-")
+                } else {
+                    TooltipRow(
+                        label: "LIFO PnL",
+                        value: formatNumber(lifoPnl, decimals: 2),
+                        valueColor: lifoPnl >= 0 ? (Color(hex: "#32d74b") ?? .green) : (Color(hex: "#ff453a") ?? .red)
+                    )
+                }
+            }
+
             // Open Position Qty
             if let openPositionQty = marker.openPositionQty {
                 TooltipRow(label: "Open Pos Qty", value: formatNumber(openPositionQty, decimals: 4))
@@ -186,7 +199,8 @@ private struct TradeMarkerSection: View {
                 TranslatedCaption(
                     label: "Reason:",
                     original: reason,
-                    translated: translations["reason"]
+                    translated: translations["reason"],
+                    inlineTranslation: true
                 )
                 .padding(.top, 8)
             }
@@ -223,8 +237,33 @@ private struct TranslatedCaption: View {
     let label: LocalizedStringKey
     let original: String
     let translated: String?
+    var inlineTranslation: Bool = false
 
     var body: some View {
+        if inlineTranslation {
+            inlineBody
+        } else {
+            stackedBody
+        }
+    }
+
+    private var inlineBody: some View {
+        Group {
+            if let translated, !translated.isEmpty, translated != original {
+                Text("\(Text(label)) \(Text(original).foregroundColor(Color(white: 0.56))) \(Text(translated).foregroundColor(Color(white: 0.72)))")
+            } else {
+                Text("\(Text(label)) \(Text(original).foregroundColor(Color(white: 0.56)))")
+            }
+        }
+        .font(.system(size: 11))
+        .italic()
+        .foregroundColor(Color(white: 0.56))
+        .lineSpacing(2)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var stackedBody: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("\(Text(label)) \(original)")
                 .font(.system(size: 11))
@@ -322,7 +361,8 @@ private struct MarkMarkerSection: View {
                 TranslatedCaption(
                     label: "Reason:",
                     original: signalReason,
-                    translated: translations["signalReason"]
+                    translated: translations["signalReason"],
+                    inlineTranslation: true
                 )
                 .padding(.top, marker.message == nil ? 8 : 4)
             }

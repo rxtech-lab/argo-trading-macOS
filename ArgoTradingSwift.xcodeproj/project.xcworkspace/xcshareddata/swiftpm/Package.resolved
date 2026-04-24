@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/rxtech-lab/argo-trading",
       "state" : {
-        "revision" : "ac7be24628a92546e2205d91b0925fdc3d75c819",
-        "version" : "1.20.0"
+        "revision" : "d4aa6dbc7f5de2feec9b575984b74ddb3e49859d",
+        "version" : "1.21.0"
       }
     },
     {
