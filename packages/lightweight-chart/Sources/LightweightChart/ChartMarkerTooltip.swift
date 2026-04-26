@@ -279,6 +279,8 @@ private struct TranslatedCaption: View {
                     .italic()
                     .foregroundColor(Color(white: 0.72))
                     .lineSpacing(2)
+                    .lineLimit(3)
+                    .truncationMode(.tail)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
