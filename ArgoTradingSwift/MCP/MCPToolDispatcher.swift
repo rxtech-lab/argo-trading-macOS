@@ -11,7 +11,11 @@ import Foundation
 import MCP
 
 enum MCPToolDispatcher {
-    static func dispatch(name: String, arguments: [String: Value]?) async -> CallTool.Result {
+    static func dispatch(
+        name: String,
+        arguments: [String: Value]?,
+        server: MCP.Server? = nil
+    ) async -> CallTool.Result {
         let args = arguments ?? [:]
         do {
             switch name {
@@ -30,7 +34,7 @@ enum MCPToolDispatcher {
             case MCPToolName.selectData:
                 return try await MCPToolHandlers.selectData(args: args)
             case MCPToolName.runBacktest:
-                return try await MCPToolHandlers.runBacktest(args: args)
+                return try await MCPToolHandlers.runBacktest(args: args, server: server)
             case MCPToolName.getConfig:
                 return try await MCPToolHandlers.getConfig(args: args)
             case MCPToolName.getBacktestStatus:
