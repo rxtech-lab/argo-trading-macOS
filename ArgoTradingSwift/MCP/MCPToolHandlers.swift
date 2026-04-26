@@ -200,6 +200,15 @@ enum MCPToolHandlers {
         let resultFolder = doc.resultFolder
         let beforeRunFolders = listResultFolders(in: resultFolder)
 
+        // Cancel any in-flight session so a new MCP-driven run supersedes it
+        // instead of being silently ignored or racing the previous engine.
+        if services.backtest.isRunning {
+            await services.backtest.cancel()
+            while services.backtest.isRunning {
+                try? await Task.sleep(nanoseconds: 50_000_000)
+            }
+        }
+
         // Kick off the backtest. BacktestService.runBacktest spawns its own
         // background Task; we only need to `await` to set up. Completion is
         // signalled via the @Observable isRunning flag.
