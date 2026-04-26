@@ -333,7 +333,7 @@ actor MCPHTTPServer {
             name: "ArgoTradingSwift",
             version: Bundle.main.appVersion ?? "0.0.0",
             instructions: "Control ArgoTradingSwift: import strategies, read/update schemas, list data, select, and run backtests.",
-            capabilities: .init(tools: .init())
+            capabilities: .init(logging: .init(), tools: .init())
         )
         await registerHandlers(on: server)
         try await server.start(transport: transport)
@@ -363,8 +363,12 @@ actor MCPHTTPServer {
             ListTools.Result(tools: tools)
         }
 
-        await server.withMethodHandler(CallTool.self) { params in
-            await MCPToolDispatcher.dispatch(name: params.name, arguments: params.arguments)
+        await server.withMethodHandler(CallTool.self) { [weak server] params in
+            await MCPToolDispatcher.dispatch(
+                name: params.name,
+                arguments: params.arguments,
+                server: server
+            )
         }
     }
 

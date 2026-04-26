@@ -184,7 +184,7 @@ enum MCPToolHandlers {
     // MARK: - run_backtest
 
     @MainActor
-    static func runBacktest(args _: [String: Value]) async throws -> CallTool.Result {
+    static func runBacktest(args _: [String: Value], server: MCP.Server? = nil) async throws -> CallTool.Result {
         guard let handle = DocumentRegistry.shared.current() else {
             throw MCPToolError.noDocument
         }
@@ -212,6 +212,26 @@ enum MCPToolHandlers {
             strategyCacheService: services.strategyCache,
             keychainService: services.keychain
         )
+
+        // Notify the connected client when the backtest finishes, even if
+        // this tool call times out and returns early. Lets agents avoid
+        // polling get_backtest_status.
+        if let server {
+            services.backtest.onNextCompletion { errors in
+                let payload: Value = .object([
+                    "event": .string("backtest_finished"),
+                    "success": .bool(errors.isEmpty),
+                    "errors": .array(errors.map { .string($0) }),
+                ])
+                Task {
+                    try? await server.log(
+                        level: errors.isEmpty ? .info : .error,
+                        logger: "backtest",
+                        data: payload
+                    )
+                }
+            }
+        }
 
         // Wait for completion. The backtest usually finishes within seconds for
         // small datasets; cap at 5 minutes to prevent an agent from blocking forever.

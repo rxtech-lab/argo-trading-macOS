@@ -35,6 +35,14 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
     // Error accumulation
     var accumulatedErrors: [String] = []
 
+    // One-shot listeners fired from `onBacktestEnd`. Cleared after each run.
+    private var completionHandlers: [@MainActor @Sendable ([String]) -> Void] = []
+
+    @MainActor
+    func onNextCompletion(_ handler: @escaping @MainActor @Sendable ([String]) -> Void) {
+        completionHandlers.append(handler)
+    }
+
     private func appendError(_ error: String) {
         Task { @MainActor in
             self.accumulatedErrors.append(error)
@@ -235,6 +243,12 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
                     message: "Backtest completed",
                     at: Date()
                 ))
+            }
+
+            let handlers = self.completionHandlers
+            self.completionHandlers.removeAll()
+            for handler in handlers {
+                handler(allErrors)
             }
         }
     }
