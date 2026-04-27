@@ -6,6 +6,7 @@
 //  SwiftUI document state via DocumentRegistry.
 //
 
+import ArgoTrading
 import Foundation
 import MCP
 
@@ -301,6 +302,95 @@ enum MCPToolHandlers {
             "total_data_files": .int(backtest.totalDataFiles),
             "total_data_points": .int(backtest.totalDataPoints),
             "errors": .array(errors),
+        ]))
+    }
+
+    // MARK: - list_strategies
+
+    @MainActor
+    static func listStrategies(args _: [String: Value]) async throws -> CallTool.Result {
+        guard let handle = DocumentRegistry.shared.current() else {
+            throw MCPToolError.noDocument
+        }
+        let doc = handle.snapshot()
+        let fm = FileManager.default
+        let urls = (try? fm.contentsOfDirectory(at: doc.strategyFolder, includingPropertiesForKeys: nil)) ?? []
+        let wasms = urls
+            .filter { $0.pathExtension.lowercased() == "wasm" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+
+        var entries: [Value] = []
+        for url in wasms {
+            let fileName = url.lastPathComponent
+            if let metadata = try? await handle.services.strategyCache.getMetadata(for: url) {
+                entries.append(.object([
+                    "id": .string(metadata.identifier),
+                    "name": .string(metadata.name),
+                    "file": .string(fileName),
+                ]))
+            } else {
+                entries.append(.object([
+                    "id": .null,
+                    "name": .null,
+                    "file": .string(fileName),
+                ]))
+            }
+        }
+        return .json(.object(["strategies": .array(entries)]))
+    }
+
+    // MARK: - list_strategy_results
+
+    @MainActor
+    static func listStrategyResults(args: [String: Value]) async throws -> CallTool.Result {
+        guard let strategyId = args["strategy_id"]?.stringValue, !strategyId.isEmpty else {
+            throw MCPToolError.missing("strategy_id")
+        }
+        guard let handle = DocumentRegistry.shared.current() else {
+            throw MCPToolError.noDocument
+        }
+        let items = handle.services.backtestResult.results(forStrategyId: strategyId)
+        let limit = args["limit"]?.intValue
+        let sliced: [BacktestResultItem] = {
+            guard let limit, limit >= 0 else { return items }
+            return Array(items.prefix(limit))
+        }()
+
+        let iso = ISO8601DateFormatter()
+        let entries: [Value] = sliced.map { item in
+            let r = item.result
+            let tr = r.tradeResult
+            let pnl = r.tradePnl
+            var entry: [String: Value] = [
+                "id": .string(r.id.uuidString),
+                "symbol": .string(r.symbol),
+                "run_time": .string(iso.string(from: item.runTimestamp)),
+                "win_rate": .double(tr.winRate),
+                "number_of_trades": .int(tr.numberOfTrades),
+                "winning_trades": .int(tr.numberOfWinningTrades),
+                "losing_trades": .int(tr.numberOfLosingTrades),
+                "max_drawdown": .double(tr.maxDrawdown),
+                "total_pnl": .double(pnl.totalPnl),
+                "realized_pnl": .double(pnl.realizedPnl),
+                "unrealized_pnl": .double(pnl.unrealizedPnl),
+                "maximum_profit": .double(pnl.maximumProfit),
+                "maximum_loss": .double(pnl.maximumLoss),
+                "total_fees": .double(r.totalFees),
+                "buy_and_hold_pnl": .double(r.buyAndHoldPnl),
+            ]
+            if let pairs = tr.numberOfTradingPairs { entry["trading_pairs"] = .int(pairs) }
+            if let sharpe = tr.sharpeRatio { entry["sharpe_ratio"] = .double(sharpe) }
+            if let median = pnl.medianPnl { entry["median_pnl"] = .double(median) }
+            if let investment = pnl.totalInvestment { entry["total_investment"] = .double(investment) }
+            if let pct = pnl.pnlPercentage { entry["pnl_percentage"] = .double(pct) }
+            if let initial = r.initialBalance { entry["initial_balance"] = .double(initial) }
+            if let final = r.finalBalance { entry["final_balance"] = .double(final) }
+            return .object(entry)
+        }
+        return .json(.object([
+            "strategy_id": .string(strategyId),
+            "results": .array(entries),
+            "total": .int(items.count),
         ]))
     }
 

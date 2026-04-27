@@ -20,6 +20,8 @@ enum MCPToolName {
     static let runBacktest = "run_backtest"
     static let getConfig = "get_config"
     static let getBacktestStatus = "get_backtest_status"
+    static let listStrategies = "list_strategies"
+    static let listStrategyResults = "list_strategy_results"
 }
 
 enum MCPToolCatalog {
@@ -127,6 +129,22 @@ enum MCPToolCatalog {
             name: MCPToolName.getBacktestStatus,
             description: "Return whether a backtest is currently running and its progress. Use this to recover status if run_backtest returned an error or timed out but the job may still be running.",
             inputSchema: schema()
+        ),
+        Tool(
+            name: MCPToolName.listStrategies,
+            description: "List compiled .wasm strategies in the project's strategy folder, with each strategy's identifier and name from its metadata. The returned `id` is the strategy identifier used by list_strategy_results.",
+            inputSchema: schema()
+        ),
+        Tool(
+            name: MCPToolName.listStrategyResults,
+            description: "List historical backtest results for a strategy, sorted newest first. Each entry includes win rate, winning/losing trade counts, max drawdown, total/realized/unrealized PnL, max profit/loss, fees, buy-and-hold PnL, and (when available) trading pairs, sharpe ratio, median PnL, total investment, PnL percentage, and initial/final balance.",
+            inputSchema: schema(
+                properties: [
+                    "strategy_id": prop("string", description: "Strategy identifier (from list_strategies)."),
+                    "limit": prop("integer", description: "Optional maximum number of results to return (default: all)."),
+                ],
+                required: ["strategy_id"]
+            )
         ),
     ]
 }
