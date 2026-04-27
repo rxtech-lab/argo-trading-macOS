@@ -297,6 +297,8 @@ enum MCPToolHandlers {
             "current_strategy_id": currentStrategyId,
             "current_data_file": currentDataFile,
             "progress": progress,
+            "bars_per_second": .double(backtest.currentBarsPerSecond),
+            "realized_pnl": .double(backtest.currentRealizedPnL),
             "total_strategies": .int(backtest.totalStrategies),
             "total_configs": .int(backtest.totalConfigs),
             "total_data_files": .int(backtest.totalDataFiles),
