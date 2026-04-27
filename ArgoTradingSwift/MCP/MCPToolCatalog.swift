@@ -127,7 +127,7 @@ enum MCPToolCatalog {
         ),
         Tool(
             name: MCPToolName.getBacktestStatus,
-            description: "Return whether a backtest is currently running and its progress. Use this to recover status if run_backtest returned an error or timed out but the job may still be running.",
+            description: "Return whether a backtest is currently running and its progress. Use this to recover status if run_backtest returned an error or timed out but the job may still be running. Includes live throughput (bars_per_second) and realized PnL (realized_pnl) when a backtest is in progress.",
             inputSchema: schema()
         ),
         Tool(

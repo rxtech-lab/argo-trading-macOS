@@ -68,7 +68,9 @@ struct StrategyResultsListView: View {
                         RunningBacktestRow(
                             strategyName: strategyName ?? "Strategy",
                             progress: backtestService.currentProgress,
-                            dataFile: backtestService.currentDataFile
+                            dataFile: backtestService.currentDataFile,
+                            barsPerSecond: backtestService.currentBarsPerSecond,
+                            realizedPnL: backtestService.currentRealizedPnL
                         )
                     }
                     .transition(.asymmetric(

@@ -31,6 +31,8 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
     var currentStrategy: String = ""
     var currentDataFile: String = ""
     var currentProgress: Progress = .init(current: 0, total: 0)
+    var currentBarsPerSecond: Double = 0
+    var currentRealizedPnL: Double = 0
 
     // Error accumulation
     var accumulatedErrors: [String] = []
@@ -210,6 +212,8 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
             self.totalConfigs = totalConfigs
             self.totalDataFiles = totalDataFiles
             self.totalDataPoints = totalStrategies * totalConfigs * totalDataFiles
+            self.currentBarsPerSecond = 0
+            self.currentRealizedPnL = 0
             self.isRunning = true
             self.toolbarStatusService?.setStatusImmediately(.backtesting(
                 label: "Starting backtest...",
@@ -227,6 +231,8 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
             self.argoEngine = nil
             self.backtestTask = nil
             self.currentStrategyId = nil
+            self.currentBarsPerSecond = 0
+            self.currentRealizedPnL = 0
 
             let allErrors = self.accumulatedErrors
 
@@ -294,9 +300,11 @@ class BacktestService: NSObject, SwiftargoArgoHelperProtocol {
         // Log completion, next onRunStart or onBacktestEnd will update
     }
 
-    func onProcessData(_ current: Int, total: Int) throws {
+    func onProcessData(_ current: Int, total: Int, barsPerSecond: Double, realizedPnL: Double) throws {
         Task { @MainActor in
             self.currentProgress = Progress(current: current, total: total)
+            self.currentBarsPerSecond = barsPerSecond
+            self.currentRealizedPnL = realizedPnL
             self.toolbarStatusService?.setStatusImmediately(.backtesting(
                 label: self.currentStrategy,
                 progress: self.currentProgress
