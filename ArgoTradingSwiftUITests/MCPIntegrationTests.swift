@@ -79,7 +79,7 @@ final class MCPIntegrationTests: XCTestCase {
         let expected: Set<String> = [
             "load_strategy", "list_schemas", "read_schema", "update_schema",
             "list_data", "select_schema", "select_data", "run_backtest", "get_config",
-            "get_backtest_status",
+            "get_backtest_status", "list_strategies", "list_strategy_results",
         ]
         XCTAssertEqual(names, expected, "unexpected tool set: \(names)")
     }
