@@ -63,6 +63,22 @@ struct ToolbarRunningStatusBadgeViewTests {
     }
 
     @MainActor
+    @Test func tradingStatusDisplaysPhaseAndProgress() throws {
+        let progress = Progress(current: 4, total: 10)
+        let sut = ToolbarRunningStatusBadgeView()
+            .environment(makeStatusService(.trading(
+                label: "BTCUSDT",
+                phase: "Prefetching",
+                progress: progress,
+                message: "Downloading"
+            )))
+
+        let expectedText = "Downloading BTCUSDT \(progress.current)/\(progress.total)"
+        let labelText = try sut.inspect().find(text: expectedText)
+        #expect(try labelText.string() == expectedText)
+    }
+
+    @MainActor
     @Test func errorStatusDisplaysXmarkImage() throws {
         let label = "Build"
         let sut = ToolbarRunningStatusBadgeView()
@@ -247,6 +263,11 @@ struct ToolbarRunningStatusAnimationIdTests {
     @Test func backtestingStatusHasCorrectAnimationId() {
         let status = ToolbarRunningStatus.backtesting(label: "Test", progress: Progress(current: 5, total: 100))
         #expect(status.animationId == "backtesting")
+    }
+
+    @Test func tradingStatusHasCorrectAnimationId() {
+        let status = ToolbarRunningStatus.trading(label: "Test", phase: "Running", progress: nil, message: nil)
+        #expect(status.animationId == "trading-Test-Running")
     }
 
     @Test func errorStatusHasCorrectAnimationId() {

@@ -8,7 +8,6 @@
 import ArgoTrading
 import Foundation
 import LightweightChart
-import Yams
 
 @Observable
 class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
@@ -27,6 +26,8 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
 
     // Active run tracking
     var activeRunId: String?
+    private var currentTradingLabel: String = "Trading"
+    private var currentTradingPhase: String = "Starting"
 
     // Error tracking
     var lastError: String?
@@ -51,8 +52,15 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
         baseInterval = .oneSecond
         candleCount = 0
         lastError = nil
+        currentTradingLabel = provider.name
+        currentTradingPhase = "Starting"
 
-        await toolbarStatusService.setStatus(.trading(label: provider.name))
+        await toolbarStatusService.setStatus(.trading(
+            label: provider.name,
+            phase: currentTradingPhase,
+            progress: nil,
+            message: nil
+        ))
 
         // Create engine
         var engineError: NSError?
@@ -127,7 +135,7 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
             let wasmPath = strategyFolder.appendingPathComponent(schema.strategyPath).toPathStringWithoutFilePrefix()
             try tradingEngine?.setWasm(wasmPath)
 
-            // Set strategy config — resolve keychain + convert JSON to YAML
+            // Set strategy config — resolve keychain placeholders, pass JSON through
             var strategyConfigData = schema.parameters
             if schema.hasKeychainFields {
                 strategyConfigData = resolveKeychainPlaceholders(
@@ -137,9 +145,8 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
                     keychainService: keychainService
                 )
             }
-            let configDict = (try? JSONSerialization.jsonObject(with: strategyConfigData) as? [String: Any]) ?? [:]
-            let yamlString = (try? Yams.dump(object: configDict)) ?? ""
-            try tradingEngine?.setStrategyConfig(yamlString)
+            let jsonString = String(data: strategyConfigData, encoding: .utf8) ?? "{}"
+            try tradingEngine?.setStrategyConfig(jsonString)
 
             // Run in background — blocking call
             tradingTask = Task.detached { [weak self] in
@@ -178,6 +185,7 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
         tradingTask = nil
         isRunning = false
         activeRunId = nil
+        currentTradingPhase = "Stopped"
 
         await toolbarStatusService.setStatus(.idle)
     }
@@ -264,6 +272,7 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
             self.isRunning = false
             self.tradingEngine = nil
             self.tradingTask = nil
+            self.currentTradingPhase = "Stopped"
 
             if let err = err, !err.isContextCancelled {
                 self.lastError = err.localizedDescription
@@ -330,6 +339,63 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
             if let err = err {
                 self.lastError = err.localizedDescription
             }
+        }
+    }
+
+    func onStatusUpdate(_ status: String?) {
+        Task { @MainActor in
+            let phase = self.liveTradingPhaseLabel(for: status)
+            self.currentTradingPhase = phase
+
+            if status == "stopped" {
+                await self.toolbarStatusService?.setStatus(.idle)
+                return
+            }
+
+            self.toolbarStatusService?.setStatusImmediately(.trading(
+                label: self.currentTradingLabel,
+                phase: phase,
+                progress: nil,
+                message: nil
+            ))
+        }
+    }
+
+    func onPrefetchProgress(_ symbol: String?, current: Int, total: Int, message: String?) {
+        Task { @MainActor in
+            let label: String
+            if let symbol, !symbol.isEmpty {
+                label = symbol
+            } else {
+                label = self.currentTradingLabel
+            }
+            let progress = Progress(current: current, total: max(total, 1))
+
+            self.toolbarStatusService?.setStatusImmediately(.trading(
+                label: label,
+                phase: self.currentTradingPhase,
+                progress: progress,
+                message: message
+            ))
+        }
+    }
+
+    private func liveTradingPhaseLabel(for status: String?) -> String {
+        switch status {
+        case "prefetching":
+            return "Prefetching"
+        case "gap_filling":
+            return "Gap filling"
+        case "running":
+            return "Running"
+        case "stopped":
+            return "Stopped"
+        case let status? where !status.isEmpty:
+            return status
+                .replacingOccurrences(of: "_", with: " ")
+                .capitalized
+        default:
+            return "Running"
         }
     }
 }
