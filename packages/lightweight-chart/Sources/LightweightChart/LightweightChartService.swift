@@ -374,21 +374,27 @@ public final class LightweightChartService {
     }
 
     /// Set candlestick data
-    public func setCandlestickData(_ data: [CandlestickDataJS]) async throws {
+    public func setCandlestickData(
+        _ data: [CandlestickDataJS],
+        autoScrollToRealtimeWhenPinned: Bool = false
+    ) async throws {
         let jsonData = try JSONEncoder().encode(data)
         guard let jsonString = String(data: jsonData, encoding: .utf8) else {
             throw LightweightChartError.javascriptError("Failed to encode data")
         }
-        try await callJavaScript("setCandlestickData(\(jsonString))")
+        try await callJavaScript("setCandlestickData(\(jsonString), \(autoScrollToRealtimeWhenPinned))")
     }
 
     /// Set line data
-    public func setLineData(_ data: [LineDataJS]) async throws {
+    public func setLineData(
+        _ data: [LineDataJS],
+        autoScrollToRealtimeWhenPinned: Bool = false
+    ) async throws {
         let jsonData = try JSONEncoder().encode(data)
         guard let jsonString = String(data: jsonData, encoding: .utf8) else {
             throw LightweightChartError.javascriptError("Failed to encode data")
         }
-        try await callJavaScript("setLineData(\(jsonString))")
+        try await callJavaScript("setLineData(\(jsonString), \(autoScrollToRealtimeWhenPinned))")
     }
 
     /// Update a single candlestick data point
@@ -499,4 +505,3 @@ public final class LightweightChartService {
         }
     }
 }
-

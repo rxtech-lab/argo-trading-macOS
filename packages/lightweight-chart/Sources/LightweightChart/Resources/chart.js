@@ -525,7 +525,7 @@ function formatDate(timestamp) {
 }
 
 // Set candlestick data
-function setCandlestickData(data) {
+function setCandlestickData(data, autoScrollToRealtimeWhenPinned = false) {
   console.log(
     "[Chart] setCandlestickData called with",
     data ? data.length : 0,
@@ -545,9 +545,11 @@ function setCandlestickData(data) {
 
   // Save scroll position before replacing data
   let savedRange = null;
+  let shouldScrollToRealtime = false;
   try {
     if (chart && dataMap.size > 0) {
       savedRange = chart.timeScale().getVisibleRange();
+      shouldScrollToRealtime = isPinnedToRealtime();
     }
   } catch (e) {}
 
@@ -592,6 +594,9 @@ function setCandlestickData(data) {
   }
 
   restoreVisibleRangeIfOverlapping(savedRange, formattedData);
+  if (autoScrollToRealtimeWhenPinned && shouldScrollToRealtime) {
+    chart.timeScale().scrollToRealTime();
+  }
 
   console.log("[Chart] Data set complete");
 }
@@ -612,15 +617,23 @@ function restoreVisibleRangeIfOverlapping(savedRange, formattedData) {
   } catch (e) {}
 }
 
+function isPinnedToRealtime(epsilon = 0.1) {
+  if (!chart || dataMap.size === 0) return false;
+  const scrollPosition = chart.timeScale().scrollPosition();
+  return Math.abs(scrollPosition) <= epsilon;
+}
+
 // Set line data
-function setLineData(data) {
+function setLineData(data, autoScrollToRealtimeWhenPinned = false) {
   if (!series) return;
 
   // Save scroll position before replacing data
   let savedRange = null;
+  let shouldScrollToRealtime = false;
   try {
     if (chart && dataMap.size > 0) {
       savedRange = chart.timeScale().getVisibleRange();
+      shouldScrollToRealtime = isPinnedToRealtime();
     }
   } catch (e) {}
 
@@ -658,6 +671,9 @@ function setLineData(data) {
   }
 
   restoreVisibleRangeIfOverlapping(savedRange, formattedData);
+  if (autoScrollToRealtimeWhenPinned && shouldScrollToRealtime) {
+    chart.timeScale().scrollToRealTime();
+  }
 }
 
 // Update single data point (for streaming)

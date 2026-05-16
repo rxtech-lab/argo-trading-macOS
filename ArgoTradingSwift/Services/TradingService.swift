@@ -8,6 +8,7 @@
 import ArgoTrading
 import Foundation
 import LightweightChart
+import UserNotifications
 
 @Observable
 class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
@@ -28,9 +29,14 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
     var activeRunId: String?
     private var currentTradingLabel: String = "Trading"
     private var currentTradingPhase: String = "Starting"
+    private var currentMarketDataStatus: String?
+    private var currentProviderTradingStatus: String?
+    private var currentProviderProblemMessage: String?
 
     // Error tracking
     var lastError: String?
+
+    private static var hasRequestedNotificationAuthorization = false
 
     // MARK: - Start/Stop
 
@@ -54,6 +60,9 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
         lastError = nil
         currentTradingLabel = provider.name
         currentTradingPhase = "Starting"
+        currentMarketDataStatus = nil
+        currentProviderTradingStatus = nil
+        currentProviderProblemMessage = nil
 
         await toolbarStatusService.setStatus(.trading(
             label: provider.name,
@@ -281,6 +290,13 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
                     errors: [err.localizedDescription],
                     at: Date()
                 ))
+            } else if let providerProblemMessage = self.currentProviderProblemMessage {
+                self.toolbarStatusService?.setStatusImmediately(.trading(
+                    label: self.currentTradingLabel,
+                    phase: self.currentTradingPhase,
+                    progress: nil,
+                    message: providerProblemMessage
+                ))
             } else {
                 await self.toolbarStatusService?.setStatus(.idle)
             }
@@ -319,7 +335,9 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
     }
 
     func onOrderPlaced(_ orderJSON: String?) throws {
-        // Orders are tracked on disk by the engine
+        Task {
+            await sendOrderPlacedNotification(orderJSON)
+        }
     }
 
     func onOrderFilled(_ orderJSON: String?) throws {
@@ -329,7 +347,16 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
     func onError(_ err: (any Error)?) {
         Task { @MainActor in
             if let err = err {
-                self.lastError = err.localizedDescription
+                let message = err.localizedDescription
+                self.lastError = message
+                self.currentTradingPhase = "Provider error"
+                self.currentProviderProblemMessage = message
+                self.toolbarStatusService?.setStatusImmediately(.trading(
+                    label: self.currentTradingLabel,
+                    phase: self.currentTradingPhase,
+                    progress: nil,
+                    message: message
+                ))
             }
         }
     }
@@ -342,16 +369,38 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
         }
     }
 
-    func onStatusUpdate(_ status: String?) {
+    func onStatusUpdate(_ status: String?) throws {
         Task { @MainActor in
             let phase = self.liveTradingPhaseLabel(for: status)
-            self.currentTradingPhase = phase
 
             if status == "stopped" {
+                if let providerProblemMessage = self.currentProviderProblemMessage {
+                    self.toolbarStatusService?.setStatusImmediately(.trading(
+                        label: self.currentTradingLabel,
+                        phase: self.currentTradingPhase,
+                        progress: nil,
+                        message: providerProblemMessage
+                    ))
+                    return
+                }
+
+                self.currentTradingPhase = phase
+                self.currentProviderProblemMessage = nil
                 await self.toolbarStatusService?.setStatus(.idle)
                 return
             }
 
+            if let providerProblemMessage = self.currentProviderProblemMessage {
+                self.toolbarStatusService?.setStatusImmediately(.trading(
+                    label: self.currentTradingLabel,
+                    phase: self.currentTradingPhase,
+                    progress: nil,
+                    message: providerProblemMessage
+                ))
+                return
+            }
+
+            self.currentTradingPhase = phase
             self.toolbarStatusService?.setStatusImmediately(.trading(
                 label: self.currentTradingLabel,
                 phase: phase,
@@ -361,7 +410,7 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
         }
     }
 
-    func onPrefetchProgress(_ symbol: String?, current: Int, total: Int, message: String?) {
+    func onPrefetchProgress(_ symbol: String?, current: Double, total: Double, message: String?) throws {
         Task { @MainActor in
             let label: String
             if let symbol, !symbol.isEmpty {
@@ -369,12 +418,41 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
             } else {
                 label = self.currentTradingLabel
             }
-            let progress = Progress(current: current, total: max(total, 1))
+            let currentCount = max(Int(current.rounded()), 0)
+            let totalCount = max(Int(total.rounded()), 1)
+            let progress = Progress(current: currentCount, total: totalCount)
 
             self.toolbarStatusService?.setStatusImmediately(.trading(
                 label: label,
                 phase: self.currentTradingPhase,
                 progress: progress,
+                message: message
+            ))
+        }
+    }
+
+    func onProviderStatusChange(_ marketDataStatus: String?, tradingStatus: String?) throws {
+        Task { @MainActor in
+            self.currentMarketDataStatus = marketDataStatus
+            self.currentProviderTradingStatus = tradingStatus
+
+            let phase = self.providerStatusPhase(
+                marketDataStatus: marketDataStatus,
+                tradingStatus: tradingStatus
+            )
+            self.currentTradingPhase = phase
+            let message = self.providerStatusMessage(
+                marketDataStatus: marketDataStatus,
+                tradingStatus: tradingStatus
+            )
+            self.currentProviderProblemMessage = self.isDisconnected(marketDataStatus) || self.isDisconnected(tradingStatus)
+                ? message
+                : nil
+
+            self.toolbarStatusService?.setStatusImmediately(.trading(
+                label: self.currentTradingLabel,
+                phase: phase,
+                progress: nil,
                 message: message
             ))
         }
@@ -398,4 +476,148 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
             return "Running"
         }
     }
+
+    private func providerStatusPhase(marketDataStatus: String?, tradingStatus: String?) -> String {
+        if isDisconnected(tradingStatus) || isDisconnected(marketDataStatus) {
+            return "Disconnected"
+        }
+
+        if isConnected(tradingStatus) || isConnected(marketDataStatus) {
+            return "Connected"
+        }
+
+        return currentTradingPhase
+    }
+
+    private func providerStatusMessage(marketDataStatus: String?, tradingStatus: String?) -> String {
+        let marketDataDisconnected = isDisconnected(marketDataStatus)
+        let tradingDisconnected = isDisconnected(tradingStatus)
+
+        if marketDataDisconnected && tradingDisconnected {
+            return "Providers disconnected"
+        }
+
+        if tradingDisconnected {
+            return "Trading provider disconnected"
+        }
+
+        if marketDataDisconnected {
+            return "Market data disconnected"
+        }
+
+        if isConnected(marketDataStatus) && isConnected(tradingStatus) {
+            return "Providers connected"
+        }
+
+        if isConnected(tradingStatus) {
+            return "Trading provider connected"
+        }
+
+        if isConnected(marketDataStatus) {
+            return "Market data connected"
+        }
+
+        return "Provider status updated"
+    }
+
+    private func isConnected(_ status: String?) -> Bool {
+        status?.localizedCaseInsensitiveCompare("connected") == .orderedSame
+    }
+
+    private func isDisconnected(_ status: String?) -> Bool {
+        status?.localizedCaseInsensitiveCompare("disconnected") == .orderedSame
+    }
+
+    private func sendOrderPlacedNotification(_ orderJSON: String?) async {
+        guard let orderJSON, let data = orderJSON.data(using: .utf8) else {
+            return
+        }
+
+        let order: LiveOrderNotificationPayload
+        do {
+            order = try JSONDecoder().decode(LiveOrderNotificationPayload.self, from: data)
+        } catch {
+            logger.warning("Failed to decode order notification payload: \(error.localizedDescription)")
+            return
+        }
+
+        do {
+            try await requestNotificationAuthorizationIfNeeded()
+        } catch {
+            logger.warning("Failed to request notification authorization: \(error.localizedDescription)")
+            return
+        }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Order placed: \(order.actionLabel) \(order.symbol)"
+        content.body = order.notificationBody(placedAt: Date())
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "live-order-placed-\(order.id)",
+            content: content,
+            trigger: nil
+        )
+
+        do {
+            try await UNUserNotificationCenter.current().add(request)
+        } catch {
+            logger.warning("Failed to send order placed notification: \(error.localizedDescription)")
+        }
+    }
+
+    private func requestNotificationAuthorizationIfNeeded() async throws {
+        guard !Self.hasRequestedNotificationAuthorization else {
+            return
+        }
+
+        _ = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
+        Self.hasRequestedNotificationAuthorization = true
+    }
+}
+
+private struct LiveOrderNotificationPayload: Decodable {
+    let id: String
+    let symbol: String
+    let side: String
+    let orderType: String
+    let price: Double
+    let quantity: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case symbol
+        case side
+        case orderType = "order_type"
+        case price
+        case quantity
+    }
+
+    var actionLabel: String {
+        side.uppercased()
+    }
+
+    func notificationBody(placedAt: Date) -> String {
+        [
+            "Time: \(Self.timeFormatter.string(from: placedAt))",
+            "Symbol: \(symbol)",
+            "Price: \(Self.numberFormatter.string(from: NSNumber(value: price)) ?? "\(price)")",
+            "Amount: \(Self.numberFormatter.string(from: NSNumber(value: quantity)) ?? "\(quantity)")",
+            "Action: \(actionLabel) \(orderType.uppercased())"
+        ].joined(separator: "\n")
+    }
+
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .medium
+        return formatter
+    }()
+
+    private static let numberFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 8
+        return formatter
+    }()
 }

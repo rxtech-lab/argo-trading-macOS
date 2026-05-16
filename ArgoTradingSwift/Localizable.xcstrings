@@ -1626,6 +1626,9 @@
         }
       }
     },
+    "Live trading progress %lld%%" : {
+
+    },
     "Loading credentials..." : {
       "localizations" : {
         "zh-Hans" : {

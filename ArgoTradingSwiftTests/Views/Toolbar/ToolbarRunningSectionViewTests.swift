@@ -79,6 +79,21 @@ struct ToolbarRunningStatusBadgeViewTests {
     }
 
     @MainActor
+    @Test func tradingStatusDisplaysProviderDisconnectedMessage() throws {
+        let sut = ToolbarRunningStatusBadgeView()
+            .environment(makeStatusService(.trading(
+                label: "Binance",
+                phase: "Disconnected",
+                progress: nil,
+                message: "Trading provider disconnected"
+            )))
+
+        let expectedText = "Binance Trading provider disconnected"
+        let labelText = try sut.inspect().find(text: expectedText)
+        #expect(try labelText.string() == expectedText)
+    }
+
+    @MainActor
     @Test func errorStatusDisplaysXmarkImage() throws {
         let label = "Build"
         let sut = ToolbarRunningStatusBadgeView()

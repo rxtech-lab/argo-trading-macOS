@@ -227,6 +227,7 @@ struct LiveChartView: View {
             totalDataCount: displayData.count,
             markers: filteredMarkers,
             showVolume: showVolume,
+            autoScrollToRealtimeWhenPinned: true,
             indicatorSettings: indicatorSettings,
             onSelectionChange: { newIndex in
                 selectedIndex = newIndex

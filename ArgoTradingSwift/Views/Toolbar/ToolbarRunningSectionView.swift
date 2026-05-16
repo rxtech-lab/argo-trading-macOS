@@ -110,7 +110,7 @@ struct ToolbarRunningStatusBadgeView: View {
         case .trading(let label, let phase, let progress, let message):
             HStack(spacing: 8) {
                 Circle()
-                    .fill(phase == "Stopped" ? Color.secondary : Color.green)
+                    .fill(tradingStatusColor(for: phase))
                     .frame(width: 8, height: 8)
 
                 Text(tradingStatusText(label: label, phase: phase, progress: progress, message: message))
@@ -174,6 +174,20 @@ struct ToolbarRunningStatusBadgeView: View {
         }
 
         return "\(label) \(detail)"
+    }
+
+    private func tradingStatusColor(for phase: String) -> Color {
+        let normalizedPhase = phase.lowercased()
+
+        if normalizedPhase.contains("error") || normalizedPhase.contains("disconnected") {
+            return .red
+        }
+
+        if normalizedPhase == "stopped" {
+            return .secondary
+        }
+
+        return .green
     }
 }
 
