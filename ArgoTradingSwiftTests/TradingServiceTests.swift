@@ -9,6 +9,48 @@ import Testing
 
 struct TradingServiceProviderStatusTests {
     @MainActor
+    @Test func liveDataChangeMapsCategoriesAndDropsStaleSequences() async throws {
+        let service = TradingService()
+
+        service.recordLiveDataChanged(
+            runId: "run_1",
+            categories: ["market_data", "marks", "unknown"],
+            finalized: false,
+            sequence: 2
+        )
+
+        #expect(service.liveDataChange?.runID == "run_1")
+        #expect(service.liveDataChange?.categories == [.marketData, .marks])
+        #expect(service.liveDataChange?.finalized == false)
+        #expect(service.liveDataChange?.sequence == 2)
+
+        service.recordLiveDataChanged(
+            runId: "run_1",
+            categories: ["logs"],
+            finalized: false,
+            sequence: 1
+        )
+
+        #expect(service.liveDataChange?.categories == [.marketData, .marks])
+        #expect(service.liveDataChange?.sequence == 2)
+    }
+
+    @MainActor
+    @Test func finalizedLiveDataChangeDefaultsToAllCategoriesWhenBackendSendsNone() async throws {
+        let service = TradingService()
+
+        service.recordLiveDataChanged(
+            runId: "run_1",
+            categories: [],
+            finalized: true,
+            sequence: 1
+        )
+
+        #expect(service.liveDataChange?.categories == Set(LiveTradingDataCategory.allCases))
+        #expect(service.liveDataChange?.finalized == true)
+    }
+
+    @MainActor
     @Test func providerStatusChangeUpdatesToolbarStatus() async throws {
         let service = TradingService()
         let toolbarStatusService = ToolbarStatusService()

@@ -8,12 +8,33 @@
 import LightweightChart
 import Sparkle
 import SwiftUI
+import UserNotifications
 
 var updaterController: SPUStandardUpdaterController?
 let updaterDelegate = UpdaterDelegate()
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+private struct AppChartLogger: ChartLogger {
+    func debug(_ message: String) {
+        logger.debug("\(message)")
+    }
+
+    func info(_ message: String) {
+        logger.info("\(message)")
+    }
+
+    func warning(_ message: String) {
+        logger.warning("\(message)")
+    }
+
+    func error(_ message: String) {
+        logger.error("\(message)")
+    }
+}
+
+class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
+
         // Open welcome window on launch
         DispatchQueue.main.async {
             if let app = NSApp {
@@ -30,6 +51,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
         // Prevent creating untitled document on launch
         return false
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .list, .sound])
     }
 }
 
@@ -104,7 +133,7 @@ struct ArgoTradingSwiftApp: App {
     @State private var schemaService = SchemaService()
     @State private var toolbarStatusService = ToolbarStatusService()
     @State private var backtestResultService = BacktestResultService()
-    @State private var lightweightChartsService = LightweightChartService()
+    @State private var lightweightChartsService = LightweightChartService(logger: AppChartLogger())
     @State private var strategyCacheService = StrategyCacheService()
     @State private var keychainService = KeychainService()
     @State private var tradingProviderService = TradingProviderService()

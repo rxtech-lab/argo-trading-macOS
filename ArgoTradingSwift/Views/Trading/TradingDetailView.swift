@@ -55,11 +55,32 @@ private enum TradingRunTab: String, CaseIterable, Identifiable {
     case logs = "Logs"
 
     var id: String { rawValue }
+
+    var liveDataCategory: LiveTradingDataCategory? {
+        switch self {
+        case .general:
+            return .stats
+        case .trades:
+            return .trades
+        case .orders:
+            return .orders
+        case .marks:
+            return .marks
+        case .logs:
+            return .logs
+        }
+    }
 }
 
 struct TradingRunDetailView: View {
     let resultItem: TradingResultItem
+    @Environment(TradingService.self) private var tradingService
     @State private var selectedTab: TradingRunTab = .general
+    @State private var reloadTask: Task<Void, Never>?
+    @State private var tradesReloadToken: Int = 0
+    @State private var ordersReloadToken: Int = 0
+    @State private var marksReloadToken: Int = 0
+    @State private var logsReloadToken: Int = 0
 
     private var result: TradingResult { resultItem.result }
 
@@ -85,24 +106,31 @@ struct TradingRunDetailView: View {
             case .trades:
                 TradesTableView(
                     filePath: URL(fileURLWithPath: result.tradesFilePath),
-                    dataFilePath: dataFileURL
+                    dataFilePath: dataFileURL,
+                    reloadToken: tradesReloadToken
                 )
             case .orders:
                 OrdersTableView(
                     filePath: URL(fileURLWithPath: result.ordersFilePath),
-                    dataFilePath: dataFileURL
+                    dataFilePath: dataFileURL,
+                    reloadToken: ordersReloadToken
                 )
             case .marks:
                 MarksTableView(
                     filePath: URL(fileURLWithPath: result.marksFilePath),
-                    dataFilePath: dataFileURL
+                    dataFilePath: dataFileURL,
+                    reloadToken: marksReloadToken
                 )
             case .logs:
                 LogsTableView(
                     filePath: URL(fileURLWithPath: result.logsFilePath),
-                    dataFilePath: dataFileURL
+                    dataFilePath: dataFileURL,
+                    reloadToken: logsReloadToken
                 )
             }
+        }
+        .onChange(of: tradingService.liveDataChange) { _, newChange in
+            handleLiveDataChange(newChange)
         }
     }
 
@@ -198,6 +226,50 @@ struct TradingRunDetailView: View {
         formatter.minimumFractionDigits = 2
         formatter.maximumFractionDigits = 2
         return formatter.string(from: NSNumber(value: value)) ?? "$\(value)"
+    }
+
+    @MainActor
+    private func handleLiveDataChange(_ change: LiveTradingDataChange?) {
+        guard let change else {
+            return
+        }
+
+        guard change.runID == result.id,
+              let visibleCategory = selectedTab.liveDataCategory,
+              change.contains(visibleCategory)
+        else {
+            return
+        }
+
+        reloadTask?.cancel()
+
+        if change.finalized {
+            reloadVisibleTable(for: visibleCategory)
+            return
+        }
+
+        reloadTask = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                reloadVisibleTable(for: visibleCategory)
+            }
+        }
+    }
+
+    private func reloadVisibleTable(for category: LiveTradingDataCategory) {
+        switch category {
+        case .trades:
+            tradesReloadToken += 1
+        case .orders:
+            ordersReloadToken += 1
+        case .marks:
+            marksReloadToken += 1
+        case .logs:
+            logsReloadToken += 1
+        case .marketData, .stats:
+            break
+        }
     }
 
 }

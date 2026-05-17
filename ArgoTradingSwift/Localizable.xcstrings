@@ -176,6 +176,9 @@
         }
       }
     },
+    "A strategy named \"%@\" already exists. Replace it with the imported strategy?" : {
+
+    },
     "About %@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2711,6 +2714,12 @@
           }
         }
       }
+    },
+    "Replace" : {
+
+    },
+    "Replace Strategy?" : {
+
     },
     "Requests served" : {
       "localizations" : {

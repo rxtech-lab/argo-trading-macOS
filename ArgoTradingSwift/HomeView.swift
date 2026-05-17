@@ -135,5 +135,9 @@ struct HomeView: View {
         .onChange(of: document.tradingResultFolder) { _, newFolder in
             tradingResultService.setResultFolder(newFolder)
         }
+        .onChange(of: tradingService.liveDataChange) { _, newChange in
+            guard let newChange else { return }
+            tradingResultService.handleLiveDataChange(newChange)
+        }
     }
 }

@@ -546,12 +546,25 @@ function setCandlestickData(data, autoScrollToRealtimeWhenPinned = false) {
   // Save scroll position before replacing data
   let savedRange = null;
   let shouldScrollToRealtime = false;
+  let scrollPosition = null;
   try {
     if (chart && dataMap.size > 0) {
       savedRange = chart.timeScale().getVisibleRange();
+      scrollPosition = chart.timeScale().scrollPosition();
       shouldScrollToRealtime = isPinnedToRealtime();
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[ChartView] Unable to read scroll position before candlestick update:", e.message || e);
+  }
+
+  console.log(
+    "[ChartView] Candlestick update scroll gate:",
+    "autoScrollToRealtimeWhenPinned=" + autoScrollToRealtimeWhenPinned,
+    "wasRightmost=" + shouldScrollToRealtime,
+    "scrollPosition=" + scrollPosition,
+    "previousPoints=" + dataMap.size,
+    "newPoints=" + data.length
+  );
 
   dataMap.clear();
   const formattedData = data.map((d) => {
@@ -595,7 +608,12 @@ function setCandlestickData(data, autoScrollToRealtimeWhenPinned = false) {
 
   restoreVisibleRangeIfOverlapping(savedRange, formattedData);
   if (autoScrollToRealtimeWhenPinned && shouldScrollToRealtime) {
+    console.log("[ChartView] Start scrolling chart to realtime after candlestick update");
     chart.timeScale().scrollToRealTime();
+  } else if (!autoScrollToRealtimeWhenPinned) {
+    console.log("[ChartView] Not scrolling chart: autoScrollToRealtimeWhenPinned=false");
+  } else {
+    console.log("[ChartView] Not scrolling chart: chart was not at rightmost before update");
   }
 
   console.log("[Chart] Data set complete");
@@ -617,7 +635,7 @@ function restoreVisibleRangeIfOverlapping(savedRange, formattedData) {
   } catch (e) {}
 }
 
-function isPinnedToRealtime(epsilon = 0.1) {
+function isPinnedToRealtime(epsilon = 1) {
   if (!chart || dataMap.size === 0) return false;
   const scrollPosition = chart.timeScale().scrollPosition();
   return Math.abs(scrollPosition) <= epsilon;
@@ -630,12 +648,25 @@ function setLineData(data, autoScrollToRealtimeWhenPinned = false) {
   // Save scroll position before replacing data
   let savedRange = null;
   let shouldScrollToRealtime = false;
+  let scrollPosition = null;
   try {
     if (chart && dataMap.size > 0) {
       savedRange = chart.timeScale().getVisibleRange();
+      scrollPosition = chart.timeScale().scrollPosition();
       shouldScrollToRealtime = isPinnedToRealtime();
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[ChartView] Unable to read scroll position before line update:", e.message || e);
+  }
+
+  console.log(
+    "[ChartView] Line update scroll gate:",
+    "autoScrollToRealtimeWhenPinned=" + autoScrollToRealtimeWhenPinned,
+    "wasRightmost=" + shouldScrollToRealtime,
+    "scrollPosition=" + scrollPosition,
+    "previousPoints=" + dataMap.size,
+    "newPoints=" + data.length
+  );
 
   dataMap.clear();
   const formattedData = data.map((d) => {
@@ -672,7 +703,12 @@ function setLineData(data, autoScrollToRealtimeWhenPinned = false) {
 
   restoreVisibleRangeIfOverlapping(savedRange, formattedData);
   if (autoScrollToRealtimeWhenPinned && shouldScrollToRealtime) {
+    console.log("[ChartView] Start scrolling chart to realtime after line update");
     chart.timeScale().scrollToRealTime();
+  } else if (!autoScrollToRealtimeWhenPinned) {
+    console.log("[ChartView] Not scrolling chart: autoScrollToRealtimeWhenPinned=false");
+  } else {
+    console.log("[ChartView] Not scrolling chart: chart was not at rightmost before update");
   }
 }
 

@@ -10,6 +10,7 @@ import SwiftUI
 struct LogsTableView: View {
     let filePath: URL
     let dataFilePath: URL
+    var reloadToken: Int = 0
 
     @Environment(DuckDBService.self) private var dbService
     @Environment(AlertManager.self) private var alertManager
@@ -45,6 +46,9 @@ struct LogsTableView: View {
             Task { await loadLogs(page: 1) }
         }
         .onChange(of: levelFilter) { _, _ in
+            Task { await loadLogs(page: 1) }
+        }
+        .onChange(of: reloadToken) { _, _ in
             Task { await loadLogs(page: 1) }
         }
         .onChange(of: selectedRows) { _, newSelection in
@@ -220,7 +224,7 @@ extension LogsTableView {
         return (column, direction)
     }
 
-    func loadLogs(page: Int) async {
+    private func loadLogs(page: Int) async {
         isLoading = true
         defer { isLoading = false }
 

@@ -10,6 +10,26 @@ import Foundation
 import LightweightChart
 import UserNotifications
 
+enum LiveTradingDataCategory: String, CaseIterable, Hashable {
+    case marketData = "market_data"
+    case trades
+    case orders
+    case marks
+    case logs
+    case stats
+}
+
+struct LiveTradingDataChange: Equatable {
+    let runID: String
+    let categories: Set<LiveTradingDataCategory>
+    let finalized: Bool
+    let sequence: Int64
+
+    func contains(_ category: LiveTradingDataCategory) -> Bool {
+        finalized || categories.contains(category)
+    }
+}
+
 @Observable
 class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
     // Service references
@@ -24,6 +44,8 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
     var liveChartData: [PriceData] = []
     var baseInterval: ChartTimeInterval = .oneSecond
     private var candleCount: Int = 0
+    var liveDataChange: LiveTradingDataChange?
+    private var latestLiveDataSequenceByRunID: [String: Int64] = [:]
 
     // Active run tracking
     var activeRunId: String?
@@ -332,6 +354,56 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
         Task { @MainActor in
             self.liveChartData.append(priceData)
         }
+    }
+
+    func onLiveDataChanged(
+        _ runId: String?,
+        categories: (any SwiftargoStringCollectionProtocol)?,
+        finalized: Bool,
+        sequence: Int64
+    ) throws {
+        var categoryValues: [String] = []
+        if let categories {
+            for index in 0 ..< categories.size() {
+                categoryValues.append(categories.get(index))
+            }
+        }
+
+        Task { @MainActor in
+            self.recordLiveDataChanged(
+                runId: runId,
+                categories: categoryValues,
+                finalized: finalized,
+                sequence: sequence
+            )
+        }
+    }
+
+    @MainActor
+    func recordLiveDataChanged(
+        runId: String?,
+        categories categoryValues: [String],
+        finalized: Bool,
+        sequence: Int64
+    ) {
+        guard let runId, !runId.isEmpty else { return }
+
+        var categories = Set(categoryValues.compactMap(LiveTradingDataCategory.init(rawValue:)))
+        if finalized, categories.isEmpty {
+            categories = Set(LiveTradingDataCategory.allCases)
+        }
+        guard finalized || !categories.isEmpty else { return }
+
+        let latestSequence = latestLiveDataSequenceByRunID[runId] ?? .min
+        guard sequence > latestSequence else { return }
+
+        latestLiveDataSequenceByRunID[runId] = sequence
+        liveDataChange = LiveTradingDataChange(
+            runID: runId,
+            categories: categories,
+            finalized: finalized,
+            sequence: sequence
+        )
     }
 
     func onOrderPlaced(_ orderJSON: String?) throws {

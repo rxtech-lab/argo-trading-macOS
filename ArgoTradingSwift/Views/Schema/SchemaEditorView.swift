@@ -349,25 +349,40 @@ struct SchemaEditorView: View {
         do {
             let strategyValid = try await strategyController.submit()
             if !strategyValid {
-                alertManager.showAlert(message: "Please fix the errors in the strategy form before saving.")
+                alertManager.showAlert(
+                    message: validationAlertMessage(
+                        "Please fix the errors in the strategy form before saving.",
+                        controller: strategyController
+                    )
+                )
                 return
             }
 
             let backtestValid = try await backtestController.submit()
             if !backtestValid {
-                alertManager.showAlert(message: "Please fix the errors in the backtest form before saving.")
+                alertManager.showAlert(
+                    message: validationAlertMessage(
+                        "Please fix the errors in the backtest form before saving.",
+                        controller: backtestController
+                    )
+                )
                 return
             }
 
             if liveTradingSchema != nil {
                 let liveTradingValid = try await liveTradingController.submit()
                 if !liveTradingValid {
-                    alertManager.showAlert(message: "Please fix the errors in the live trading form before saving.")
+                    alertManager.showAlert(
+                        message: validationAlertMessage(
+                            "Please fix the errors in the live trading form before saving.",
+                            controller: liveTradingController
+                        )
+                    )
                     return
                 }
             }
         } catch {
-            alertManager.showAlert(message: "Please fix the errors in the form before saving.")
+            alertManager.showAlert(message: "Please fix the errors in the form before saving.\n\n\(error.localizedDescription)")
             return
         }
 
@@ -437,6 +452,28 @@ struct SchemaEditorView: View {
             dismiss()
         } catch {
             alertManager.showAlert(message: error.localizedDescription)
+        }
+    }
+
+    private func validationAlertMessage(_ summary: String, controller: JSONSchemaFormController) -> String {
+        let messages = validationErrorMessages(from: controller)
+        guard !messages.isEmpty else { return summary }
+
+        let visibleMessages = messages.prefix(5).map { "- \($0)" }.joined(separator: "\n")
+        let remainingCount = messages.count - 5
+        if remainingCount > 0 {
+            return "\(summary)\n\n\(visibleMessages)\n- and \(remainingCount) more"
+        }
+        return "\(summary)\n\n\(visibleMessages)"
+    }
+
+    private func validationErrorMessages(from controller: JSONSchemaFormController) -> [String] {
+        var seenMessages: Set<String> = []
+        return controller.errors.compactMap { error in
+            let message = error.description
+            guard !seenMessages.contains(message) else { return nil }
+            seenMessages.insert(message)
+            return message
         }
     }
 

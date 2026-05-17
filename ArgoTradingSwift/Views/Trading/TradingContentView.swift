@@ -28,6 +28,7 @@ struct TradingContentView: View {
                 if let resultItem = tradingResultService.getResultItem(for: url) {
                     LiveChartView(
                         runURL: url,
+                        runID: resultItem.result.id,
                         marketDataFilePath: resultItem.result.marketDataFilePath,
                         tradesFilePath: resultItem.result.tradesFilePath,
                         marksFilePath: resultItem.result.marksFilePath
