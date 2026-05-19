@@ -90,6 +90,11 @@ struct HomeView: View {
 
                 Spacer()
             }
+            if navigationService.selectedMode == .Trading {
+                ToolbarItem(placement: .primaryAction) {
+                    WalletToolbarButton(document: $document)
+                }
+            }
         }
         .onAppear {
             if let base = fileURL?.deletingLastPathComponent() {

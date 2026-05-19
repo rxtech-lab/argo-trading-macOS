@@ -34,11 +34,27 @@ struct LiveTradingDataChange: Equatable {
 class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
     // Service references
     var toolbarStatusService: ToolbarStatusService?
+    weak var walletService: WalletService?
 
     // Engine and task management
     var tradingEngine: SwiftargoTradingEngine?
     var tradingTask: Task<Void, Never>?
     var isRunning: Bool = false
+
+    // Symbols reported by the engine on start (used for wallet historical-orders queries)
+    var currentSymbols: [String] = []
+
+    // Wallet-only engine: a minimal engine configured with only the trading
+    // provider (no market data, no strategy, no Run loop). Lets the wallet UI
+    // call into Wallet() without requiring a full live trading session.
+    var walletEngine: SwiftargoTradingEngine?
+    private var walletEngineProviderID: UUID?
+
+    /// Engine that the wallet UI should query against — prefers the live
+    /// trading engine when running, falls back to the wallet-only engine.
+    var walletAccessibleEngine: SwiftargoTradingEngine? {
+        tradingEngine ?? walletEngine
+    }
 
     // Live chart data — populated from OnMarketData callbacks
     var liveChartData: [PriceData] = []
@@ -73,6 +89,10 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
     ) async {
         let success = await keychainService.authenticateWithBiometrics()
         guard success else { return }
+
+        // Tear down any wallet-only engine so it doesn't compete with the
+        // live engine over the same provider configuration.
+        disconnectWalletEngine()
 
         self.toolbarStatusService = toolbarStatusService
         isRunning = true
@@ -216,9 +236,75 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
         tradingTask = nil
         isRunning = false
         activeRunId = nil
+        currentSymbols = []
+        walletService?.clear()
         currentTradingPhase = "Stopped"
 
         await toolbarStatusService.setStatus(.idle)
+    }
+
+    // MARK: - Wallet-only engine
+
+    /// Creates (or reuses) a minimal engine bound to the given trading provider
+    /// so the wallet UI can fetch balances and orders without a live trading
+    /// session. Returns true if the wallet engine is ready to serve requests.
+    @MainActor
+    func connectWalletProvider(
+        provider: TradingProvider,
+        keychainService: KeychainService
+    ) async -> Bool {
+        // Live engine already covers wallet queries — nothing to do.
+        if tradingEngine != nil { return true }
+
+        // Already connected to the same provider.
+        if walletEngine != nil, walletEngineProviderID == provider.id {
+            return true
+        }
+
+        // Different provider — tear down the previous wallet engine.
+        disconnectWalletEngine()
+
+        let success = await keychainService.authenticateWithBiometrics()
+        guard success else { return false }
+
+        var engineError: NSError?
+        let engine = SwiftargoNewTradingEngine(self, &engineError)
+        if let engineError {
+            logger.error("Wallet engine create failed: \(engineError.localizedDescription)")
+            return false
+        }
+        guard let engine else { return false }
+
+        do {
+            try engine.initialize("{}")
+
+            let tradingKeychainFields = getTradingProviderKeychainFieldNames(provider: provider)
+            let tradingConfigData = resolveKeychainPlaceholders(
+                parameters: provider.tradingSystemConfig,
+                identifier: provider.id.uuidString,
+                keychainFieldNames: tradingKeychainFields,
+                keychainService: keychainService
+            )
+            guard let tradingConfigJSON = String(data: tradingConfigData, encoding: .utf8) else {
+                return false
+            }
+            try engine.setTradingProvider(provider.tradingSystemProvider, configJSON: tradingConfigJSON)
+        } catch {
+            logger.error("Wallet engine setTradingProvider failed: \(error.localizedDescription)")
+            return false
+        }
+
+        walletEngine = engine
+        walletEngineProviderID = provider.id
+        return true
+    }
+
+    @MainActor
+    func disconnectWalletEngine() {
+        _ = walletEngine?.cancel()
+        walletEngine = nil
+        walletEngineProviderID = nil
+        walletService?.clear()
     }
 
     // MARK: - Active Run
@@ -291,8 +377,16 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
         interval: String?,
         previousDataPath: String?
     ) throws {
-        if let interval = interval, let parsed = ChartTimeInterval(rawValue: interval) {
-            Task { @MainActor in
+        var symbolValues: [String] = []
+        if let symbols {
+            for index in 0 ..< symbols.size() {
+                symbolValues.append(symbols.get(index))
+            }
+        }
+
+        Task { @MainActor in
+            self.currentSymbols = symbolValues
+            if let interval = interval, let parsed = ChartTimeInterval(rawValue: interval) {
                 self.baseInterval = parsed
             }
         }
@@ -303,6 +397,8 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
             self.isRunning = false
             self.tradingEngine = nil
             self.tradingTask = nil
+            self.currentSymbols = []
+            self.walletService?.clear()
             self.currentTradingPhase = "Stopped"
 
             if let err = err, !err.isContextCancelled {
@@ -500,6 +596,30 @@ class TradingService: NSObject, SwiftargoTradingEngineHelperProtocol {
                 progress: progress,
                 message: message
             ))
+        }
+    }
+
+    func onOrderChanged() throws {
+        notifyWalletStale()
+    }
+
+    func onBalanceChanged() throws {
+        notifyWalletStale()
+    }
+
+    func onBuyingPowerChanged() throws {
+        notifyWalletStale()
+    }
+
+    func onAssetsChanged() throws {
+        notifyWalletStale()
+    }
+
+    private func notifyWalletStale() {
+        Task { @MainActor in
+            guard let walletService = self.walletService else { return }
+            let currency = WalletDisplayPreferences.currentCurrency
+            walletService.scheduleRefresh(baseCurrency: currency)
         }
     }
 

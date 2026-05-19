@@ -70,6 +70,13 @@ struct ArgoTradingSwiftApp: App {
     @State private var datasetDownloadService = DatasetDownloadService()
 
     init() {
+        // Wire the wallet ↔ trading service back-pointers up front. Both
+        // services live for the lifetime of the app, so capturing them here
+        // is safe and avoids per-window setup elsewhere.
+        tradingService.walletService = walletService
+        walletService.tradingService = tradingService
+        walletService.loadSupportedCurrencies()
+
         // UI tests pass `-ArgoDisableUpdates` (or `ARGO_DISABLE_UPDATES=1` env var)
         // to suppress the Sparkle update prompt, and `-ArgoResetState`
         // (or `ARGO_RESET_STATE=1`) to wipe app-local state before launch.
@@ -139,6 +146,7 @@ struct ArgoTradingSwiftApp: App {
     @State private var tradingProviderService = TradingProviderService()
     @State private var tradingService = TradingService()
     @State private var tradingResultService = TradingResultService()
+    @State private var walletService = WalletService()
     @State private var mcpServerService = MCPServerService()
 
     @Environment(\.dismissWindow) private var dismissWindow
@@ -224,6 +232,7 @@ struct ArgoTradingSwiftApp: App {
         .environment(tradingProviderService)
         .environment(tradingService)
         .environment(tradingResultService)
+        .environment(walletService)
         .environment(mcpServerService)
 
         // Define a custom About window that can be opened once
@@ -232,6 +241,20 @@ struct ArgoTradingSwiftApp: App {
         }
         .windowResizability(.contentSize) // Make it non-resizable
         .restorationBehavior(.disabled) // Prevent state restoration
+
+        // Wallet — floating window for the live trading mode, opened from the
+        // wallet toolbar button. Singleton (Window, not WindowGroup) so the
+        // button reuses the existing window if already open.
+        Window("Wallet", id: "wallet") {
+            WalletWindowView()
+                .environment(tradingService)
+                .environment(walletService)
+                .frame(width: 380, height: 720)
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultPosition(.trailing)
+        .restorationBehavior(.disabled)
 
         Settings {
             SettingsView()
