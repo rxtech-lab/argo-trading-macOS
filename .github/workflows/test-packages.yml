@@ -64,7 +64,7 @@ jobs:
             ${{ runner.os }}-xcode-
 
       - name: Import code signing certificate
-        uses: apple-actions/import-codesign-certs@v6
+        uses: apple-actions/import-codesign-certs@v7
         with:
           p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.P12_PASSWORD }}
@@ -84,7 +84,7 @@ jobs:
           xcrun xccov view --report --json --files-for-target ArgoTradingSwift test-results/TestResults.xcresult > coverage.json
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.json
