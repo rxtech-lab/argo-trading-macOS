@@ -31,16 +31,21 @@ private struct MaximizeWindowForUITests: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSView, context: Context) {}
 
-    /// The window isn't attached when `makeNSView` runs, so poll briefly until it is.
-    private static func maximize(_ view: NSView, attempt: Int = 0) {
-        guard attempt < 30 else { return }
+    /// The window isn't attached when `makeNSView` runs, so poll until it is, then
+    /// re-apply the frame a few times to defeat any later SwiftUI re-layout that
+    /// would shrink the window back toward its content size.
+    private static func maximize(_ view: NSView, attempt: Int = 0, applied: Int = 0) {
+        guard applied < 5, attempt < 50 else { return }
         guard let window = view.window, let screen = window.screen ?? NSScreen.main else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                maximize(view, attempt: attempt + 1)
+                maximize(view, attempt: attempt + 1, applied: applied)
             }
             return
         }
         window.setFrame(screen.visibleFrame, display: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            maximize(view, attempt: attempt + 1, applied: applied + 1)
+        }
     }
 }
 

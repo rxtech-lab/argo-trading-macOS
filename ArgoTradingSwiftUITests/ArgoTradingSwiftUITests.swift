@@ -52,6 +52,9 @@ final class ArgoTradingSwiftUITests: XCTestCase {
 
         // click and navigate to trades tab, then click the first trade to see details
         resultRow.click()
+        // Collapse the sidebar so the right-hand result tabs ("Trades", …) are
+        // not pushed off the window edge on the narrow CI display.
+        UITestUtils.collapseSidebar(in: app)
         app/*@START_MENU_TOKEN@*/ .radioButtons["Trades"]/*[[".radioGroups.radioButtons[\"Trades\"]",".radioButtons[\"Trades\"]"],[[[-1,1],[-1,0]]],[0]]@END_MENU_TOKEN@*/ .firstMatch.click()
         app/*@START_MENU_TOKEN@*/ .staticTexts["BTCUSDT"]/*[[".groups.staticTexts[\"BTCUSDT\"]",".staticTexts[\"BTCUSDT\"]"],[[[-1,1],[-1,0]]],[0]]@END_MENU_TOKEN@*/ .firstMatch.click()
 
