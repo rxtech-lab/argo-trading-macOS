@@ -31,7 +31,8 @@ struct TradingContentView: View {
                         runID: resultItem.result.id,
                         marketDataFilePath: resultItem.result.marketDataFilePath,
                         tradesFilePath: resultItem.result.tradesFilePath,
-                        marksFilePath: resultItem.result.marksFilePath
+                        marksFilePath: resultItem.result.marksFilePath,
+                        logsFilePath: resultItem.result.logsFilePath
                     )
                     .frame(minWidth: 400)
                 } else {

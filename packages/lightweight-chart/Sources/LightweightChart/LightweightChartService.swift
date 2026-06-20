@@ -149,7 +149,8 @@ func parseMarkerHoverData(from body: Any) -> JSMarkerHoverData? {
             category: markerDict["category"] as? String,
             message: markerDict["message"] as? String,
             signalType: markerDict["signalType"] as? String,
-            signalReason: markerDict["signalReason"] as? String
+            signalReason: markerDict["signalReason"] as? String,
+            level: markerDict["level"] as? String
         )
     }
 

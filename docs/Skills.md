@@ -1,3 +1,9 @@
+---
+slug: guides/agent-skills
+title: Agent Skills — Strategy Iteration
+description: How an AI agent iterates on a trading strategy via the embedded MCP server
+---
+
 # ArgoTradingSwift — Agent Skills
 
 This document tells an AI agent how to iterate on a trading strategy inside ArgoTradingSwift via the embedded MCP server.

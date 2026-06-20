@@ -22,6 +22,7 @@ struct LiveChartView: View {
     var marketDataFilePath: String = ""
     var tradesFilePath: String = ""
     var marksFilePath: String = ""
+    var logsFilePath: String = ""
 
     // Historical data loaded from Parquet
     @State private var historicalData: [PriceData] = []
@@ -154,7 +155,7 @@ struct LiveChartView: View {
 
         var loadedMarkers: [MarkerDataJS] = []
 
-        // Fetch trades and marks in parallel — they hit independent files,
+        // Fetch trades, marks, and logs in parallel — they hit independent files,
         // so the wall-clock cost is bounded by the slower of the two. Each branch
         // catches its own errors so one failure doesn't void the other.
         async let tradesMarkers: [MarkerDataJS] = {
@@ -191,8 +192,46 @@ struct LiveChartView: View {
             }
         }()
 
+        async let logsMarkers: [MarkerDataJS] = {
+            guard !logsFilePath.isEmpty else { return [] }
+            let logsURL = URL(fileURLWithPath: logsFilePath)
+            guard FileManager.default.fileExists(atPath: logsURL.path) else { return [] }
+
+            do {
+                var allLogs: [Log] = []
+                var page = 1
+                let pageSize = 1_000
+
+                while true {
+                    let result = try await dbService.fetchLogData(
+                        filePath: logsURL,
+                        page: page,
+                        pageSize: pageSize,
+                        sortColumn: "timestamp",
+                        sortDirection: "ASC",
+                        startTime: range.lowerBound,
+                        endTime: range.upperBound
+                    )
+
+                    allLogs.append(contentsOf: result.items)
+
+                    if allLogs.count >= result.total || result.items.isEmpty {
+                        break
+                    }
+
+                    page += 1
+                }
+
+                return allLogs.map { $0.toMarkerDataJS() }
+            } catch {
+                logger.error("Failed to load logs from '\(logsFilePath)': \(String(describing: error))")
+                return []
+            }
+        }()
+
         loadedMarkers.append(contentsOf: await tradesMarkers)
         loadedMarkers.append(contentsOf: await marksMarkers)
+        loadedMarkers.append(contentsOf: await logsMarkers)
 
         markers = loadedMarkers
     }
@@ -216,7 +255,9 @@ struct LiveChartView: View {
             return
         }
 
-        let shouldReloadMarkers = change.categories.contains(.trades) || change.categories.contains(.marks)
+        let shouldReloadMarkers = change.categories.contains(.trades)
+            || change.categories.contains(.marks)
+            || change.categories.contains(.logs)
         guard shouldReloadMarkers else { return }
 
         markerReloadTask = Task {

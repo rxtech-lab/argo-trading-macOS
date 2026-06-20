@@ -74,9 +74,44 @@ class DuckDBService: DuckDBServiceProtocol {
     private static let utcDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(identifier: "UTC")
         return formatter
     }()
+
+    private static let utcFractionalDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        return formatter
+    }()
+
+    private static let iso8601Formatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    private static let iso8601FractionalFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    static func parseTimestamp(_ value: String?) -> FoundationDate {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !value.isEmpty
+        else {
+            return FoundationDate(timeIntervalSince1970: 0)
+        }
+
+        return iso8601FractionalFormatter.date(from: value)
+            ?? iso8601Formatter.date(from: value)
+            ?? utcFractionalDateFormatter.date(from: value)
+            ?? utcDateFormatter.date(from: value)
+            ?? FoundationDate(timeIntervalSince1970: 0)
+    }
 
     init() {
         do {
@@ -245,7 +280,7 @@ class DuckDBService: DuckDBServiceProtocol {
                     items.reserveCapacity(count)
 
                     for i in 0 ..< count {
-                        let utcDate = Self.utcDateFormatter.date(from: times[i] ?? "") ?? Date()
+                        let utcDate = Self.parseTimestamp(times[i])
                         items.append(PriceData(
                             globalIndex: offset + i,
                             date: utcDate,
@@ -324,7 +359,7 @@ class DuckDBService: DuckDBServiceProtocol {
 
         return dataFrame.rows.enumerated().map { index, row in
             let time = row[1, String.self]
-            let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? Date()
+            let utcDate = Self.parseTimestamp(time)
 
             return PriceData(
                 globalIndex: startOffset + index,
@@ -445,7 +480,7 @@ class DuckDBService: DuckDBServiceProtocol {
 
         return dataFrame.rows.enumerated().map { index, row in
             let time = row[0, String.self]
-            let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? Date()
+            let utcDate = Self.parseTimestamp(time)
 
             return PriceData(
                 globalIndex: startOffset + index,
@@ -597,8 +632,8 @@ class DuckDBService: DuckDBServiceProtocol {
         var trades: [Trade] = []
         trades.reserveCapacity(count)
         for i in 0 ..< count {
-            let timestamp = Self.utcDateFormatter.date(from: timestamps[i] ?? "") ?? Date()
-            let executedAt = executedAts[i].flatMap { Self.utcDateFormatter.date(from: $0) }
+            let timestamp = Self.parseTimestamp(timestamps[i])
+            let executedAt = executedAts[i].map(Self.parseTimestamp)
             trades.append(Trade(
                 orderId: orderIds[i] ?? "",
                 symbol: symbols[i] ?? "",
@@ -709,7 +744,7 @@ class DuckDBService: DuckDBServiceProtocol {
         var orders: [Order] = []
         orders.reserveCapacity(count)
         for i in 0 ..< count {
-            let timestamp = Self.utcDateFormatter.date(from: timestamps[i] ?? "") ?? Date()
+            let timestamp = Self.parseTimestamp(timestamps[i])
             orders.append(Order(
                 orderId: orderIds[i] ?? "",
                 symbol: symbols[i] ?? "",
@@ -810,7 +845,7 @@ class DuckDBService: DuckDBServiceProtocol {
         marks.reserveCapacity(count)
         for i in 0 ..< count {
             let shape = MarkShape(rawValue: shapes[i] ?? "circle") ?? .circle
-            let signalTime = Self.utcDateFormatter.date(from: signalTimes[i] ?? "") ?? Date()
+            let signalTime = Self.parseTimestamp(signalTimes[i])
             let signalType = SignalType(rawValue: signalTypes[i] ?? "") ?? .noAction
             let signal = Signal(
                 time: signalTime,
@@ -822,7 +857,7 @@ class DuckDBService: DuckDBServiceProtocol {
                 indicator: ""
             )
             let markColor = MarkColor(string: colors[i] ?? "#FFFFFF")
-            let markLevel = MarkLevel(rawValue: levels[i] ?? "info") ?? .info
+            let markLevel = MarkLevel(rawValue: (levels[i] ?? "info").lowercased()) ?? .info
 
             marks.append(Mark(
                 id: ids[i] ?? "0",
@@ -913,7 +948,7 @@ class DuckDBService: DuckDBServiceProtocol {
 
         return dataFrame.rows.enumerated().map { index, row in
             let time = row[1, String.self]
-            let utcDate = Self.utcDateFormatter.date(from: time ?? "") ?? FoundationDate()
+            let utcDate = Self.parseTimestamp(time)
 
             return PriceData(
                 globalIndex: startOffset + index,
@@ -1011,8 +1046,8 @@ class DuckDBService: DuckDBServiceProtocol {
         var trades: [Trade] = []
         trades.reserveCapacity(count)
         for i in 0 ..< count {
-            let timestamp = Self.utcDateFormatter.date(from: timestamps[i] ?? "") ?? Date()
-            let executedAt = executedAts[i].flatMap { Self.utcDateFormatter.date(from: $0) }
+            let timestamp = Self.parseTimestamp(timestamps[i])
+            let executedAt = executedAts[i].map(Self.parseTimestamp)
             trades.append(Trade(
                 orderId: orderIds[i] ?? "",
                 symbol: symbols[i] ?? "",
@@ -1108,7 +1143,7 @@ class DuckDBService: DuckDBServiceProtocol {
         marks.reserveCapacity(count)
         for i in 0 ..< count {
             let shape = MarkShape(rawValue: shapes[i] ?? "circle") ?? .circle
-            let signalTime = Self.utcDateFormatter.date(from: signalTimes[i] ?? "") ?? Date()
+            let signalTime = Self.parseTimestamp(signalTimes[i])
             let signalType = SignalType(rawValue: signalTypes[i] ?? "") ?? .noAction
             let signal = Signal(
                 time: signalTime,
@@ -1120,7 +1155,7 @@ class DuckDBService: DuckDBServiceProtocol {
                 indicator: ""
             )
             let markColor = MarkColor(string: colors[i] ?? "#FFFFFF")
-            let markLevel = MarkLevel(rawValue: levels[i] ?? "INFO") ?? .info
+            let markLevel = MarkLevel(rawValue: (levels[i] ?? "info").lowercased()) ?? .info
 
             marks.append(Mark(
                 id: ids[i] ?? "0",
@@ -1204,7 +1239,7 @@ class DuckDBService: DuckDBServiceProtocol {
         // Main query with pagination, sorting, and filtering
         let query = """
         SELECT
-            id,
+            CAST(id AS BIGINT),
             CAST(timestamp AS VARCHAR),
             symbol,
             level,
@@ -1229,12 +1264,12 @@ class DuckDBService: DuckDBServiceProtocol {
         var logs: [Log] = []
         logs.reserveCapacity(count)
         for i in 0 ..< count {
-            let timestamp = Self.utcDateFormatter.date(from: timestamps[i] ?? "") ?? Date()
+            let timestamp = Self.parseTimestamp(timestamps[i])
             logs.append(Log(
                 id: ids[i] ?? 0,
                 timestamp: timestamp,
                 symbol: symbols[i] ?? "",
-                level: LogLevel(rawValue: levels[i] ?? "INFO") ?? .info,
+                level: LogLevel(rawValue: (levels[i] ?? "info").lowercased()) ?? .info,
                 message: messages[i] ?? "",
                 fields: fields[i] ?? ""
             ))

@@ -48,6 +48,7 @@ let currentChartType = "Candlestick";
 let allMarkers = [];
 let tradeMarkers = [];
 let markMarkers = [];
+let logMarkers = [];
 let dataMap = new Map(); // Map time -> { globalIndex, open, high, low, close, volume }
 let isInitialized = false;
 let indicatorSeries = new Map(); // Map indicatorId -> { series, signalSeries?, histogramSeries? }
@@ -764,13 +765,14 @@ function updateLineData(data) {
   }
 }
 
-// Set markers (trades and marks)
+// Set markers (trades, marks, and logs)
 function setMarkers(markerData) {
   if (!series) return;
 
   markerDataMap.clear();
   tradeMarkers = [];
   markMarkers = [];
+  logMarkers = [];
 
   markerData.forEach((m) => {
     // Store full marker data for tooltip
@@ -787,6 +789,8 @@ function setMarkers(markerData) {
 
     if (m.markerType === "trade") {
       tradeMarkers.push(marker);
+    } else if (m.markerType === "log") {
+      logMarkers.push(marker);
     } else {
       markMarkers.push(marker);
     }
@@ -800,7 +804,7 @@ function updateVisibleMarkers() {
   if (!series) return;
 
   // Combine all markers and sort by time
-  const allMarkers = [...tradeMarkers, ...markMarkers];
+  const allMarkers = [...tradeMarkers, ...markMarkers, ...logMarkers];
   allMarkers.sort((a, b) => a.time - b.time);
 
   console.log("[Chart] Updating visible markers:", allMarkers.length);
@@ -817,6 +821,7 @@ function clearAllMarkers() {
 
   tradeMarkers = [];
   markMarkers = [];
+  logMarkers = [];
   markerDataMap.clear();
   try {
     console.log("[Chart] Clearing markers");

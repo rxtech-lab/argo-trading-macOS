@@ -59,6 +59,8 @@ public struct ChartMarkerTooltip: View {
 
                 if marker.markerType == "trade" {
                     TradeMarkerSection(marker: marker)
+                } else if marker.markerType == "log" {
+                    LogMarkerSection(marker: marker)
                 } else {
                     MarkMarkerSection(marker: marker)
                 }
@@ -73,6 +75,8 @@ public struct ChartMarkerTooltip: View {
         data.markers.sorted { a, b in
             if a.markerType == "trade" && b.markerType != "trade" { return true }
             if a.markerType != "trade" && b.markerType == "trade" { return false }
+            if a.markerType == "log" && b.markerType != "log" { return true }
+            if a.markerType != "log" && b.markerType == "log" { return false }
             return false
         }
     }
@@ -283,6 +287,62 @@ private struct TranslatedCaption: View {
                     .truncationMode(.tail)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+}
+
+// MARK: - Log Marker Section
+
+private struct LogMarkerSection: View {
+    let marker: JSMarkerInfo
+
+    private var accentColor: Color {
+        Color(hex: marker.color ?? "#0a84ff") ?? .blue
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(accentColor)
+                    .frame(width: 8, height: 8)
+                    .padding(6)
+
+                Text(marker.title ?? "Log")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+
+                Spacer()
+
+                Text("LOG")
+                    .font(.system(size: 9, weight: .bold))
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(accentColor.opacity(0.15))
+                    .foregroundColor(accentColor)
+                    .cornerRadius(4)
+            }
+            .padding(.bottom, 8)
+
+            if let level = marker.level, !level.isEmpty {
+                TooltipRow(label: "Level", value: level, valueColor: accentColor)
+            }
+
+            if let symbol = marker.category, !symbol.isEmpty {
+                TooltipRow(label: "Symbol", value: symbol)
+            }
+
+            if let message = marker.message, !message.isEmpty {
+                TranslatedCaption(label: "Message:", original: message, translated: nil)
+                    .padding(.top, 8)
+            }
+
+            if let fields = marker.signalReason, !fields.isEmpty {
+                TranslatedCaption(label: "Fields:", original: fields, translated: nil, inlineTranslation: true)
+                    .padding(.top, marker.message == nil ? 8 : 4)
             }
         }
     }
