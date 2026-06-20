@@ -119,6 +119,31 @@ struct StrategyServiceTests {
         try? fileManager.removeItem(at: destDir)
     }
 
+    @Test func strategyExistsForImportDetectsDuplicateFileName() throws {
+        let fileManager = FileManager.default
+        let service = StrategyService(fileManager: fileManager)
+
+        let tempDir = fileManager.temporaryDirectory
+        let sourceDir = tempDir.appendingPathComponent("source_\(UUID().uuidString)")
+        let destDir = tempDir.appendingPathComponent("dest_\(UUID().uuidString)")
+
+        try fileManager.createDirectory(at: sourceDir, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: destDir, withIntermediateDirectories: true)
+
+        let sourceFile = sourceDir.appendingPathComponent("test_strategy.wasm")
+        let duplicateFile = destDir.appendingPathComponent("test_strategy.wasm")
+        let otherFile = sourceDir.appendingPathComponent("other_strategy.wasm")
+        try Data("new wasm content".utf8).write(to: sourceFile)
+        try Data("old wasm content".utf8).write(to: duplicateFile)
+        try Data("other wasm content".utf8).write(to: otherFile)
+
+        #expect(service.strategyExistsForImport(from: sourceFile, to: destDir))
+        #expect(!service.strategyExistsForImport(from: otherFile, to: destDir))
+
+        try? fileManager.removeItem(at: sourceDir)
+        try? fileManager.removeItem(at: destDir)
+    }
+
     @Test func importStrategyFailsWithInvalidSource() {
         let service = StrategyService()
 

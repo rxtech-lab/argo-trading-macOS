@@ -15,6 +15,7 @@ struct TradingSideBar: View {
 
     @State private var showDeleteAlert = false
     @State private var folderToDelete: URL?
+    @State private var collapsedDates: Set<String> = []
 
     var body: some View {
         List(selection: $navigationService.tradingSelection) {
@@ -26,7 +27,20 @@ struct TradingSideBar: View {
                 )
             } else {
                 ForEach(tradingResultService.sortedDates, id: \.self) { date in
-                    Section(date) {
+                    DisclosureGroup(
+                        isExpanded: Binding(
+                            get: { !collapsedDates.contains(date) },
+                            set: { isExpanded in
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    if isExpanded {
+                                        collapsedDates.remove(date)
+                                    } else {
+                                        collapsedDates.insert(date)
+                                    }
+                                }
+                            }
+                        )
+                    ) {
                         if let results = tradingResultService.resultsByDate[date] {
                             ForEach(results) { resultItem in
                                 NavigationLink(value: NavigationPath.trading(trading: .run(url: resultItem.statsFileURL))) {
@@ -51,6 +65,8 @@ struct TradingSideBar: View {
                                 }
                             }
                         }
+                    } label: {
+                        Text(date)
                     }
                 }
             }

@@ -48,8 +48,9 @@ final class ScrollChartUITests: XCTestCase {
             "Small dataset row '\(Self.smallDatasetLabel)' not found in sidebar"
         )
         smallDataset.click()
-        // wait the dataset is loaded
-        XCTAssertTrue(app/*@START_MENU_TOKEN@*/ .staticTexts["Price Chart"]/*[[".groups.staticTexts[\"Price Chart\"]",".staticTexts[\"Price Chart\"]"],[[[-1,1],[-1,0]]],[0]]@END_MENU_TOKEN@*/ .waitForExistence(timeout: 20), "Price Chart not found after clicking fixture — it may take a while to load")
+        // wait the dataset is loaded — match by identifier, not displayed text
+        // (SwiftUI exposes the header string as AX value, not label/identifier).
+        XCTAssertTrue(app.staticTexts["argo.priceChart.header"].waitForExistence(timeout: 20), "Price Chart not found after clicking fixture — it may take a while to load")
 
         let largeDataset = app.buttons[Self.largeDatasetLabel].firstMatch
         XCTAssertTrue(
@@ -71,8 +72,11 @@ final class ScrollChartUITests: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
+        // Match by accessibility identifier, not displayed text. SwiftUI exposes
+        // the header string as the AX *value*, while `staticTexts[...]` matches
+        // identifier/label — so querying "Price Chart" finds nothing on macOS.
         XCTAssertTrue(
-            app.staticTexts["Price Chart"].waitForExistence(timeout: 30),
+            app.staticTexts["argo.priceChart.header"].waitForExistence(timeout: 30),
             "Price Chart header did not appear after opening dataset",
             file: file, line: line
         )
@@ -178,15 +182,24 @@ final class ScrollChartUITests: XCTestCase {
         let app = XCUIApplication()
         // `-NSQuitAlwaysKeepsWindows NO` disables macOS's state restoration so
         // previously-open documents don't reappear alongside our fixture.
+        //
+        // Every flag MUST carry an explicit value. macOS parses launch arguments
+        // as NSUserDefaults `-key value` pairs, so a bare `-ArgoDisableUpdates`
+        // swallows the following token as its value — chaining through the list
+        // and leaving the trailing `NO` stranded as a positional argument, which
+        // NSDocumentController then tries to open as a file ("The document 'NO'
+        // could not be opened"). That modal blocks the test. The app reads these
+        // via `arguments.contains(...)`, so the extra values don't affect detection.
         app.launchArguments = [
             projectURL.path,
-            "-ArgoDisableUpdates", "-ArgoResetState",
+            "-ArgoDisableUpdates", "YES",
+            "-ArgoResetState", "YES",
+            "-ArgoMaximizeWindow", "YES",
             "-NSQuitAlwaysKeepsWindows", "NO",
         ]
         app.launchEnvironment["ARGO_DISABLE_UPDATES"] = "1"
         app.launchEnvironment["ARGO_RESET_STATE"] = "1"
         app.launch()
-        app.fullScreen()
         return app
     }
 

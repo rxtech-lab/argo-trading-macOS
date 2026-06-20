@@ -16,6 +16,7 @@ struct TradingAndBacktestSidebar: View {
 
     @Bindable var navigationService: NavigationService
     @Binding var document: ArgoTradingDocument
+    @State private var pendingStrategyImport: PendingStrategyImport?
 
     var body: some View {
         @Bindable var strategyVM = strategyService
@@ -62,10 +63,25 @@ struct TradingAndBacktestSidebar: View {
             switch result {
             case .success(let urls):
                 if let sourceURL = urls.first {
-                    strategyService.importStrategy(from: sourceURL, to: document.strategyFolder)
+                    prepareStrategyImport(from: sourceURL)
                 }
             case .failure(let error):
                 strategyService.error = error.localizedDescription
+            }
+        }
+        .alert("Replace Strategy?", isPresented: .init(
+            get: { pendingStrategyImport != nil },
+            set: { if !$0 { cancelPendingStrategyImport() } }
+        )) {
+            Button("Cancel", role: .cancel) {
+                cancelPendingStrategyImport()
+            }
+            Button("Replace", role: .destructive) {
+                confirmPendingStrategyImport()
+            }
+        } message: {
+            if let pendingStrategyImport {
+                Text("A strategy named \"\(pendingStrategyImport.fileName)\" already exists. Replace it with the imported strategy?")
             }
         }
         .alert("Error", isPresented: .init(
@@ -82,4 +98,50 @@ struct TradingAndBacktestSidebar: View {
         }
         .frame(minWidth: 300)
     }
+
+    private func prepareStrategyImport(from sourceURL: URL) {
+        let didStartAccessing = sourceURL.startAccessingSecurityScopedResource()
+        let importRequest = PendingStrategyImport(
+            sourceURL: sourceURL,
+            destinationFolder: document.strategyFolder,
+            fileName: sourceURL.lastPathComponent,
+            didStartAccessingSecurityScopedResource: didStartAccessing
+        )
+
+        guard strategyService.strategyExistsForImport(from: sourceURL, to: document.strategyFolder) else {
+            strategyService.importStrategy(from: sourceURL, to: document.strategyFolder)
+            finishStrategyImport(importRequest)
+            return
+        }
+
+        pendingStrategyImport = importRequest
+    }
+
+    private func confirmPendingStrategyImport() {
+        guard let pendingStrategyImport else { return }
+        strategyService.importStrategy(
+            from: pendingStrategyImport.sourceURL,
+            to: pendingStrategyImport.destinationFolder
+        )
+        finishStrategyImport(pendingStrategyImport)
+    }
+
+    private func cancelPendingStrategyImport() {
+        guard let pendingStrategyImport else { return }
+        finishStrategyImport(pendingStrategyImport)
+    }
+
+    private func finishStrategyImport(_ importRequest: PendingStrategyImport) {
+        if importRequest.didStartAccessingSecurityScopedResource {
+            importRequest.sourceURL.stopAccessingSecurityScopedResource()
+        }
+        pendingStrategyImport = nil
+    }
+}
+
+private struct PendingStrategyImport {
+    let sourceURL: URL
+    let destinationFolder: URL
+    let fileName: String
+    let didStartAccessingSecurityScopedResource: Bool
 }

@@ -107,16 +107,26 @@ struct ToolbarRunningStatusBadgeView: View {
             }
             .id("downloadCancelled-\(label)")
 
-        case .trading(let label):
-            HStack(spacing: 6) {
+        case .trading(let label, let phase, let progress, let message):
+            HStack(spacing: 8) {
                 Circle()
-                    .fill(.green)
+                    .fill(tradingStatusColor(for: phase))
                     .frame(width: 8, height: 8)
-                Text(label)
+
+                Text(tradingStatusText(label: label, phase: phase, progress: progress, message: message))
                     .font(.callout)
                     .foregroundStyle(.secondary)
+
+                if let progress {
+                    Divider()
+
+                    ProgressView(value: Double(progress.current), total: Double(progress.total))
+                        .controlSize(.small)
+                        .progressViewStyle(.circular)
+                        .help("Live trading progress \(Int(progress.percentage))%")
+                }
             }
-            .id("trading-\(label)")
+            .id("trading-\(label)-\(phase)")
 
         case .finished(let message, let date):
             HStack(spacing: 6) {
@@ -149,6 +159,35 @@ struct ToolbarRunningStatusBadgeView: View {
             dateFormatter.dateFormat = "MMM d"
             return "\(dateFormatter.string(from: date)) at \(timeString)"
         }
+    }
+
+    private func tradingStatusText(label: String, phase: String, progress: Progress?, message: String?) -> String {
+        let detail: String
+        if let message, !message.isEmpty {
+            detail = message
+        } else {
+            detail = phase
+        }
+
+        if let progress {
+            return "\(detail) \(label) \(progress.current)/\(progress.total)"
+        }
+
+        return "\(label) \(detail)"
+    }
+
+    private func tradingStatusColor(for phase: String) -> Color {
+        let normalizedPhase = phase.lowercased()
+
+        if normalizedPhase.contains("error") || normalizedPhase.contains("disconnected") {
+            return .red
+        }
+
+        if normalizedPhase == "stopped" {
+            return .secondary
+        }
+
+        return .green
     }
 }
 
@@ -188,6 +227,22 @@ private func previewService(_ status: ToolbarRunningStatus) -> ToolbarStatusServ
         selectedMode: .Backtest
     )
     .environment(previewService(.backtesting(label: "Backtesting", progress: Progress(current: 45, total: 100))))
+    .padding()
+}
+
+#Preview("Live Trading Progress") {
+    ToolbarRunningSectionView(
+        document: .constant(ArgoTradingDocument()),
+        datasetFiles: [],
+        strategyFiles: [],
+        selectedMode: .Trading
+    )
+    .environment(previewService(.trading(
+        label: "BTCUSDT",
+        phase: "Prefetching",
+        progress: Progress(current: 42, total: 100),
+        message: "Downloading"
+    )))
     .padding()
 }
 

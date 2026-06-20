@@ -176,6 +176,12 @@
         }
       }
     },
+    "99+" : {
+
+    },
+    "A strategy named \"%@\" already exists. Replace it with the imported strategy?" : {
+
+    },
     "About %@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -291,6 +297,9 @@
           }
         }
       }
+    },
+    "Assets" : {
+
     },
     "Authenticate" : {
       "localizations" : {
@@ -533,6 +542,9 @@
         }
       }
     },
+    "Buying Power" : {
+
+    },
     "C" : {
       "localizations" : {
         "zh-Hans" : {
@@ -695,6 +707,12 @@
         }
       }
     },
+    "Connect provider and open wallet" : {
+
+    },
+    "Copy" : {
+
+    },
     "Could not load strategy parameters" : {
       "localizations" : {
         "zh-Hans" : {
@@ -805,6 +823,9 @@
           }
         }
       }
+    },
+    "Currency" : {
+
     },
     "Data" : {
       "localizations" : {
@@ -1554,6 +1575,9 @@
         }
       }
     },
+    "Last updated %@" : {
+
+    },
     "Level" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1606,6 +1630,9 @@
         }
       }
     },
+    "Live Session" : {
+
+    },
     "Live Trading" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1625,6 +1652,9 @@
           }
         }
       }
+    },
+    "Live trading progress %lld%%" : {
+
     },
     "Loading credentials..." : {
       "localizations" : {
@@ -2084,6 +2114,9 @@
         }
       }
     },
+    "No assets yet" : {
+
+    },
     "No backtest results for this strategy yet" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2153,6 +2186,9 @@
           }
         }
       }
+    },
+    "No orders yet" : {
+
     },
     "No providers" : {
       "localizations" : {
@@ -2324,6 +2360,19 @@
         }
       }
     },
+    "Open Wallet" : {
+
+    },
+    "Order %@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Order %1$@: %2$@"
+          }
+        }
+      }
+    },
     "Order ID" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2335,7 +2384,6 @@
       }
     },
     "Orders" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -2689,6 +2737,12 @@
         }
       }
     },
+    "Receive" : {
+
+    },
+    "Refresh" : {
+
+    },
     "Rename" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2708,6 +2762,12 @@
           }
         }
       }
+    },
+    "Replace" : {
+
+    },
+    "Replace Strategy?" : {
+
     },
     "Requests served" : {
       "localizations" : {
@@ -2977,6 +3037,9 @@
         }
       }
     },
+    "Select a trading provider to enable the wallet" : {
+
+    },
     "Select a trading run from the sidebar or start a new session" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3006,6 +3069,9 @@
           }
         }
       }
+    },
+    "Send" : {
+
     },
     "Series" : {
       "localizations" : {
@@ -3264,6 +3330,9 @@
           }
         }
       }
+    },
+    "Start a live trading session to view balances, assets, and order history." : {
+
     },
     "Start on launch" : {
       "localizations" : {
@@ -4036,6 +4105,12 @@
           }
         }
       }
+    },
+    "Wallet" : {
+
+    },
+    "Wallet unavailable" : {
+
     },
     "Warning" : {
       "localizations" : {

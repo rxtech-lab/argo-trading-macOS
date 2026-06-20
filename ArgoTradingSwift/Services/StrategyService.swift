@@ -109,6 +109,11 @@ class StrategyService {
         }
     }
 
+    func strategyExistsForImport(from sourceURL: URL, to destinationFolder: URL) -> Bool {
+        let destURL = destinationFolder.appendingPathComponent(sourceURL.lastPathComponent)
+        return fileManager.fileExists(atPath: destURL.path)
+    }
+
     func clearError() {
         error = nil
     }

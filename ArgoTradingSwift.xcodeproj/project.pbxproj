@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DF06CC652FB47079005991E1 /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DF06CC642FB47079005991E1 /* ArgoTrading */; };
+		DF0DA1972FE6902B00A02339 /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DF0DA1962FE6902B00A02339 /* ArgoTrading */; };
 		DF0FEF672F45CC12002CCE53 /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DF0FEF662F45CC12002CCE53 /* ArgoTrading */; };
 		DF0FEF6A2F45CF95002CCE53 /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DF0FEF692F45CF95002CCE53 /* ArgoTrading */; };
 		DF0FEF6D2F45D1FD002CCE53 /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DF0FEF6C2F45D1FD002CCE53 /* ArgoTrading */; };
@@ -14,7 +16,6 @@
 		DF0FF0BC2F46402D002CCE53 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = DF0FF0BB2F46402D002CCE53 /* Sparkle */; };
 		DF185DFE2F9542D400B8CB8D /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DF185DFD2F9542D400B8CB8D /* ArgoTrading */; };
 		DF2471792F9FA58900DBAC6B /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DF2471782F9FA58900DBAC6B /* ArgoTrading */; };
-		DF24717C2F9FCEDF00DBAC6B /* ArgoTrading in Frameworks */ = {isa = PBXBuildFile; productRef = DF24717B2F9FCEDF00DBAC6B /* ArgoTrading */; };
 		DF2B0C662F0C7E6100F8C799 /* LightweightChart in Frameworks */ = {isa = PBXBuildFile; productRef = DF2B0C652F0C7E6100F8C799 /* LightweightChart */; };
 		DF4F83E62F94B7A500DE82DA /* uitest.xctestplan in Resources */ = {isa = PBXBuildFile; fileRef = DF4F83E52F94B7A500DE82DA /* uitest.xctestplan */; };
 		DF4F878B2F95100700DE82DA /* MCP in Frameworks */ = {isa = PBXBuildFile; productRef = DF4F878A2F95100700DE82DA /* MCP */; };
@@ -107,7 +108,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DF24717C2F9FCEDF00DBAC6B /* ArgoTrading in Frameworks */,
+				DF06CC652FB47079005991E1 /* ArgoTrading in Frameworks */,
 				DFF3C7A42F97333B00C48093 /* ArgoTrading in Frameworks */,
 				DF0FEF672F45CC12002CCE53 /* ArgoTrading in Frameworks */,
 				DFECCE9D2F9A59DA00B62399 /* ArgoTrading in Frameworks */,
@@ -116,6 +117,7 @@
 				DF2471792F9FA58900DBAC6B /* ArgoTrading in Frameworks */,
 				DF2B0C662F0C7E6100F8C799 /* LightweightChart in Frameworks */,
 				DFBEFC462F06E6BE00F7CE2D /* Logging in Frameworks */,
+				DF0DA1972FE6902B00A02339 /* ArgoTrading in Frameworks */,
 				DFA934172F00392C0002E178 /* Yams in Frameworks */,
 				DF0FEF762F460003002CCE53 /* ArgoTrading in Frameworks */,
 				DF0FEF6A2F45CF95002CCE53 /* ArgoTrading in Frameworks */,
@@ -212,7 +214,8 @@
 				DFECCBB62F99D09300B62399 /* ArgoTrading */,
 				DFECCE9C2F9A59DA00B62399 /* ArgoTrading */,
 				DF2471782F9FA58900DBAC6B /* ArgoTrading */,
-				DF24717B2F9FCEDF00DBAC6B /* ArgoTrading */,
+				DF06CC642FB47079005991E1 /* ArgoTrading */,
+				DF0DA1962FE6902B00A02339 /* ArgoTrading */,
 			);
 			productName = ArgoTradingSwift;
 			productReference = DFEACDD02DB4D9150099025F /* ArgoTradingSwift.app */;
@@ -307,7 +310,7 @@
 				DF2B0C642F0C7E6100F8C799 /* XCLocalSwiftPackageReference "packages/lightweight-chart" */,
 				DF0FF0BA2F46402D002CCE53 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				DF4F87892F95100700DE82DA /* XCRemoteSwiftPackageReference "swift-sdk" */,
-				DF24717A2F9FCEDF00DBAC6B /* XCRemoteSwiftPackageReference "argo-trading" */,
+				DF0DA1952FE6902B00A02339 /* XCRemoteSwiftPackageReference "argo-trading" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DFEACDD12DB4D9150099025F /* Products */;
@@ -546,6 +549,8 @@
 				RUNTIME_EXCEPTION_DEBUGGING_TOOL = NO;
 				RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION = NO;
 				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = NO;
+				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -594,6 +599,8 @@
 				RUNTIME_EXCEPTION_DEBUGGING_TOOL = NO;
 				RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION = NO;
 				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = NO;
+				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -716,20 +723,20 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		DF0DA1952FE6902B00A02339 /* XCRemoteSwiftPackageReference "argo-trading" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/rxtech-lab/argo-trading";
+			requirement = {
+				kind = exactVersion;
+				version = 1.24.0;
+			};
+		};
 		DF0FF0BA2F46402D002CCE53 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sparkle-project/Sparkle";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 2.8.1;
-			};
-		};
-		DF24717A2F9FCEDF00DBAC6B /* XCRemoteSwiftPackageReference "argo-trading" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/rxtech-lab/argo-trading";
-			requirement = {
-				kind = exactVersion;
-				version = 1.22.0;
 			};
 		};
 		DF4F87892F95100700DE82DA /* XCRemoteSwiftPackageReference "swift-sdk" */ = {
@@ -783,6 +790,15 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		DF06CC642FB47079005991E1 /* ArgoTrading */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ArgoTrading;
+		};
+		DF0DA1962FE6902B00A02339 /* ArgoTrading */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DF0DA1952FE6902B00A02339 /* XCRemoteSwiftPackageReference "argo-trading" */;
+			productName = ArgoTrading;
+		};
 		DF0FEF662F45CC12002CCE53 /* ArgoTrading */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ArgoTrading;
@@ -810,11 +826,6 @@
 		};
 		DF2471782F9FA58900DBAC6B /* ArgoTrading */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = ArgoTrading;
-		};
-		DF24717B2F9FCEDF00DBAC6B /* ArgoTrading */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = DF24717A2F9FCEDF00DBAC6B /* XCRemoteSwiftPackageReference "argo-trading" */;
 			productName = ArgoTrading;
 		};
 		DF2B0C652F0C7E6100F8C799 /* LightweightChart */ = {

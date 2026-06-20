@@ -85,6 +85,35 @@ enum UITestUtils {
         ]
         return candidates.first { $0.exists } ?? candidates[2]
     }
+
+    /// Collapses the leading sidebar to free horizontal space.
+    ///
+    /// On the narrow CI display the full three-column layout (sidebar + chart +
+    /// stats) pushes the right-hand result tabs (e.g. "Trades" at x≈1117) past
+    /// the window edge, where they exist but aren't hittable. Hiding the sidebar
+    /// shifts the content left so those controls become reachable. Call this once
+    /// the sidebar is no longer needed for navigation.
+    ///
+    /// SwiftUI's `NavigationSplitView` exposes an automatic toggle whose
+    /// accessibility identifier/label is "Hide Sidebar"; with the `.balanced`
+    /// style there can be more than one, so collapse using the last match.
+    @discardableResult
+    static func collapseSidebar(in app: XCUIApplication) -> Bool {
+        let queries = [
+            app.buttons.matching(identifier: "Hide Sidebar"),
+            app.buttons.matching(NSPredicate(format: "label == %@", "Hide Sidebar")),
+        ]
+        for query in queries {
+            let count = query.count
+            guard count > 0 else { continue }
+            let button = query.element(boundBy: count - 1)
+            if button.exists, button.isHittable {
+                button.click()
+                return true
+            }
+        }
+        return false
+    }
 }
 
 extension XCUIElement {

@@ -36,6 +36,7 @@ public struct LightweightChartView: View {
     public var showTrades: Bool = true
     public var showVolume: Bool = true
     public var scrollToTime: Date?
+    public var autoScrollToRealtimeWhenPinned: Bool = false
     public var indicatorSettings: IndicatorSettings = .default
 
     public var onScrollChange: ((VisibleLogicalRange) async -> Void)?
@@ -64,6 +65,7 @@ public struct LightweightChartView: View {
         showTrades: Bool = true,
         showVolume: Bool = true,
         scrollToTime: Date? = nil,
+        autoScrollToRealtimeWhenPinned: Bool = false,
         indicatorSettings: IndicatorSettings = .default,
         onScrollChange: ((VisibleLogicalRange) async -> Void)? = nil,
         onSelectionChange: ((Int?) -> Void)? = nil,
@@ -77,6 +79,7 @@ public struct LightweightChartView: View {
         self.showTrades = showTrades
         self.showVolume = showVolume
         self.scrollToTime = scrollToTime
+        self.autoScrollToRealtimeWhenPinned = autoScrollToRealtimeWhenPinned
         self.indicatorSettings = indicatorSettings
         self.onScrollChange = onScrollChange
         self.onSelectionChange = onSelectionChange
@@ -278,10 +281,16 @@ public struct LightweightChartView: View {
         do {
             if chartType == .candlestick {
                 let jsData = data.map { $0.toCandlestickJS() }
-                try await chartService.setCandlestickData(jsData)
+                try await chartService.setCandlestickData(
+                    jsData,
+                    autoScrollToRealtimeWhenPinned: autoScrollToRealtimeWhenPinned
+                )
             } else {
                 let jsData = data.map { $0.toLineJS() }
-                try await chartService.setLineData(jsData)
+                try await chartService.setLineData(
+                    jsData,
+                    autoScrollToRealtimeWhenPinned: autoScrollToRealtimeWhenPinned
+                )
             }
         } catch {
             // Error handling

@@ -24,6 +24,14 @@ struct ChartHeaderView: View {
         HStack {
             Text(title)
                 .font(.headline)
+                // Expose a stable identifier and strip the `.isHeader` trait that
+                // SwiftUI attaches to `.font(.headline)` text. On macOS 26 the
+                // AXHeading role trips an XCUITest "automation type mismatch"
+                // (computed Other vs StaticText) that aborts the whole StaticText
+                // snapshot — so ScrollChartUITests can't find this header *or* the
+                // record-count label. Removing the trait keeps it a plain StaticText.
+                .accessibilityIdentifier("argo.priceChart.header")
+                .accessibilityRemoveTraits(.isHeader)
 
             Spacer()
 

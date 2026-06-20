@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import LightweightChart
 import SwiftUI
 
 enum LogLevel: String, Codable, CaseIterable, Hashable, Comparable {
@@ -49,6 +50,49 @@ enum LogLevel: String, Codable, CaseIterable, Hashable, Comparable {
             return "exclamationmark.triangle"
         case .error:
             return "xmark.circle"
+        }
+    }
+}
+
+// MARK: - LightweightChart Conversion
+
+extension Log {
+    /// Convert Log to MarkerDataJS for LightweightChart display.
+    func toMarkerDataJS() -> MarkerDataJS {
+        var marker = MarkerDataJS(
+            time: timestamp.timeIntervalSince1970,
+            position: "belowBar",
+            color: level.markerColor,
+            shape: "circle",
+            text: "",
+            id: "log-\(id)",
+            markerType: "log"
+        )
+        marker.title = level.markerTitle
+        marker.category = symbol
+        marker.message = message
+        marker.signalReason = fields
+        marker.level = level.rawValue
+        return marker
+    }
+}
+
+private extension LogLevel {
+    var markerColor: String {
+        switch self {
+        case .debug: return "#8e8e93"
+        case .info: return "#0a84ff"
+        case .warning: return "#ff9f0a"
+        case .error: return "#ff453a"
+        }
+    }
+
+    var markerTitle: String {
+        switch self {
+        case .debug: return "Debug Log"
+        case .info: return "Info Log"
+        case .warning: return "Warning Log"
+        case .error: return "Error Log"
         }
     }
 }

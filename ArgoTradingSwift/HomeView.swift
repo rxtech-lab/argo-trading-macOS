@@ -54,12 +54,15 @@ struct HomeView: View {
             }
         } detail: {
             // DETAIL (Right column)
-            switch navigationService.selectedMode {
-            case .Backtest:
-                BacktestDetailView(navigationService: navigationService)
-            case .Trading:
-                TradingDetailView(navigationService: navigationService)
+            Group {
+                switch navigationService.selectedMode {
+                case .Backtest:
+                    BacktestDetailView(navigationService: navigationService)
+                case .Trading:
+                    TradingDetailView(navigationService: navigationService)
+                }
             }
+            .navigationSplitViewColumnWidth(min: 300, ideal: 400)
         }
         .navigationSplitViewStyle(.balanced)
         .toolbar {
@@ -89,6 +92,11 @@ struct HomeView: View {
                 ToolbarErrorView()
 
                 Spacer()
+            }
+            if navigationService.selectedMode == .Trading {
+                ToolbarItem(placement: .primaryAction) {
+                    WalletToolbarButton(document: $document)
+                }
             }
         }
         .onAppear {
@@ -134,6 +142,10 @@ struct HomeView: View {
         }
         .onChange(of: document.tradingResultFolder) { _, newFolder in
             tradingResultService.setResultFolder(newFolder)
+        }
+        .onChange(of: tradingService.liveDataChange) { _, newChange in
+            guard let newChange else { return }
+            tradingResultService.handleLiveDataChange(newChange)
         }
     }
 }

@@ -18,6 +18,7 @@ class TradingResultService {
 
     private var folderMonitor: FolderMonitor?
     private var monitoringTask: Task<Void, Never>?
+    private var liveDataReloadTask: Task<Void, Never>?
     private var currentResultFolder: URL?
 
     private let fileManager: FileManager
@@ -138,6 +139,26 @@ class TradingResultService {
         guard let folder = currentResultFolder else { return }
         Task {
             await loadResults(from: folder)
+        }
+    }
+
+    @MainActor
+    func handleLiveDataChange(_ change: LiveTradingDataChange) {
+        guard change.finalized || change.categories.contains(.stats) else { return }
+
+        liveDataReloadTask?.cancel()
+
+        if change.finalized {
+            reloadResults()
+            return
+        }
+
+        liveDataReloadTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self?.reloadResults()
+            }
         }
     }
 

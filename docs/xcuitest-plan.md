@@ -1,3 +1,9 @@
+---
+slug: testing/xcuitest-plan
+title: XCUITest Plan
+description: End-to-end UI test plan for the ArgoTradingSwift document app
+---
+
 # XCUITest Plan: ArgoTradingSwift Document App
 
 ## Overview

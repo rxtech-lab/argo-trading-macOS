@@ -48,6 +48,7 @@ let currentChartType = "Candlestick";
 let allMarkers = [];
 let tradeMarkers = [];
 let markMarkers = [];
+let logMarkers = [];
 let dataMap = new Map(); // Map time -> { globalIndex, open, high, low, close, volume }
 let isInitialized = false;
 let indicatorSeries = new Map(); // Map indicatorId -> { series, signalSeries?, histogramSeries? }
@@ -525,7 +526,7 @@ function formatDate(timestamp) {
 }
 
 // Set candlestick data
-function setCandlestickData(data) {
+function setCandlestickData(data, autoScrollToRealtimeWhenPinned = false) {
   console.log(
     "[Chart] setCandlestickData called with",
     data ? data.length : 0,
@@ -545,11 +546,26 @@ function setCandlestickData(data) {
 
   // Save scroll position before replacing data
   let savedRange = null;
+  let shouldScrollToRealtime = false;
+  let scrollPosition = null;
   try {
     if (chart && dataMap.size > 0) {
       savedRange = chart.timeScale().getVisibleRange();
+      scrollPosition = chart.timeScale().scrollPosition();
+      shouldScrollToRealtime = isPinnedToRealtime();
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[ChartView] Unable to read scroll position before candlestick update:", e.message || e);
+  }
+
+  console.log(
+    "[ChartView] Candlestick update scroll gate:",
+    "autoScrollToRealtimeWhenPinned=" + autoScrollToRealtimeWhenPinned,
+    "wasRightmost=" + shouldScrollToRealtime,
+    "scrollPosition=" + scrollPosition,
+    "previousPoints=" + dataMap.size,
+    "newPoints=" + data.length
+  );
 
   dataMap.clear();
   const formattedData = data.map((d) => {
@@ -592,6 +608,14 @@ function setCandlestickData(data) {
   }
 
   restoreVisibleRangeIfOverlapping(savedRange, formattedData);
+  if (autoScrollToRealtimeWhenPinned && shouldScrollToRealtime) {
+    console.log("[ChartView] Start scrolling chart to realtime after candlestick update");
+    chart.timeScale().scrollToRealTime();
+  } else if (!autoScrollToRealtimeWhenPinned) {
+    console.log("[ChartView] Not scrolling chart: autoScrollToRealtimeWhenPinned=false");
+  } else {
+    console.log("[ChartView] Not scrolling chart: chart was not at rightmost before update");
+  }
 
   console.log("[Chart] Data set complete");
 }
@@ -612,17 +636,38 @@ function restoreVisibleRangeIfOverlapping(savedRange, formattedData) {
   } catch (e) {}
 }
 
+function isPinnedToRealtime(epsilon = 1) {
+  if (!chart || dataMap.size === 0) return false;
+  const scrollPosition = chart.timeScale().scrollPosition();
+  return Math.abs(scrollPosition) <= epsilon;
+}
+
 // Set line data
-function setLineData(data) {
+function setLineData(data, autoScrollToRealtimeWhenPinned = false) {
   if (!series) return;
 
   // Save scroll position before replacing data
   let savedRange = null;
+  let shouldScrollToRealtime = false;
+  let scrollPosition = null;
   try {
     if (chart && dataMap.size > 0) {
       savedRange = chart.timeScale().getVisibleRange();
+      scrollPosition = chart.timeScale().scrollPosition();
+      shouldScrollToRealtime = isPinnedToRealtime();
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[ChartView] Unable to read scroll position before line update:", e.message || e);
+  }
+
+  console.log(
+    "[ChartView] Line update scroll gate:",
+    "autoScrollToRealtimeWhenPinned=" + autoScrollToRealtimeWhenPinned,
+    "wasRightmost=" + shouldScrollToRealtime,
+    "scrollPosition=" + scrollPosition,
+    "previousPoints=" + dataMap.size,
+    "newPoints=" + data.length
+  );
 
   dataMap.clear();
   const formattedData = data.map((d) => {
@@ -658,6 +703,14 @@ function setLineData(data) {
   }
 
   restoreVisibleRangeIfOverlapping(savedRange, formattedData);
+  if (autoScrollToRealtimeWhenPinned && shouldScrollToRealtime) {
+    console.log("[ChartView] Start scrolling chart to realtime after line update");
+    chart.timeScale().scrollToRealTime();
+  } else if (!autoScrollToRealtimeWhenPinned) {
+    console.log("[ChartView] Not scrolling chart: autoScrollToRealtimeWhenPinned=false");
+  } else {
+    console.log("[ChartView] Not scrolling chart: chart was not at rightmost before update");
+  }
 }
 
 // Update single data point (for streaming)
@@ -712,13 +765,14 @@ function updateLineData(data) {
   }
 }
 
-// Set markers (trades and marks)
+// Set markers (trades, marks, and logs)
 function setMarkers(markerData) {
   if (!series) return;
 
   markerDataMap.clear();
   tradeMarkers = [];
   markMarkers = [];
+  logMarkers = [];
 
   markerData.forEach((m) => {
     // Store full marker data for tooltip
@@ -735,6 +789,8 @@ function setMarkers(markerData) {
 
     if (m.markerType === "trade") {
       tradeMarkers.push(marker);
+    } else if (m.markerType === "log") {
+      logMarkers.push(marker);
     } else {
       markMarkers.push(marker);
     }
@@ -748,7 +804,7 @@ function updateVisibleMarkers() {
   if (!series) return;
 
   // Combine all markers and sort by time
-  const allMarkers = [...tradeMarkers, ...markMarkers];
+  const allMarkers = [...tradeMarkers, ...markMarkers, ...logMarkers];
   allMarkers.sort((a, b) => a.time - b.time);
 
   console.log("[Chart] Updating visible markers:", allMarkers.length);
@@ -765,6 +821,7 @@ function clearAllMarkers() {
 
   tradeMarkers = [];
   markMarkers = [];
+  logMarkers = [];
   markerDataMap.clear();
   try {
     console.log("[Chart] Clearing markers");

@@ -10,6 +10,7 @@ import SwiftUI
 struct TradesTableView: View {
     let filePath: URL
     let dataFilePath: URL
+    var reloadToken: Int = 0
 
     @Environment(DuckDBService.self) private var dbService
     @Environment(AlertManager.self) private var alertManager
@@ -36,6 +37,9 @@ struct TradesTableView: View {
             await loadTrades(page: 1)
         }
         .onChange(of: sortOrder) { _, _ in
+            Task { await loadTrades(page: 1) }
+        }
+        .onChange(of: reloadToken) { _, _ in
             Task { await loadTrades(page: 1) }
         }
         .onChange(of: selectedRows) { _, newSelection in

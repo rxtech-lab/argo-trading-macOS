@@ -27,7 +27,15 @@ DESTINATION="${DESTINATION:-platform=macOS}"
 TEST_RESULTS_DIR="$PROJECT_ROOT/test-results"
 RESULT_BUNDLE_PATH="${RESULT_BUNDLE_PATH:-$TEST_RESULTS_DIR/TestResults.xcresult}"
 TEST_ITERATIONS="${TEST_ITERATIONS:-3}"
-PARALLEL_WORKERS="${PARALLEL_WORKERS:-3}"
+# ArgoTradingSwift is a singleton macOS app: macOS coalesces launches into a
+# single instance per bundle id, so running these UI tests with multiple
+# parallel workers makes the workers fight over one app instance. Symptoms seen
+# in CI: "Multiple matching elements found" (two windows on screen), "application
+# is not running" (one worker's relaunch kills another's), and MCP "network
+# connection was lost" (the embedded server isn't on the port this worker
+# expects). Run serially so each test owns its own app instance.
+PARALLEL_TESTING_ENABLED="${PARALLEL_TESTING_ENABLED:-NO}"
+PARALLEL_WORKERS="${PARALLEL_WORKERS:-1}"
 
 if [ ! -d "$PROJECT_PATH" ]; then
     echo -e "${RED}Error: $PROJECT_PATH not found${NC}"
@@ -87,7 +95,7 @@ xcodebuild test \
     -retry-tests-on-failure \
     -test-iterations "$TEST_ITERATIONS" \
     -test-repetition-relaunch-enabled YES \
-    -parallel-testing-enabled YES \
+    -parallel-testing-enabled "$PARALLEL_TESTING_ENABLED" \
     -parallel-testing-worker-count "$PARALLEL_WORKERS" \
     "${SIGNING_ARGS[@]}" \
     2>&1 | tee "$TEST_RESULTS_DIR/xcodebuild.log" | $FORMATTER

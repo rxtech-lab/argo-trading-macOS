@@ -16,16 +16,19 @@ struct LiveChartView: View {
 
     // Identifier used to trigger data reload when the selected run changes
     var runURL: URL?
+    var runID: String
 
     // File paths for historical data (empty string = no file)
     var marketDataFilePath: String = ""
     var tradesFilePath: String = ""
     var marksFilePath: String = ""
+    var logsFilePath: String = ""
 
     // Historical data loaded from Parquet
     @State private var historicalData: [PriceData] = []
     @State private var markers: [MarkerDataJS] = []
     @State private var isLoadingHistorical: Bool = false
+    @State private var markerReloadTask: Task<Void, Never>?
 
     @State private var chartType: ChartType = .candlestick
     @State private var selectedIndex: Int?
@@ -99,6 +102,9 @@ struct LiveChartView: View {
             // Reset to base when engine reports a new interval
             selectedInterval = newInterval
         }
+        .onChange(of: tradingService.liveDataChange) { _, newChange in
+            handleLiveDataChange(newChange)
+        }
     }
 
     // MARK: - Historical Data Loading
@@ -138,23 +144,29 @@ struct LiveChartView: View {
             return
         }
 
-        // Load trades and marks separately — failures here should not wipe out market data
+        await loadMarkers()
+    }
+
+    private func loadMarkers() async {
+        guard let range = markerTimeRange else {
+            markers = []
+            return
+        }
+
         var loadedMarkers: [MarkerDataJS] = []
 
-        // Fetch trades and marks in parallel — they hit independent files,
+        // Fetch trades, marks, and logs in parallel — they hit independent files,
         // so the wall-clock cost is bounded by the slower of the two. Each branch
         // catches its own errors so one failure doesn't void the other.
         async let tradesMarkers: [MarkerDataJS] = {
-            guard !tradesFilePath.isEmpty,
-                  let first = historicalData.first, let last = historicalData.last
-            else { return [] }
+            guard !tradesFilePath.isEmpty else { return [] }
             let tradesURL = URL(fileURLWithPath: tradesFilePath)
             guard FileManager.default.fileExists(atPath: tradesURL.path) else { return [] }
             do {
                 let trades = try await dbService.fetchTrades(
                     filePath: tradesURL,
-                    startTime: first.date,
-                    endTime: last.date
+                    startTime: range.lowerBound,
+                    endTime: range.upperBound
                 )
                 return trades.map { $0.toMarkerDataJS() }
             } catch {
@@ -164,16 +176,14 @@ struct LiveChartView: View {
         }()
 
         async let marksMarkers: [MarkerDataJS] = {
-            guard !marksFilePath.isEmpty,
-                  let first = historicalData.first, let last = historicalData.last
-            else { return [] }
+            guard !marksFilePath.isEmpty else { return [] }
             let marksURL = URL(fileURLWithPath: marksFilePath)
             guard FileManager.default.fileExists(atPath: marksURL.path) else { return [] }
             do {
                 let marks = try await dbService.fetchMarks(
                     filePath: marksURL,
-                    startTime: first.date,
-                    endTime: last.date
+                    startTime: range.lowerBound,
+                    endTime: range.upperBound
                 )
                 return marks.map { $0.toMarkerDataJS() }
             } catch {
@@ -182,10 +192,79 @@ struct LiveChartView: View {
             }
         }()
 
+        async let logsMarkers: [MarkerDataJS] = {
+            guard !logsFilePath.isEmpty else { return [] }
+            let logsURL = URL(fileURLWithPath: logsFilePath)
+            guard FileManager.default.fileExists(atPath: logsURL.path) else { return [] }
+
+            do {
+                var allLogs: [Log] = []
+                var page = 1
+                let pageSize = 1_000
+
+                while true {
+                    let result = try await dbService.fetchLogData(
+                        filePath: logsURL,
+                        page: page,
+                        pageSize: pageSize,
+                        sortColumn: "timestamp",
+                        sortDirection: "ASC",
+                        startTime: range.lowerBound,
+                        endTime: range.upperBound
+                    )
+
+                    allLogs.append(contentsOf: result.items)
+
+                    if allLogs.count >= result.total || result.items.isEmpty {
+                        break
+                    }
+
+                    page += 1
+                }
+
+                return allLogs.map { $0.toMarkerDataJS() }
+            } catch {
+                logger.error("Failed to load logs from '\(logsFilePath)': \(String(describing: error))")
+                return []
+            }
+        }()
+
         loadedMarkers.append(contentsOf: await tradesMarkers)
         loadedMarkers.append(contentsOf: await marksMarkers)
+        loadedMarkers.append(contentsOf: await logsMarkers)
 
         markers = loadedMarkers
+    }
+
+    private var markerTimeRange: ClosedRange<Date>? {
+        let combined = historicalData + tradingService.liveChartData
+        guard let first = combined.first, let last = combined.last else { return nil }
+        return first.date ... last.date
+    }
+
+    @MainActor
+    private func handleLiveDataChange(_ change: LiveTradingDataChange?) {
+        guard let change, change.runID == runID else { return }
+
+        markerReloadTask?.cancel()
+
+        if change.finalized {
+            Task {
+                await loadHistoricalData()
+            }
+            return
+        }
+
+        let shouldReloadMarkers = change.categories.contains(.trades)
+            || change.categories.contains(.marks)
+            || change.categories.contains(.logs)
+        guard shouldReloadMarkers else { return }
+
+        markerReloadTask = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            await loadMarkers()
+        }
     }
 
     // MARK: - Header
@@ -227,6 +306,7 @@ struct LiveChartView: View {
             totalDataCount: displayData.count,
             markers: filteredMarkers,
             showVolume: showVolume,
+            autoScrollToRealtimeWhenPinned: true,
             indicatorSettings: indicatorSettings,
             onSelectionChange: { newIndex in
                 selectedIndex = newIndex

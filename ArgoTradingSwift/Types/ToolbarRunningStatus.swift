@@ -21,7 +21,7 @@ enum ToolbarRunningStatus: Equatable {
     case downloading(label: String, progress: Progress)
     case downloadCancelled(label: String)
     case backtesting(label: String, progress: Progress)
-    case trading(label: String)
+    case trading(label: String, phase: String, progress: Progress?, message: String?)
     case idle
     case error(label: String, errors: [String], at: Date)
     case finished(message: String, at: Date)
@@ -33,7 +33,7 @@ enum ToolbarRunningStatus: Equatable {
         case .downloading(let label, _): return "downloading-\(label)"
         case .running(let label): return "running-\(label)"
         case .backtesting: return "backtesting"
-        case .trading(let label): return "trading-\(label)"
+        case .trading(let label, let phase, _, _): return "trading-\(label)-\(phase)"
         case .error: return "error"
         case .finished: return "finished"
         }

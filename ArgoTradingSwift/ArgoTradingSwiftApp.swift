@@ -8,12 +8,37 @@
 import LightweightChart
 import Sparkle
 import SwiftUI
+import UserNotifications
 
 var updaterController: SPUStandardUpdaterController?
 let updaterDelegate = UpdaterDelegate()
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+private struct AppChartLogger: ChartLogger {
+    func debug(_ message: String) {
+        logger.debug("\(message)")
+    }
+
+    func info(_ message: String) {
+        logger.info("\(message)")
+    }
+
+    func warning(_ message: String) {
+        logger.warning("\(message)")
+    }
+
+    func error(_ message: String) {
+        logger.error("\(message)")
+    }
+}
+
+class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+    private var maximizeObserver: NSObjectProtocol?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
+
+        setupUITestWindowMaximizationIfNeeded()
+
         // Open welcome window on launch
         DispatchQueue.main.async {
             if let app = NSApp {
@@ -27,9 +52,53 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// When launched for UI testing with `-ArgoMaximizeWindow`, resizes the
+    /// document window to the screen's visible frame at startup.
+    ///
+    /// The CI virtual machine has a narrow display, and the green zoom button
+    /// (previously used by the tests) shifts the window partly off the left edge,
+    /// pushing the `NavigationSplitView` sidebar and the right-hand result tabs
+    /// off-screen where they "exist but aren't hittable". Pinning the window to
+    /// `visibleFrame` keeps its left edge on-screen so the sidebar and content
+    /// stay reachable. Only resizable windows are touched, so the fixed-size
+    /// welcome/about/wallet panels are left alone.
+    private func setupUITestWindowMaximizationIfNeeded() {
+        guard ProcessInfo.processInfo.arguments.contains("-ArgoMaximizeWindow") else { return }
+        maximizeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let window = notification.object as? NSWindow,
+                  window.styleMask.contains(.resizable)
+            else { return }
+            Self.fillScreen(window)
+        }
+    }
+
+    /// Resizes `window` to the screen's visible frame, re-applying a few times to
+    /// defeat any later SwiftUI re-layout that shrinks it back to its content size.
+    private static func fillScreen(_ window: NSWindow, applied: Int = 0) {
+        guard applied < 5 else { return }
+        if let screen = window.screen ?? NSScreen.main {
+            window.setFrame(screen.visibleFrame, display: true)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            fillScreen(window, applied: applied + 1)
+        }
+    }
+
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
         // Prevent creating untitled document on launch
         return false
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .list, .sound])
     }
 }
 
@@ -41,6 +110,13 @@ struct ArgoTradingSwiftApp: App {
     @State private var datasetDownloadService = DatasetDownloadService()
 
     init() {
+        // Wire the wallet ↔ trading service back-pointers up front. Both
+        // services live for the lifetime of the app, so capturing them here
+        // is safe and avoids per-window setup elsewhere.
+        tradingService.walletService = walletService
+        walletService.tradingService = tradingService
+        walletService.loadSupportedCurrencies()
+
         // UI tests pass `-ArgoDisableUpdates` (or `ARGO_DISABLE_UPDATES=1` env var)
         // to suppress the Sparkle update prompt, and `-ArgoResetState`
         // (or `ARGO_RESET_STATE=1`) to wipe app-local state before launch.
@@ -104,12 +180,13 @@ struct ArgoTradingSwiftApp: App {
     @State private var schemaService = SchemaService()
     @State private var toolbarStatusService = ToolbarStatusService()
     @State private var backtestResultService = BacktestResultService()
-    @State private var lightweightChartsService = LightweightChartService()
+    @State private var lightweightChartsService = LightweightChartService(logger: AppChartLogger())
     @State private var strategyCacheService = StrategyCacheService()
     @State private var keychainService = KeychainService()
     @State private var tradingProviderService = TradingProviderService()
     @State private var tradingService = TradingService()
     @State private var tradingResultService = TradingResultService()
+    @State private var walletService = WalletService()
     @State private var mcpServerService = MCPServerService()
 
     @Environment(\.dismissWindow) private var dismissWindow
@@ -195,6 +272,7 @@ struct ArgoTradingSwiftApp: App {
         .environment(tradingProviderService)
         .environment(tradingService)
         .environment(tradingResultService)
+        .environment(walletService)
         .environment(mcpServerService)
 
         // Define a custom About window that can be opened once
@@ -203,6 +281,20 @@ struct ArgoTradingSwiftApp: App {
         }
         .windowResizability(.contentSize) // Make it non-resizable
         .restorationBehavior(.disabled) // Prevent state restoration
+
+        // Wallet — floating window for the live trading mode, opened from the
+        // wallet toolbar button. Singleton (Window, not WindowGroup) so the
+        // button reuses the existing window if already open.
+        Window("Wallet", id: "wallet") {
+            WalletWindowView()
+                .environment(tradingService)
+                .environment(walletService)
+                .frame(width: 380, height: 720)
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultPosition(.trailing)
+        .restorationBehavior(.disabled)
 
         Settings {
             SettingsView()
