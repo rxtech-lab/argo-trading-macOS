@@ -17,7 +17,7 @@ final class ArgoTradingSwiftUITests: XCTestCase {
         UITestUtils.clearResults(at: projectURL.deletingLastPathComponent().appendingPathComponent("result"))
 
         let app = XCUIApplication()
-        app.launchArguments = [projectURL.path, "-ArgoDisableUpdates", "-ArgoResetState"]
+        app.launchArguments = [projectURL.path, "-ArgoDisableUpdates", "-ArgoResetState", "-ArgoMaximizeWindow"]
         app.launchEnvironment["ARGO_DISABLE_UPDATES"] = "1"
         app.launchEnvironment["ARGO_RESET_STATE"] = "1"
         app.launch()
@@ -28,8 +28,6 @@ final class ArgoTradingSwiftUITests: XCTestCase {
         app/*@START_MENU_TOKEN@*/ .buttons["place_order_plugin"]/*[[".cells.buttons[\"place_order_plugin\"]",".buttons[\"place_order_plugin\"]"],[[[-1,1],[-1,0]]],[0]]@END_MENU_TOKEN@*/ .firstMatch.click()
         XCTAssertTrue(app/*@START_MENU_TOKEN@*/ .staticTexts["PlaceOrderStrategy"]/*[[".groups.staticTexts[\"PlaceOrderStrategy\"]",".staticTexts[\"PlaceOrderStrategy\"]"],[[[-1,1],[-1,0]]],[0]]@END_MENU_TOKEN@*/ .waitForExistence(timeout: 20), "PlaceOrderStrategy not found after clicking plugin — it may take a while to load")
 
-        // full screen
-        app.fullScreen()
         // Use firstMatch: SwiftUI toolbar buttons can expose nested accessibility elements
         // that inherit the same identifier from the parent.
         let runButton = app.buttons.matching(identifier: "argo.runBacktest").firstMatch

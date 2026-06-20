@@ -181,12 +181,12 @@ final class ScrollChartUITests: XCTestCase {
         app.launchArguments = [
             projectURL.path,
             "-ArgoDisableUpdates", "-ArgoResetState",
+            "-ArgoMaximizeWindow",
             "-NSQuitAlwaysKeepsWindows", "NO",
         ]
         app.launchEnvironment["ARGO_DISABLE_UPDATES"] = "1"
         app.launchEnvironment["ARGO_RESET_STATE"] = "1"
         app.launch()
-        app.fullScreen()
         return app
     }
 
