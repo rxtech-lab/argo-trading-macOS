@@ -126,3 +126,16 @@ extension XCUIElement {
         return exists && isEnabled
     }
 }
+
+extension XCUIApplication {
+    func fullScreen() {
+        let zoomButton = self.buttons["_XCUI:ZoomWindow"].firstMatch
+        let fullscreenButton = self.buttons["XCUI:FullScreenWindow"].firstMatch
+
+        if zoomButton.waitForExistence(timeout: 5) {
+            zoomButton.click()
+        } else if fullscreenButton.waitForExistence(timeout: 5) {
+            fullscreenButton.click()
+        }
+    }
+}

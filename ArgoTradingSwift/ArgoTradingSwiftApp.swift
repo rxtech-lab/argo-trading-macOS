@@ -32,8 +32,12 @@ private struct AppChartLogger: ChartLogger {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+    private var maximizeObserver: NSObjectProtocol?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
+
+        setupUITestWindowMaximizationIfNeeded()
 
         // Open welcome window on launch
         DispatchQueue.main.async {
@@ -45,6 +49,42 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
                     }
                 }
             }
+        }
+    }
+
+    /// When launched for UI testing with `-ArgoMaximizeWindow`, resizes the
+    /// document window to the screen's visible frame at startup.
+    ///
+    /// The CI virtual machine has a narrow display, and the green zoom button
+    /// (previously used by the tests) shifts the window partly off the left edge,
+    /// pushing the `NavigationSplitView` sidebar and the right-hand result tabs
+    /// off-screen where they "exist but aren't hittable". Pinning the window to
+    /// `visibleFrame` keeps its left edge on-screen so the sidebar and content
+    /// stay reachable. Only resizable windows are touched, so the fixed-size
+    /// welcome/about/wallet panels are left alone.
+    private func setupUITestWindowMaximizationIfNeeded() {
+        guard ProcessInfo.processInfo.arguments.contains("-ArgoMaximizeWindow") else { return }
+        maximizeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let window = notification.object as? NSWindow,
+                  window.styleMask.contains(.resizable)
+            else { return }
+            Self.fillScreen(window)
+        }
+    }
+
+    /// Resizes `window` to the screen's visible frame, re-applying a few times to
+    /// defeat any later SwiftUI re-layout that shrinks it back to its content size.
+    private static func fillScreen(_ window: NSWindow, applied: Int = 0) {
+        guard applied < 5 else { return }
+        if let screen = window.screen ?? NSScreen.main {
+            window.setFrame(screen.visibleFrame, display: true)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            fillScreen(window, applied: applied + 1)
         }
     }
 

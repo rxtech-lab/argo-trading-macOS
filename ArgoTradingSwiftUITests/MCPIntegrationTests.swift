@@ -53,10 +53,13 @@ final class MCPIntegrationTests: XCTestCase {
 
     private func launchApp(fixture: URL, port: Int) -> XCUIApplication {
         let app = XCUIApplication()
+        // Each boolean flag needs an explicit value — macOS parses launch args
+        // as NSUserDefaults `-key value` pairs, so a bare flag swallows the next
+        // token. (See ScrollChartUITests.launch for the full story.)
         app.launchArguments = [
             fixture.path,
-            "-ArgoDisableUpdates",
-            "-ArgoResetState",
+            "-ArgoDisableUpdates", "YES",
+            "-ArgoResetState", "YES",
             "-ArgoMcpPort", String(port),
         ]
         app.launchEnvironment["ARGO_DISABLE_UPDATES"] = "1"

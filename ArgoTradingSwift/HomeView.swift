@@ -5,49 +5,8 @@
 //  Created by Qiwei Li on 4/16/25.
 //
 
-import AppKit
 import ArgoTrading
 import SwiftUI
-
-/// When launched for UI testing with `-ArgoMaximizeWindow`, sizes the document
-/// window to the screen's visible frame.
-///
-/// UI tests previously called the green zoom button to get a large window, but
-/// native zoom/full-screen on the CI virtual machine shifts the window partly
-/// off-screen to the left. That pushes the `NavigationSplitView` sidebar off the
-/// left edge, so its rows "exist but are not hittable" (observed at x = -143),
-/// which cascades into the chart/backtest UI test failures. Sizing to
-/// `visibleFrame` keeps the whole window — sidebar included — on-screen and wide
-/// enough to avoid toolbar overflow.
-private struct MaximizeWindowForUITests: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        guard ProcessInfo.processInfo.arguments.contains("-ArgoMaximizeWindow") else {
-            return view
-        }
-        Self.maximize(view)
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {}
-
-    /// The window isn't attached when `makeNSView` runs, so poll until it is, then
-    /// re-apply the frame a few times to defeat any later SwiftUI re-layout that
-    /// would shrink the window back toward its content size.
-    private static func maximize(_ view: NSView, attempt: Int = 0, applied: Int = 0) {
-        guard applied < 5, attempt < 50 else { return }
-        guard let window = view.window, let screen = window.screen ?? NSScreen.main else {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                maximize(view, attempt: attempt + 1, applied: applied)
-            }
-            return
-        }
-        window.setFrame(screen.visibleFrame, display: true)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            maximize(view, attempt: attempt + 1, applied: applied + 1)
-        }
-    }
-}
 
 struct HomeView: View {
     @Binding var document: ArgoTradingDocument
@@ -95,15 +54,17 @@ struct HomeView: View {
             }
         } detail: {
             // DETAIL (Right column)
-            switch navigationService.selectedMode {
-            case .Backtest:
-                BacktestDetailView(navigationService: navigationService)
-            case .Trading:
-                TradingDetailView(navigationService: navigationService)
+            Group {
+                switch navigationService.selectedMode {
+                case .Backtest:
+                    BacktestDetailView(navigationService: navigationService)
+                case .Trading:
+                    TradingDetailView(navigationService: navigationService)
+                }
             }
+            .navigationSplitViewColumnWidth(min: 300, ideal: 400)
         }
         .navigationSplitViewStyle(.balanced)
-        .background(MaximizeWindowForUITests())
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 SidebarModePicker(navigationService: navigationService)
