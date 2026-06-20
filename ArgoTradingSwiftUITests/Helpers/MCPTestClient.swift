@@ -121,7 +121,7 @@ final class MCPTestClient: @unchecked Sendable {
             request.setValue(sessionID, forHTTPHeaderField: "MCP-Session-Id")
         }
 
-        let (respData, response) = try await URLSession.shared.data(for: request)
+        let (respData, response) = try await Self.dataWithRetry(for: request)
         let httpResponse = response as? HTTPURLResponse
         let httpStatus = httpResponse?.statusCode
 
@@ -152,6 +152,39 @@ final class MCPTestClient: @unchecked Sendable {
             throw ClientError.decoding("Missing `result` field: \(payload)")
         }
         return result
+    }
+
+    // MARK: - Networking
+
+    /// `URLSession.shared` keeps connections alive and reuses them; the embedded
+    /// MCP server can close an idle socket between requests, so a reused
+    /// connection surfaces as `-1005 "network connection was lost"`. These are
+    /// transient — retry a few times before giving up.
+    private static func dataWithRetry(
+        for request: URLRequest,
+        attempts: Int = 4
+    ) async throws -> (Data, URLResponse) {
+        var lastError: Error?
+        for attempt in 0 ..< attempts {
+            do {
+                return try await URLSession.shared.data(for: request)
+            } catch let error as URLError where Self.isTransient(error) {
+                lastError = error
+                // Brief backoff so the server can recover / a fresh connection
+                // can be established.
+                try? await Task.sleep(nanoseconds: UInt64(150_000_000 * (attempt + 1)))
+            }
+        }
+        throw lastError ?? URLError(.unknown)
+    }
+
+    private static func isTransient(_ error: URLError) -> Bool {
+        switch error.code {
+        case .networkConnectionLost, .cannotConnectToHost, .timedOut, .notConnectedToInternet:
+            return true
+        default:
+            return false
+        }
     }
 
     // MARK: - SSE parsing
